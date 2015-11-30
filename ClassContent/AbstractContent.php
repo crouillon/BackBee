@@ -1206,6 +1206,7 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
             'minentry'   => $this->getMinEntry(),
             'maxentry'   => $this->getMaxEntry(),
             'elements'   => $this->computeElementsToJson($this->getData()),
+            'has_elements' => count($this->getData()) === 0 ? false : true,
             'extra'      => [],
         ];
 
