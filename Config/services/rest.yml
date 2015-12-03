@@ -86,5 +86,5 @@ services:
             - [setCache, [@rest.metadata.cache]]
 
     rest.metadata.cache:
-        class:     BackBee\Rest\Metadata\Cache\FileCache
-        arguments: ["%bbapp.cache.dir%/", %debug%]
+        class:     BackBee\Rest\Metadata\Cache\BackBeeCache
+        arguments: [@cache.bootstrap, %debug%]
