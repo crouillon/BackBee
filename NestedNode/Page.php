@@ -993,10 +993,6 @@ class Page extends AbstractObjectIdentifiable implements RenderableInterface, Do
             $publishing = $this->convertTimestampToDateTime($publishing);
         }
 
-        if ($publishing->getTimestamp() < time()) {
-            throw new \LogicException("Page can't be published in the past.");
-        }
-
         return $publishing;
     }
 
