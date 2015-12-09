@@ -447,18 +447,6 @@ class PageTest extends BackBeeTestCase
     }
 
     /**
-     * @expectedException     \LogicException
-     * @expectedExceptionMessage Page can't be published in the past.
-     */
-    public function testSetPublishingWithADateBeforeTodayFails()
-    {
-        $page = new Page();
-        $page->setParent($this->page);
-
-        $page->setPublishing(new \DateTime('NOW -1 day'));
-    }
-
-    /**
      * @covers BackBee\NestedNode\Page::setArchiving
      */
     public function testSetArchiving()
