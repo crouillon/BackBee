@@ -29,7 +29,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
 use Symfony\Component\Security\Core\SecurityContextInterface;
+use Symfony\Component\Security\Http\Event\InteractiveLoginEvent;
 use Symfony\Component\Security\Http\Firewall\ListenerInterface;
+use Symfony\Component\Security\Http\SecurityEvents;
 use BackBee\Security\Token\UsernamePasswordToken;
 
 /**
@@ -71,6 +73,10 @@ class UsernamePasswordAuthenticationListener implements ListenerInterface
                 if (null !== $this->_logger) {
                     $this->_logger->info(sprintf('Authentication request succeed for user "%s"', $token->getUsername()));
                 }
+                
+                $loginEvent = new InteractiveLoginEvent($request, $token);
+                $event->getDispatcher()
+                        ->dispatch(SecurityEvents::INTERACTIVE_LOGIN, $loginEvent);
             } catch (\Symfony\Component\Security\Core\Exception\AuthenticationException $e) {
                 $event->getDispatcher()
                         ->dispatch(\Symfony\Component\Security\Core\AuthenticationEvents::AUTHENTICATION_FAILURE, new \Symfony\Component\Security\Core\Event\AuthenticationFailureEvent($token, $e));
