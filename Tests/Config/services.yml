@@ -6,3 +6,6 @@ parameters:
 services:
     session.storage:
         class: Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage
+    serializer.metadata.cache:
+        class: BackBee\Rest\Metadata\Cache\FileCache
+        arguments:  ["%bbapp.cache.dir%/"]
