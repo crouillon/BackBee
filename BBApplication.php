@@ -194,8 +194,12 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
             if (null !== $mailer_config = $this->getConfig()->getSection('mailer')) {
                 $smtp = is_array($mailer_config['smtp']) ? reset($mailer_config['smtp']) : $mailer_config['smtp'];
                 $port = is_array($mailer_config['port']) ? reset($mailer_config['port']) : $mailer_config['port'];
+                $encryption = !isset($mailer_config['encryption'])
+                    ?: (is_array($mailer_config['encryption'])
+                        ? reset($mailer_config['encryption'])
+                        : $mailer_config['encryption']);
 
-                $transport = \Swift_SmtpTransport::newInstance($smtp, $port);
+                $transport = \Swift_SmtpTransport::newInstance($smtp, $port, $encryption);
                 if (array_key_exists('username', $mailer_config) && array_key_exists('password', $mailer_config)) {
                     $username = is_array($mailer_config['username'])
                         ? reset($mailer_config['username'])
