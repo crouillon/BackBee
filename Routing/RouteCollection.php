@@ -58,14 +58,14 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
      *
      * @var ApplicationInterface
      */
-    private $application;
+    protected $application;
 
     /**
      * A message logger.
      *
      * @var LoggerInterface
      */
-    private $logger;
+    protected $logger;
 
     /**
      * The raw routes of the collection.
@@ -79,7 +79,7 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
      *
      * @var atring[]
      */
-    private $uriPrefixes;
+    protected $uriPrefixes;
 
     /**
      * The default protocol scheme for this instance.
