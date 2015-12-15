@@ -48,6 +48,9 @@ class ClassContentController extends AbstractRestController
      */
     private $manager;
 
+
+    private $lastRequestIterator;
+
     /**
      * Returns category's datas if $id is valid.
      *
@@ -57,6 +60,7 @@ class ClassContentController extends AbstractRestController
      *
      * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
+
     public function getCategoryAction($id)
     {
         $category = $this->getCategoryManager()->getCategory($id);
@@ -98,7 +102,7 @@ class ClassContentController extends AbstractRestController
         $format = $this->getFormatParam();
         $response = $this->createJsonResponse();
         $categoryName = $request->query->get('category', null);
-
+        $usePagination = $request->query->get('usePagination', true);
         if (AbstractClassContent::JSON_DEFINITION_FORMAT === $format) {
             $response->setData($contents = $this->getClassContentDefinitionsByCategory($categoryName));
             $start = 0;
@@ -114,7 +118,7 @@ class ClassContentController extends AbstractRestController
             $response->setData($data);
         }
 
-        return $this->addContentRangeHeadersToResponse($response, $contents, $start);
+        return $this->addContentRangeHeadersToResponse($response, $contents, $start, (boolean) $usePagination);
     }
 
     /**
@@ -691,16 +695,22 @@ class ClassContentController extends AbstractRestController
      * @param mixed    $collection collection from where we extract Content-Range data
      * @param integer  $start      the start value
      */
-    private function addContentRangeHeadersToResponse(Response $response, $collection, $start)
+    private function addContentRangeHeadersToResponse(Response $response, $collection, $start, $usePagination = true)
     {
-        $count = count($collection);
+        $total = '*';
         if ($collection instanceof Paginator) {
-            $count = count($collection->getIterator());
+            $resultCount = count($collection->getIterator());
+        } else {
+            $resultCount = count($collection);
         }
 
-        $lastResult = $start + $count - 1;
+        if ($usePagination) {
+            $total = count($collection);
+        }
+
+        $lastResult = $start + $resultCount - 1;
         $lastResult = $lastResult < 0 ? 0 : $lastResult;
-        $response->headers->set('Content-Range', "$start-$lastResult/".count($collection));
+        $response->headers->set('Content-Range', "$start-$lastResult/".$total);
 
         return $response;
     }

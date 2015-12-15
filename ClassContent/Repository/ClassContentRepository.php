@@ -509,7 +509,7 @@ class ClassContentRepository extends EntityRepository
         $this->addContentBySearchFilters($qb, $classnames, $orderInfos, $cond);
         if (is_array($paging) && count($paging)) {
             if (array_key_exists('start', $paging) && array_key_exists('limit', $paging)) {
-                $result = $qb->paginate($paging['start'], $paging['limit']);
+                $result = $qb->paginate($paging['start'], $paging['limit'], false); //fetchJoinCollection
             } else {
                 $result = $qb->getQuery();
             }
