@@ -99,7 +99,7 @@ class MediaRepository extends EntityRepository
                     ->setFirstResult($paging['start'])
                     ->setMaxResults($paging['limit'])
                 ;
-                $result = new Paginator($q);
+                $result = new Paginator($q, false); //fetchJoinCollection is not needed
             }
         } else {
             $result = $q->getQuery()->getResult();

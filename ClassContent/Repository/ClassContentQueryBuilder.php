@@ -182,12 +182,12 @@ class ClassContentQueryBuilder extends QueryBuilder
      *
      * @return Doctrine\ORM\Tools\Pagination\Paginator
      */
-    public function paginate($start, $limit)
+    public function paginate($start, $limit, $fetchJoinCollection = true)
     {
         $this->setFirstResult($start)
              ->setMaxResults($limit);
 
-        return new Paginator($this);
+        return new Paginator($this, $fetchJoinCollection);
     }
 
     /**

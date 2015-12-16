@@ -67,6 +67,7 @@ class MediaController extends AbstractRestController
     {
         $queryParams = $request->query->all();
         $mediaFolderUid = $request->get('mediaFolder_uid', null);
+        $usePagination = $request->get("usePagination", false);
         if (empty($mediaFolderUid)) {
             throw new BadRequestHttpException('A media folder uid should be provided.');
         }
@@ -80,17 +81,22 @@ class MediaController extends AbstractRestController
             'start' => $start,
             'limit' => $count
         ];
+
         $paginator = $this->getMediaRepository()->getMedias($mediaFolder, $queryParams, '_modified', 'desc', $paging);
+        $resultsIter = $paginator->getIterator();
         $results = [];
-        foreach ($paginator as $media) {
-            $results[] = $media;
+        while ($resultsIter->valid()) {
+          $results [] = $resultsIter->current();
+          $resultsIter->next();
         }
+
+        $pager = $usePagination ? $paginator : null;
 
         return $this->addRangeToContent(
             $this->createJsonResponse($this->mediaToJson($results)),
-            $paginator,
+            $pager,
             $start,
-            $count
+            count($results)
         );
     }
 
@@ -221,16 +227,16 @@ class MediaController extends AbstractRestController
         return $result;
     }
 
-    private function addRangeToContent(Response $response, Paginator $collection, $start, $count)
+    private function addRangeToContent(Response $response, $collection, $offset, $limit)
     {
-        $count = count($collection);
+        $total = "*";
         if ($collection instanceof Paginator) {
-            $count = count($collection->getIterator());
+            $total = count($collection);
         }
 
-        $lastResult = $start + $count - 1;
+        $lastResult = $offset + $limit - 1;
         $lastResult = $lastResult < 0 ? 0 : $lastResult;
-        $response->headers->set('Content-Range', "$start-$lastResult/" . count($collection));
+        $response->headers->set('Content-Range', "$offset-$lastResult/" . $total);
 
         return $response;
     }
