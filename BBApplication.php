@@ -195,7 +195,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
                 $smtp = is_array($mailer_config['smtp']) ? reset($mailer_config['smtp']) : $mailer_config['smtp'];
                 $port = is_array($mailer_config['port']) ? reset($mailer_config['port']) : $mailer_config['port'];
                 $encryption = !isset($mailer_config['encryption'])
-                    ?: (is_array($mailer_config['encryption'])
+                    ? null : (is_array($mailer_config['encryption'])
                         ? reset($mailer_config['encryption'])
                         : $mailer_config['encryption']);
 
