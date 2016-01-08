@@ -220,11 +220,11 @@ EOF
         $tablePage = $pageMeta->getTableName();
         $sectionField = $pageMeta->getSingleAssociationJoinColumnName('_section');
         if (!in_array($sectionField, $existingFields)) {
-            $this->em->getConnection()->executeQuery(sprintf('ALTER TABLE %s ADD COLUMN %s CHAR(32)', $tablePage, $sectionField));
+            $this->em->getConnection()->executeUpdate(sprintf('ALTER TABLE %s ADD COLUMN %s CHAR(32)', $tablePage, $sectionField));
         }
         $positionField = $pageMeta->getColumnName('_position');
         if (!in_array($positionField, $existingFields)) {
-            $this->em->getConnection()->executeQuery(sprintf('ALTER TABLE %s ADD COLUMN %s INT', $tablePage, $positionField));
+            $this->em->getConnection()->executeUpdate(sprintf('ALTER TABLE %s ADD COLUMN %s INT', $tablePage, $positionField));
         }
 
         $this->output->writeln('<info>OK</info>');
@@ -256,13 +256,13 @@ EOF
         $progress = $this->getHelperSet()->get('progress');
         $progress->start($this->output, $this->countNodes($classname));
 
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=0');
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=0');
         foreach ($sites as $site) {
             foreach ($this->getPageRoot($site, $classname) as $root_uid) {
                 $this->updateTreeNatively($root_uid, $classname);
             }
         }
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=1');
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
 
         $progress->finish();
 
@@ -276,7 +276,7 @@ EOF
      */
     private function updateSectionTable()
     {
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=0');
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=0');
 
         $schemaTool = new SchemaTool($this->em);
         $schemaManager = $this->em->getConnection()->getSchemaManager();
@@ -293,7 +293,7 @@ EOF
 
             $this->output->writeln(sprintf('<info>Updating table `%s`</info>',$tableSection));
             $schemaTool->updateSchema(array($sectionMeta), true);
-            $this->em->getConnection()->executeQuery(sprintf('DELETE FROM %s WHERE 1=1', $tableSection));
+            $this->em->getConnection()->executeUpdate(sprintf('DELETE FROM %s WHERE 1=1', $tableSection));
         }
 
         $query = sprintf(
@@ -331,7 +331,7 @@ EOF
         );
 
         $result = $this->em->getConnection()->executeQuery($query);
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=1');
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
 
         $this->output->writeln(sprintf(' - %d section rows created', $result->rowCount()));
 
@@ -340,7 +340,7 @@ EOF
 
     public function updatePageTable()
     {
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=0');
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=0');
 
         $pageMeta = $this->em->getClassMetadata('BackBee\NestedNode\Page');
         $tablePage = $pageMeta->getTableName();
@@ -355,7 +355,7 @@ EOF
                 $this->requiredFields['rightnode'],
                 $this->requiredFields['leftnode']
         );
-        $this->em->getConnection()->executeQuery($queryS);
+        $this->em->getConnection()->executeUpdate($queryS);
         
         $queryP = sprintf('UPDATE %s SET %s = %s, %s = %s WHERE %s = %s + 1',
                 $tablePage,
@@ -366,8 +366,8 @@ EOF
                 $this->requiredFields['rightnode'],
                 $this->requiredFields['leftnode']
         );
-        $this->em->getConnection()->executeQuery($queryP);
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=1');
+        $this->em->getConnection()->executeUpdate($queryP);
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
         
         return $this;
     }
@@ -544,7 +544,7 @@ EOF
             Type::STRING,
         );
 
-        $this->em->getConnection()->executeQuery($query, $params, $types);
+        $this->em->getConnection()->executeUpdate($query, $params, $types);
     }
 
 }

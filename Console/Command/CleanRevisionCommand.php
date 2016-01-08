@@ -83,7 +83,7 @@ class CleanRevisionCommand extends AbstractCommand
 
         $output->writeln("\nBefore cleaning, revision table contains $revisionCount row(s).\n");
 
-        $conn->executeQuery("DELETE FROM revision WHERE content_uid IS NULL")->execute();
+        $conn->executeUpdate("DELETE FROM revision WHERE content_uid IS NULL");
 
         if (null !== $created) {
             if (1 === preg_match('#^-[0-9]+ (months?|days?|years?)$#', $created)) {
@@ -94,7 +94,7 @@ class CleanRevisionCommand extends AbstractCommand
                 $created = date('Y-m-d H:i:s', strtotime($input->getOption('created')));
             }
 
-            $conn->executeQuery("DELETE FROM revision WHERE created < '$created'")->execute();
+            $conn->executeUpdate("DELETE FROM revision WHERE created < '$created'");
         }
 
         if (null !== $revision) {
@@ -116,11 +116,11 @@ class CleanRevisionCommand extends AbstractCommand
                     $validRevisions[] = '"'.$row['uid'].'"';
                 }
 
-                $conn->executeQuery(
+                $conn->executeUpdate(
                     "DELETE FROM revision
                      WHERE content_uid = '$contentUid'
                      AND uid NOT IN (".implode(', ', $validRevisions).')'
-                )->execute();
+                );
 
                 $output->writeln(
                     "    Cleaning `$contentUid` revisions done in ".(microtime(true) - $time).'s '
