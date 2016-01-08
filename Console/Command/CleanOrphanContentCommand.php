@@ -77,11 +77,11 @@ class CleanOrphanContentCommand extends AbstractCommand
                 $em->getRepository($orphan['classname'])->deleteContent($orphan_object);
             } catch (ClassNotFoundException $e) {
                 $uid = $orphan['uid'];
-                $em->getConnection()->executeQuery(
+                $em->getConnection()->executeUpdate(
                     "DELETE FROM content_has_subcontent WHERE content_uid = '$uid' OR parent_uid = '$uid'"
-                )->execute();
-                $em->getConnection()->executeQuery("DELETE FROM revision WHERE content_uid = '$uid'")->execute();
-                $em->getConnection()->executeQuery("DELETE FROM content WHERE uid = '$uid'")->execute();
+                );
+                $em->getConnection()->executeUpdate("DELETE FROM revision WHERE content_uid = '$uid'");
+                $em->getConnection()->executeUpdate("DELETE FROM content WHERE uid = '$uid'");
             }
         }
 

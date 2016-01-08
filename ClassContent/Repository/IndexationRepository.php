@@ -124,7 +124,7 @@ class IndexationRepository extends EntityRepository
             \Doctrine\DBAL\Connection::PARAM_STR_ARRAY,
         );
 
-        return $this->_executeQuery($query, $params, $types);
+        return $this->executeUpdate($query, $params, $types);
     }
 
     /**
@@ -169,7 +169,7 @@ class IndexationRepository extends EntityRepository
      */
     public function removeIdxSiteContents(Site $site, array $contents)
     {
-        return $this->_removeIdxSiteContents($site->getUid(), $this->getAClassContentUids($contents));
+        return $this->removeIdxSiteContentsByUids($site->getUid(), $this->getAClassContentUids($contents));
     }
 
     /**
@@ -195,7 +195,7 @@ class IndexationRepository extends EntityRepository
             $parentUids[$content->getUid()] = array_merge($parentUids[$content->getUid()], $this->getAClassContentUids($content->getSubcontent()->toArray()));
         }
 
-        return $this->_replaceIdxContentContents($parentUids);
+        return $this->replaceIdxContentContentsByUids($parentUids);
     }
 
     /**
@@ -224,7 +224,7 @@ class IndexationRepository extends EntityRepository
             $command = 'REPLACE';
             if (!$this->replaceSupported) {
                 // REPLACE command not supported, remove first then insert
-                $this->_removeIdxSiteContents($siteUid, $contentUids);
+                $this->removeIdxSiteContentsByUids($siteUid, $contentUids);
                 $command = 'INSERT';
             }
 
@@ -236,14 +236,14 @@ class IndexationRepository extends EntityRepository
                             ' (' . $meta->getColumnName('site_uid') . ', ' . $meta->getColumnName('content_uid') . ')' .
                             ' VALUES ("' . $siteUid . '", "' . $contentUid . '")';
 
-                    $this->_em->getConnection()->executeQuery($query);
+                    $this->_em->getConnection()->executeUpdate($query);
                 }
             } else {
                 $query = $command . ' INTO ' . $meta->getTableName() .
                         ' (' . $meta->getColumnName('site_uid') . ', ' . $meta->getColumnName('content_uid') . ')' .
                         ' VALUES ("' . $siteUid . '", "' . implode('"), ("' . $siteUid . '", "', $contentUids) . '")';
 
-                $this->_em->getConnection()->executeQuery($query);
+                $this->_em->getConnection()->executeUpdate($query);
             }
         }
 
@@ -424,7 +424,7 @@ class IndexationRepository extends EntityRepository
      *
      * @return \BackBee\ClassContent\Repository\IndexationRepository
      */
-    private function _removeIdxSiteContents($siteUid, array $contentUids)
+    private function removeIdxSiteContentsByUids($siteUid, array $contentUids)
     {
         if (0 < count($contentUids)) {
             $this->getEntityManager()
@@ -447,7 +447,7 @@ class IndexationRepository extends EntityRepository
      *
      * @return \BackBee\ClassContent\Repository\IndexationRepository
      */
-    private function _replaceIdxContentContents(array $parentUids)
+    private function replaceIdxContentContentsByUids(array $parentUids)
     {
         if (0 < count($parentUids)) {
             $command = 'REPLACE';
@@ -478,7 +478,7 @@ class IndexationRepository extends EntityRepository
                     $meta->getColumnName('subcontent_uid'),
                     $unionAll
                 );
-                $this->_em->getConnection()->executeQuery($query);
+                $this->_em->getConnection()->executeUpdate($query);
             }
         }
 
@@ -517,11 +517,11 @@ class IndexationRepository extends EntityRepository
      *
      * @return \BackBee\ClassContent\Repository\IndexationRepository
      */
-    private function _executeQuery($query, array $params = array(), array $types = array())
+    private function executeUpdate($query, array $params = array(), array $types = array())
     {
         $this->getEntityManager()
                 ->getConnection()
-                ->executeQuery($query, $params, $types);
+                ->executeUpdate($query, $params, $types);
 
         return $this;
     }
@@ -533,7 +533,7 @@ class IndexationRepository extends EntityRepository
      *
      * @return \BackBee\ClassContent\Repository\IndexationRepository
      */
-    private function _replaceIdxSite(Page $page)
+    private function replaceIdxSite(Page $page)
     {
         $query = 'INSERT INTO idx_site_content (site_uid, content_uid) '.
                 '(SELECT :site, content_uid FROM idx_page_content WHERE page_uid = :page)';
@@ -544,7 +544,7 @@ class IndexationRepository extends EntityRepository
         );
 
         return $this->removeIdxSite($page)
-                        ->_executeQuery($query, $params);
+                        ->executeUpdate($query, $params);
     }
 
     /**
@@ -554,7 +554,7 @@ class IndexationRepository extends EntityRepository
      *
      * @return \BackBee\ClassContent\Repository\IndexationRepository
      */
-    private function _removeIdxContentContent(AbstractClassContent $content)
+    private function removeIdxContentContent(AbstractClassContent $content)
     {
         $query = 'DELETE FROM idx_content_content WHERE content_uid = :child OR subcontent_uid = :child';
 
@@ -562,7 +562,7 @@ class IndexationRepository extends EntityRepository
             'child' => $content->getUid(),
         );
 
-        return $this->_executeQuery($query, $params);
+        return $this->executeUpdate($query, $params);
     }
 
     /**
@@ -584,7 +584,7 @@ class IndexationRepository extends EntityRepository
             'content' => $content->getUid(),
         );
 
-        return $this->_executeQuery($query, $params);
+        return $this->executeUpdate($query, $params);
     }
 
     /**
@@ -603,7 +603,7 @@ class IndexationRepository extends EntityRepository
             'site' => $page->getSite()->getUid(),
         );
 
-        return $this->_executeQuery($query, $params);
+        return $this->executeUpdate($query, $params);
     }
 
     /**
@@ -627,8 +627,8 @@ class IndexationRepository extends EntityRepository
             'child' => $content->getUid(),
         );
 
-        return $this->_removeIdxContentContent($content)
-                        ->_executeQuery($query, $params)
+        return $this->removeIdxContentContent($content)
+                        ->executeUpdate($query, $params)
                         ->updateIdxPage($content->getMainNode(), $content);
     }
 
@@ -661,8 +661,8 @@ class IndexationRepository extends EntityRepository
         );
 
         return $this->removeIdxContentPage($content, $page)
-                        ->_executeQuery($query, $params)
-                        ->_replaceIdxSite($page);
+                        ->executeUpdate($query, $params)
+                        ->replaceIdxSite($page);
     }
 
     /**
@@ -686,7 +686,7 @@ class IndexationRepository extends EntityRepository
         );
 
         return $this->removeIdxSiteContent($site, $content)
-                        ->_executeQuery($query, $params);
+                        ->executeUpdate($query, $params);
     }
 
     /**
@@ -722,9 +722,9 @@ class IndexationRepository extends EntityRepository
             'content' => $content->getUid(),
         );
 
-        return $this->_executeQuery('DELETE FROM idx_site_content WHERE content_uid = :content', $params)
-                        ->_executeQuery('DELETE FROM idx_page_content WHERE content_uid = :content', $params)
-                        ->_removeIdxContentContent($content);
+        return $this->executeUpdate('DELETE FROM idx_site_content WHERE content_uid = :content', $params)
+                        ->executeUpdate('DELETE FROM idx_page_content WHERE content_uid = :content', $params)
+                        ->removeIdxContentContent($content);
     }
 
     /**
@@ -743,7 +743,7 @@ class IndexationRepository extends EntityRepository
         );
 
         return $this->removeIdxSite($page)
-                        ->_executeQuery($query, $params);
+                        ->executeUpdate($query, $params);
     }
 
     /**
@@ -765,7 +765,7 @@ class IndexationRepository extends EntityRepository
             'content' => $content->getUid(),
         );
 
-        return $this->_executeQuery($query, $params);
+        return $this->executeUpdate($query, $params);
     }
 
     /**

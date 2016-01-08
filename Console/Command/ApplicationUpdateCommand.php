@@ -115,9 +115,9 @@ EOF
             $metadata = $this->em->getMetadataFactory()->getAllMetadata();
             $schema = new SchemaTool($this->em);
 
-            $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=0');
+            $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=0');
             $schema->updateSchema($metadata, true);
-            $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=1');
+            $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
         }
 
         $output->writeln('<info>SQL executed: </info>'.PHP_EOL.implode(";".PHP_EOL, $sqls).'');

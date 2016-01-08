@@ -119,7 +119,7 @@ class Sequencer extends EntityRepository
 
         $this->getEntityManager()
             ->getConnection()
-            ->executeQuery($query, $params)
+            ->executeUpdate($query, $params)
         ;
 
         return $first;

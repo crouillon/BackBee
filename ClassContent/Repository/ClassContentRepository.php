@@ -932,19 +932,19 @@ class ClassContentRepository extends EntityRepository
      */
     protected function cleanUpContentHardDelete(AbstractClassContent $content)
     {
-        $this->_em->getConnection()->executeQuery(
+        $this->_em->getConnection()->executeUpdate(
             'DELETE FROM indexation WHERE owner_uid = :uid',
             [
                 'uid' => $content->getUid(),
             ]
-        )->execute();
+        );
 
-        $this->_em->getConnection()->executeQuery(
+        $this->_em->getConnection()->executeUpdate(
             'DELETE FROM revision WHERE content_uid = :uid',
             [
                 'uid' => $content->getUid(),
             ]
-        )->execute();
+        );
 
         return $this;
     }
