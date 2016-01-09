@@ -177,7 +177,15 @@ class Twig extends AbstractRendererAdapter
         try {
             $params['this'] = $this;
             $params = array_merge($params, $vars);
-            $render = $this->twig->render($filename, $params);
+
+            try {
+                $render = $this->twig->render($filename, $params);
+            } catch (\Twig_Error_Runtime $e) {
+                if($e->getPrevious() instanceof FrontControllerException) {
+                    throw $e->getPrevious();
+                }
+            }
+
         } catch (FrontControllerException $fe) {
             throw $fe;
         } catch (\Exception $e) {
