@@ -184,7 +184,14 @@ class MetaDataResolver implements MetaDataResolverInterface
             }
             $scheme = ('' === $metadata->getAttribute($attrname)) ? reset($attrvalue) : $metadata->getAttribute($attrname);
 
-            if (array_key_exists('default', $attrvalue)) {
+	    if (
+                    'title' === $metadata->getName()
+                    && null !== $page
+                    && null !== $page->getTitle()
+                    && array_key_exists('default', $attrvalue)
+            ) {
+                $scheme = $page->getTitle();		
+            } elseif (array_key_exists('default', $attrvalue)) {		
                 $scheme = $attrvalue['default'];
             }
 
