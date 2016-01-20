@@ -41,8 +41,6 @@ use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Debug\Debug;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
@@ -1203,8 +1201,9 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     private function initBundles()
     {
-        if (null !== $this->getConfig()->getBundlesConfig()) {
-            $this->getContainer()->get('bundle.loader')->load($this->getConfig()->getBundlesConfig());
+        $bundleLoader = $this->getContainer()->get('bundle.loader');
+        if (!$bundleLoader->isRestored() && null !== $this->getConfig()->getBundlesConfig()) {
+            $bundleLoader->load($this->getConfig()->getBundlesConfig());
         }
 
         return $this;
