@@ -42,10 +42,10 @@ class BundleListener
      */
     public static function onApplicationStop(Event $event)
     {
-        $application = $event->getTarget();
-        foreach (array_keys($application->getContainer()->findTaggedServiceIds('bundle')) as $bundle_id) {
-            if (true === $application->getContainer()->hasInstanceOf($bundle_id)) {
-                $application->getContainer()->get($bundle_id)->stop();
+        $container = $event->getTarget()->getContainer();
+        foreach (array_keys($container->findTaggedServiceIds('bundle')) as $bundleId) {
+            if ($container->hasInstanceOf($bundleId)) {
+                $container->get($bundleId)->stop();
             }
         }
     }
