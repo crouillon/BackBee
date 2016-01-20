@@ -69,17 +69,29 @@ class Twig extends AbstractRendererAdapter
         parent::__construct($renderer, $config);
 
         $this->loader = new TwigLoaderFilesystem([]);
-
-        $application = $this->renderer->getApplication();
-
         $this->twig = new \Twig_Environment($this->loader, $config);
 
-        if ($application->isDebugMode() || (isset($config['debug']) && true === $config['debug'])) {
+        $app = $this->renderer->getApplication();
+        if ($app->isDebugMode() || (isset($config['debug']) && true === $config['debug'])) {
             $this->twig->enableDebug();
             $this->twig->addExtension(new \Twig_Extension_Debug());
-        } elseif ($application->isClientSAPI()) {
+        }
+
+        if (isset($config['enable_autoreload']) && true === $config['enable_autoreload']) {
             $this->twig->enableAutoReload();
-            $this->setTwigCache($application->getCacheDir().DIRECTORY_SEPARATOR.'twig');
+        }
+
+        if (isset($config['enable_cache']) && true === $config['enable_cache']) {
+            $cacheDir = isset($config['cache_dir']) && is_string($config['cache_dir'])
+                ? $config['cache_dir']
+                : $app->getCacheDir() . DIRECTORY_SEPARATOR . 'twig'
+            ;
+            $this->setTwigCache($cacheDir);
+        }
+
+        // loads every Twig extension registered in application's service container
+        foreach ($app->getContainer()->findTaggedServiceIds('twig.extension') as $id => $datas) {
+            $this->addExtension($app->getContainer()->get($id));
         }
     }
 
