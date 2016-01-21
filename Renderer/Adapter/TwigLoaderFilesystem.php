@@ -23,8 +23,6 @@
 
 namespace BackBee\Renderer\Adapter;
 
-use Twig_Loader_Filesystem;
-
 /**
  * Extends twig default filesystem loader to override some behaviors.
  *
@@ -33,7 +31,7 @@ use Twig_Loader_Filesystem;
  * @copyright   Lp digital system
  * @author      e.chau <eric.chau@lp-digital.fr>
  */
-class TwigLoaderFilesystem extends Twig_Loader_Filesystem
+class TwigLoaderFilesystem extends \Twig_Loader_Filesystem
 {
     /**
      * Do same stuff than Twig_Loader_Filesystem::exists() plus check if the file is
@@ -55,8 +53,8 @@ class TwigLoaderFilesystem extends Twig_Loader_Filesystem
 
     public function removeAllPaths()
     {
-        $this->paths = array();
-        $this->cache = array();
+        $this->paths = [];
+        $this->cache = [];
     }
 
     /**
@@ -72,16 +70,15 @@ class TwigLoaderFilesystem extends Twig_Loader_Filesystem
         } catch (\Twig_Error_Loader $e) {
             $namespace = self::MAIN_NAMESPACE;
 
-            if (true === is_readable($name)) {
+            if (is_readable($name)) {
                 return $name;
             }
 
             throw new \Twig_Error_Loader(sprintf(
                 'Unable to find template "%s" (looked into: %s).',
                 $name,
-                implode(', ',
-                $this->paths[$namespace]))
-            );
+                implode(', ', $this->paths[$namespace])
+            ));
         }
     }
 }

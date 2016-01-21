@@ -114,22 +114,18 @@ kernel.response:
         - [@profiler.toolbar.listener, onKernelResponse]
         - [@profiler.listener, onKernelResponse]
 
-bbapplication.init:
-    listeners:
-        - [BackBee\DependencyInjection\Listener\ContainerListener, onApplicationInit]
-        - [BackBee\ClassContent\Listener\ClassContentListener, onApplicationInit]
-
 nestednode.page.postload:
     listeners:
         - [@nestednode.page_listener, onPostLoad]
 
-bbapplication.start:
-    listeners:
-        - [BackBee\Renderer\Listener\TwigListener, onApplicationStart]
-
 service.tagged.config_per_site:
     listeners:
         - [@config.configurator, onGetServiceConfig]
+
+bbapplication.init:
+    listeners:
+        - [BackBee\DependencyInjection\Listener\ContainerListener, onApplicationInit]
+        - [BackBee\ClassContent\Listener\ClassContentListener, onApplicationInit]
 
 bbapplication.stop:
     listeners:

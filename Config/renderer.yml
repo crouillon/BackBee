@@ -2,12 +2,14 @@
 
 bb_scripts_directory:
     common: %bbapp.base.dir%/Resources/scripts
-    form: %bbapp.base.dir%/Form/Templates/scripts
 
 adapter:
     twig:
         class: BackBee\Renderer\Adapter\Twig
-        config: []
+        config:
+            enable_autoreload: true
+            enable_cache: true
+            cache_dir: ~
     phtml:
         class: BackBee\Renderer\Adapter\phtml
         config: []
