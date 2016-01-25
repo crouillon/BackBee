@@ -88,11 +88,6 @@ class Twig extends AbstractRendererAdapter
             ;
             $this->setTwigCache($cacheDir);
         }
-
-        // loads every Twig extension registered in application's service container
-        foreach ($app->getContainer()->findTaggedServiceIds('twig.extension') as $id => $datas) {
-            $this->addExtension($app->getContainer()->get($id));
-        }
     }
 
     /**

@@ -126,6 +126,7 @@ bbapplication.init:
     listeners:
         - [BackBee\DependencyInjection\Listener\ContainerListener, onApplicationInit]
         - [BackBee\ClassContent\Listener\ClassContentListener, onApplicationInit]
+        - [BackBee\Renderer\Listener\TwigListener, onApplicationReady]
 
 bbapplication.stop:
     listeners:
