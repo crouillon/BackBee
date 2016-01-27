@@ -39,6 +39,13 @@ use BackBee\NestedNode\Page;
 class RewritingListener
 {
     /**
+     * Stores uids of the pages already computed.
+     * 
+     * @var string[]
+     */
+    static private $alreadyDone = [];
+
+    /**
      * Occur on classcontent.onflush events.
      *
      * @param \BackBee\Event\Event $event
@@ -55,7 +62,12 @@ class RewritingListener
             return;
         }
 
-        $newEvent = new Event($page, $content);
+        $url = $page->getUrl(false);
+        if (!empty($url) && in_array($page->getUid(), self::$alreadyDone)) {
+            return false;
+        }
+
+        $newEvent = new Event($page);
         $newEvent->setDispatcher($event->getDispatcher());
         self::onFlushPage($newEvent);
     }
@@ -120,7 +132,7 @@ class RewritingListener
                 ;
             }
         }
-        
+
         $newUrl = null;
         $url = $page->getUrl(false);
         if (isset($changeSet['_url']) && !empty($url)) {
@@ -129,6 +141,8 @@ class RewritingListener
             $force = isset($changeSet['_state']) && !($changeSet['_state'][0] & Page::STATE_ONLINE);
             $newUrl = $urlGenerator->generate($page, $maincontent, $force);
         }
+
+        self::$alreadyDone[] = $page->getUid();
 
         if ($newUrl !== $page->getUrl(false)) {
             $page->setUrl($newUrl);
