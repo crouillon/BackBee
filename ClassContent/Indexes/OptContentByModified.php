@@ -38,7 +38,8 @@ use Doctrine\ORM\Mapping as ORM;
  *   indexes={
  *     @ORM\Index(name="IDX_CLASSNAMEO", columns={"classname"}),
  *     @ORM\Index(name="IDX_NODE", columns={"node_uid"}),
- *     @ORM\Index(name="IDX_MODIFIEDO", columns={"modified"})
+ *     @ORM\Index(name="IDX_MODIFIEDO", columns={"modified"}),
+ *     @ORM\Index(name="IDX_CREATEDO", columns={"created"})
  *   }
  * )
  */
