@@ -23,7 +23,10 @@
 
 namespace BackBee\Renderer\Helper;
 
-use BackBee\MetaData\MetaDataBag;
+use BackBee\DependencyInjection\Container;
+use BackBee\MetaData\MetaData as bbMetaData;
+use BackBee\NestedNode\Page;
+use BackBee\Renderer\AbstractRenderer;
 
 /**
  * Helper generating <META> tag for the page being rendered
@@ -36,44 +39,102 @@ use BackBee\MetaData\MetaDataBag;
  */
 class metadata extends AbstractHelper
 {
+
+    /**
+     * The current dependency injection container.
+     * 
+     * @var Container 
+     */
+    private $container;
+
+    /**
+     * Class constructor.
+     *
+     * @param AbstractRenderer $renderer
+     */
+    public function __construct(AbstractRenderer $renderer)
+    {
+        parent::__construct($renderer);
+
+        $this->container = $this->getRenderer()
+                ->getApplication()
+                ->getContainer();
+    }
+
+    /**
+     * @return string The generated metadata for the page.
+     */
     public function __invoke()
     {
-        if (null === $renderer = $this->_renderer) {
-            return '';
-        }
-
-        if (null === $page = $renderer->getCurrentPage()) {
+        if (null === $page = $this->getRenderer()->getCurrentPage()) {
             return '';
         }
 
         $metadata = $page->getMetadata();
         if (null === $metadata || $metadata->count() === 0) {
-            $metadata = $this->getRenderer()->getApplication()->getContainer()->get('nestednode.metadata.resolver')->resolve($page);
-            $page->setMetaData($metadata);
-            if ($renderer->getApplication()->getEntityManager()->contains($page)) {
-                $renderer->getApplication()->getEntityManager()->flush($page);
-            }
+            $page = $this->saveIfEmpty($page);
         }
 
         $result = '';
         foreach ($metadata as $meta) {
-            if (0 < $meta->count() && 'title' !== $meta->getName()) {
-                $result .= '<meta ';
-                foreach ($meta as $attribute => $value) {
-                    if (false !== strpos($meta->getName(), 'keyword') && 'content' === $attribute) {
-                        $keywords = explode(',', $value);
-                        foreach ($this->getKeywordObjects($keywords) as $object) {
-                            $value = trim(str_replace($object->getUid(), $object->getKeyWord(), $value), ',');
-                        }
-                    }
-
-                    $result .= $attribute.'="'.html_entity_decode($value, ENT_COMPAT, 'UTF-8').'" ';
-                }
-                $result .= '/>'.PHP_EOL;
-            }
+            $result .= $this->generateMeta($meta);
         }
 
         return $result;
+    }
+
+    /**
+     * Compute and save metadata if $page has no one.
+     * 
+     * @param  Page $page
+     * 
+     * @return Page
+     */
+    private function saveIfEmpty(Page $page)
+    {
+        $metadata = $this->container
+                ->get('nestednode.metadata.resolver')
+                ->resolve($page);
+        
+            $page->setMetaData($metadata);
+            if ($this->container->get('em')->contains($page)) {
+                $this->container->get('em')->flush($page);
+            }
+
+            return $page;
+    }
+
+    /**
+     * Generates HTML tag according to the metadata.
+     * 
+     * @param  bbMetaData $meta
+     * 
+     * @return string
+     */
+    private function generateMeta(bbMetaData $meta)
+    {
+        if (0 === $meta->count() || 'title' === $meta->getName()) {
+            return '';
+        }
+
+        $result = '<meta ';
+        foreach ($meta as $attribute => $value) {
+            if (false !== strpos($meta->getName(), 'keyword') && 'content' === $attribute) {
+                $keywords = explode(',', $value);
+                foreach ($this->getKeywordObjects($keywords) as $object) {
+                    $value = trim(str_replace($object->getUid(), $object->getKeyWord(), $value), ',');
+                }
+            }
+
+            if ('content' === $attribute && empty($value)) {
+                $result = '';
+                break;
+            }
+
+            $result .= $attribute . '="' . html_entity_decode($value, ENT_COMPAT, 'UTF-8') . '" ';
+        }
+        
+        return empty($result) ? $result : $result.'/>'.PHP_EOL;
     }
 
     /**
@@ -84,8 +145,6 @@ class metadata extends AbstractHelper
      */
     private function getKeywordObjects(array $keywords)
     {
-        $keywords = (array) $keywords;
-
         return $this->getRenderer()
             ->getApplication()
             ->getEntityManager()
@@ -93,4 +152,5 @@ class metadata extends AbstractHelper
             ->getKeywordsFromElements($keywords)
         ;
     }
+
 }
