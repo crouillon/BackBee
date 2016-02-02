@@ -174,6 +174,7 @@ class Sequencer extends EntityRepository
             return $this->init($name, $default);
         }
 
+        $this->_em->refresh($seq);
         return $seq->getValue();
     }
 
