@@ -406,7 +406,10 @@ abstract class AbstractClassContent extends AbstractContent
                         $value = end($values);
                     }
 
-                    if (!in_array($type, ['scalar', 'array'])) {
+                    if ('scalar' === $type) {
+                        $decode = json_decode($value);
+                        $clone->$key = (JSON_ERROR_NONE === json_last_error()) ? $decode : $value;
+                    } elseif ('array' !== $type) {
                         foreach ($this->_subcontent as $subcontent) {
                             if ($subcontent->getUid() == $value) {
                                 $newsubcontent = $subcontent->createClone($originPage);

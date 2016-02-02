@@ -284,6 +284,8 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
 
                 if (is_object($value) && $value instanceof AbstractClassContent) {
                     $value = $this->_addSubcontent($value);
+                } elseif ('scalar' === $type) {
+                    $value = json_encode($value);
                 }
 
                 $val[] = array($type => $value);
@@ -930,7 +932,10 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
                 $value = end($values);
             }
 
-            if ($type !== 'scalar' && $type !== 'array') {
+            if ('scalar' === $type) {
+                $decode = json_decode($value);
+                $data[] = (JSON_ERROR_NONE === json_last_error()) ? $decode : $value;
+            } elseif ('array' !== $type) {
                 try {
                     $type = self::getFullClassname($type);
                 } catch (\InvalidArgumentException $e) {
