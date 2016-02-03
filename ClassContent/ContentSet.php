@@ -556,28 +556,22 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
      */
     protected function setOptions($options = null)
     {
-        if (null !== $options) {
+        if (null === $options) {
             return $this;
         }
 
         $options = (array) $options;
-        if (true === array_key_exists('label', $options)) {
-            $this->_label = $options['label'];
+
+        $this->_label = isset($options['label']) ? $options['label'] : null;
+        $this->_maxentry = isset($options['maxentry']) ? intval($options['maxentry']) : null;
+        $this->_minentry = isset($options['minentry']) ? intval($options['minentry']) : null;
+
+        if (isset($options['accept'])) {
+            $this->_accept = [];
+            $this->_addAcceptedType($options['accept']);
         }
 
-        if (true === array_key_exists('maxentry', $options)) {
-            $this->_maxentry = intval($options['maxentry']);
-        }
-
-        if (true === array_key_exists('minentry', $options)) {
-            $this->_minentry = intval($options['minentry']);
-        }
-
-        if (true === array_key_exists('accept', $options)) {
-            $this->_accept = array_map(['BackBee\ClassContent\AbstractContent', 'getShortClassname'], (array) $options['accept']);
-        }
-
-        if (true === array_key_exists('default', $options)) {
+        if (isset($options['default'])) {
             $options['default'] = (array) $options['default'];
             foreach ($options['default'] as $value) {
                 $this->push($value);
@@ -601,21 +595,7 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
      */
     protected function defineData($var, $type = 'scalar', $options = null, $updateAccept = false)
     {
-        if (true === $updateAccept) {
-            $this->_addAcceptedType($type, $var);
-        }
-
-        if (null !== $options) {
-            $options = (array) $options;
-            if (true === array_key_exists('default', $options)) {
-                $options['default'] = (array) $options['default'];
-                foreach ($options['default'] as $value) {
-                    $this->push($value);
-                }
-            }
-        }
-
-        return $this;
+        return $this->setOptions($options);
     }
 
     /**
@@ -646,12 +626,15 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
     protected function _addAcceptedType($type, $var = null)
     {
         $types = (array) $type;
-        foreach ($types as $type) {
-            $type = self::getShortClassname($type);
-            if (!in_array($type, $this->_accept)) {
-                $this->_accept[] = $type;
+        array_walk($type, function(&$item) {
+            if ('!' === substr($item, 0, 1)) {
+                $item = '!' . AbstractContent::getShortClassname(substr($item, 1));
+            } else {
+                $item = AbstractContent::getShortClassname($item);
             }
-        }
+        });
+
+        $this->_accept = array_unique(array_merge($this->_accept, $type));
 
         return $this;
     }

@@ -116,8 +116,16 @@ class Yaml extends AbstractClassWrapper
                         $options['label'] = $value['label'];
                     }
 
+                    if (isset($value['accept'])) {
+                        $options['accept'] = $value['accept'];
+                    }
+
                     if (isset($value['maxentry'])) {
                         $options['maxentry'] = $value['maxentry'];
+                    }
+
+                    if (isset($value['minentry'])) {
+                        $options['minentry'] = $value['minentry'];
                     }
 
                     if (isset($value['parameters'])) {
