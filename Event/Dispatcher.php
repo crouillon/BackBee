@@ -23,13 +23,14 @@
 
 namespace BackBee\Event;
 
-use Symfony\Component\EventDispatcher\Event as sfEvent;
-use Symfony\Component\EventDispatcher\EventDispatcher;
 use BackBee\BBApplication;
+use BackBee\ClassContent\AbstractClassContent;
 use BackBee\Config\Config;
 use BackBee\DependencyInjection\Container;
 use BackBee\DependencyInjection\Dumper\DumpableServiceInterface;
 use BackBee\Event\Exception\ContainerNotFoundException;
+use Symfony\Component\EventDispatcher\Event as sfEvent;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * An event dispatcher for BB application.
@@ -152,9 +153,9 @@ class Dispatcher extends EventDispatcher implements DumpableServiceInterface
             $event = new Event($entity, $eventArgs);
         }
 
-        if (is_a($entity, 'BackBee\ClassContent\AbstractClassContent')) {
-            $this->dispatch(strtolower('classcontent.'.$eventName), $event);
+        $this->dispatch($this->formatEventName($eventName, $entity), $event);
 
+        if ($entity instanceof AbstractClassContent) {
             foreach (class_parents($entity) as $class) {
                 if ($class === 'BackBee\ClassContent\AbstractClassContent') {
                     break;
@@ -162,9 +163,9 @@ class Dispatcher extends EventDispatcher implements DumpableServiceInterface
 
                 $this->dispatch($this->formatEventName($eventName, $class), $event);
             }
-        }
 
-        $this->dispatch($this->formatEventName($eventName, $entity), $event);
+            $this->dispatch(strtolower('classcontent.'.$eventName), $event);
+        }
     }
 
     /**
