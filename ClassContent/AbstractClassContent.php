@@ -54,7 +54,8 @@ use Doctrine\ORM\Mapping as ORM;
  *     @ORM\Index(name="IDX_MODIFIED", columns={"modified"}),
  *     @ORM\Index(name="IDX_STATE", columns={"state"}),
  *     @ORM\Index(name="IDX_NODEUID", columns={"node_uid"}),
- *     @ORM\Index(name="IDX_CLASSNAME", columns={"classname"})
+ *     @ORM\Index(name="IDX_CLASSNAME", columns={"classname"}),
+ *     @ORM\Index(name="IDX_CONTENT_LABEL", columns={"label"})
  *   }
  * )
  * @ORM\HasLifecycleCallbacks
