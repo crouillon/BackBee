@@ -23,7 +23,6 @@
 
 namespace BackBee\Renderer\Helper;
 
-use BackBee\DependencyInjection\Container;
 use BackBee\MetaData\MetaData as bbMetaData;
 use BackBee\NestedNode\Page;
 use BackBee\Renderer\AbstractRenderer;
@@ -42,8 +41,8 @@ class metadata extends AbstractHelper
 
     /**
      * The current dependency injection container.
-     * 
-     * @var Container 
+     *
+     * @var \BackBee\DependencyInjection\Container
      */
     private $container;
 
@@ -85,9 +84,9 @@ class metadata extends AbstractHelper
 
     /**
      * Compute and save metadata if $page has no one.
-     * 
+     *
      * @param  Page $page
-     * 
+     *
      * @return Page
      */
     private function saveIfEmpty(Page $page)
@@ -95,7 +94,7 @@ class metadata extends AbstractHelper
         $metadata = $this->container
                 ->get('nestednode.metadata.resolver')
                 ->resolve($page);
-        
+
             $page->setMetaData($metadata);
             if ($this->container->get('em')->contains($page)) {
                 $this->container->get('em')->flush($page);
@@ -106,9 +105,9 @@ class metadata extends AbstractHelper
 
     /**
      * Generates HTML tag according to the metadata.
-     * 
+     *
      * @param  bbMetaData $meta
-     * 
+     *
      * @return string
      */
     private function generateMeta(bbMetaData $meta)
@@ -133,7 +132,7 @@ class metadata extends AbstractHelper
 
             $result .= $attribute . '="' . html_entity_decode($value, ENT_COMPAT, 'UTF-8') . '" ';
         }
-        
+
         return empty($result) ? $result : $result.'/>'.PHP_EOL;
     }
 
