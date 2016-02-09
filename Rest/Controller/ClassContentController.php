@@ -607,19 +607,29 @@ class ClassContentController extends AbstractRestController
      */
     private function getClassContentDefinitionsByCategory($name = null)
     {
-        $classnames = [];
-        if (null === $name) {
-            $classnames = $this->getClassContentManager()->getAllClassContentClassnames();
-        } else {
-            $classnames = $this->getClassContentClassnamesByCategory($name);
-        }
+        $application = $this->getApplication();
+        $cache = $application->getContainer()->get('cache.control');
+        $cacheId = md5('classcontent_definitions_'.$application->getContext().'_'.$application->getEnvironment(). $name);
 
-        $definitions = [];
-        foreach ($classnames as $classname) {
-            $definitions[] = $this->getClassContentManager()->jsonEncode(
-                (new $classname()),
-                AbstractClassContent::JSON_DEFINITION_FORMAT
-            );
+        if (!$application->isDebugMode() && false !== $value = $cache->load($cacheId)) {
+            $definitions = json_decode($value, true);
+        } else {
+            $classnames = [];
+            if (null === $name) {
+                $classnames = $this->getClassContentManager()->getAllClassContentClassnames();
+            } else {
+                $classnames = $this->getClassContentClassnamesByCategory($name);
+            }
+
+            $definitions = [];
+            foreach ($classnames as $classname) {
+                $definitions[] = $this->getClassContentManager()->jsonEncode(
+                    (new $classname()),
+                    AbstractClassContent::JSON_DEFINITION_FORMAT
+                );
+            }
+
+            $cache->save($cacheId, json_encode($definitions));
         }
 
         return $definitions;
