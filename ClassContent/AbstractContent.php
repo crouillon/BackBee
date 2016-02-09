@@ -709,10 +709,16 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
     {
         if ($this->getContentInstance() instanceof ContentSet) {
             if (!($value instanceof AbstractClassContent)) {
+                // ContentSet accepts only AbstractClassContent elements
+                return false;
+            }
+            
+            if (in_array('!' . $this->_getType($value), $this->_accept)) {
+                // ContentSet can exclude content types
                 return false;
             }
 
-            $acceptArray = $this->_accept;
+            $acceptArray = array_filter($this->_accept, function($item) { return '!' !== substr($item, 0, 1); });
         } else {
             if (null === $var) {
                 return false;
@@ -1180,7 +1186,7 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
             $this->properties[$var] = $value;
         }
 
-        return $this;
+        return $this->setOptions($this->properties);
     }
 
     /**
