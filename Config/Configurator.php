@@ -226,7 +226,10 @@ class Configurator
             || array_key_exists('save_in_registry', $configConfig)
             || true === $configConfig['save_in_registry']
         ) {
-            $this->overrideConfigByRegistry($config, $options['bundle_id']);
+            $this->overrideConfigByRegistry($config, $options['bundle_id'], false, false) // First without context and environment
+                ->overrideConfigByRegistry($config, $options['bundle_id'], false, true)   // Second, only with environment
+                ->overrideConfigByRegistry($config, $options['bundle_id'], true, false)   // Third, only with context
+                ->overrideConfigByRegistry($config, $options['bundle_id'], true, true);   // Then, with both context and environment
         }
     }
 
@@ -249,12 +252,18 @@ class Configurator
     }
 
     /**
-     * @param Config $config
-     * @param string $bundleId
+     * Overrides configuration of bundle from the registry.
+     *
+     * @param  Config  $config              The Config to be extended.
+     * @param  string  $bundleId            The bundle Id.
+     * @param  boolean $scopePerContext     If TRUE use context in registry scope.
+     * @param  boolean $scopePerEnvironment If TRUE use environment in regsitry scope.
+     *
+     * @return Configurator
      */
-    private function overrideConfigByRegistry(Config $config, $bundleId)
+    private function overrideConfigByRegistry(Config $config, $bundleId, $scopePerContext, $scopePerEnvironment)
     {
-        $registry = $this->getRegistryConfig($bundleId);
+        $registry = $this->getRegistryConfig($bundleId, $scopePerContext, $scopePerEnvironment);
         if (null !== $registry) {
             $registryConfig = @unserialize($registry->getValue());
             if (is_array($registryConfig)) {
@@ -263,16 +272,20 @@ class Configurator
                 }
             }
         }
+
+        return $this;
     }
 
     /**
      * Returns the registry entry for bundle's config storing.
      *
-     * @param string $bundleId the id of the bundle we are looking for override config in registry
+     * @param  string  $bundleId            The id of the bundle we are looking for override config in registry.
+     * @param  boolean $scopePerContext     If TRUE use context in registry scope.
+     * @param  boolean $scopePerEnvironment If TRUE use environment in regsitry scope.
      *
-     * @return \BackBee\Bundle\Registry
+     * @return \BackBee\Bundle\Registry|NULL
      */
-    private function getRegistryConfig($bundleId)
+    private function getRegistryConfig($bundleId, $scopePerContext, $scopePerEnvironment)
     {
         $registry = null;
 
@@ -280,7 +293,7 @@ class Configurator
             if (null !== $em = $this->application->getEntityManager()) {
                 $registry = $em->getRepository('BackBee\Bundle\Registry')->findOneBy(array(
                     'key' => $bundleId,
-                    'scope' => 'BUNDLE_CONFIG.'.$this->context.'.'.$this->environment,
+                    'scope' => $this->getRegistryScope('BUNDLE_CONFIG', $scopePerContext, $scopePerEnvironment),
                 ));
             }
         } catch (DBALException $e) {
@@ -301,5 +314,28 @@ class Configurator
         }
 
         return $registry;
+    }
+
+    /**
+     * Returns the registry scope depending on $scopePerContext and $scopePerEnvironment.
+     *
+     * @param  boolean $scopePerContext     If TRUE use context in registry scope.
+     * @param  boolean $scopePerEnvironment If TRUE use environment in registry scope.
+     *
+     * @return string  The registry scope.
+     */
+    public function getRegistryScope($prefix, $scopePerContext = true, $scopePerEnvironment = true)
+    {
+        $scope = $prefix;
+
+        if ($scopePerContext && ApplicationInterface::DEFAULT_CONTEXT !== $this->context) {
+            $scope .= '.' . $this->context;
+        }
+
+        if ($scopePerEnvironment  && ApplicationInterface::DEFAULT_ENVIRONMENT !== $this->environment) {
+            $scope .= '.' . $this->environment;
+        }
+
+        return $scope;
     }
 }

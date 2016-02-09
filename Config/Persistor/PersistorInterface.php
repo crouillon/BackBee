@@ -36,9 +36,11 @@ interface PersistorInterface
 {
     /**
      *
-     * @param ApplicationInterface $application The BackBee application instance
+     * @param ApplicationInterface $application           The BackBee application instance
+     * @param boolean              $persistPerContext     Is one config is persisted per application context ?
+     * @param boolean              $persistPerEnvironment Is one config is persisted per application environment ?
      */
-    public function __construct(ApplicationInterface $application);
+    public function __construct(ApplicationInterface $application, $persistPerContext, $persistPerEnvironment);
 
     /**
      *
