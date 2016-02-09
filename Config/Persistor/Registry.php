@@ -38,14 +38,53 @@ class Registry implements PersistorInterface
     /**
      * @var ApplicationInterface
      */
-    private $app;
+    private $application;
+
+    /**
+     * Is a configuration is persisted by application context ?
+     *
+     * @var boolean
+     */
+    private $persistPerContext;
+
+    /**
+     * Is a configuration is persisted by application environment ?
+     *
+     * @var boolean
+     */
+    private $persistPerEnvironment;
 
     /**
      * @see BackBee\Config\Persistor\PersistorInterface::__construct
      */
-    public function __construct(ApplicationInterface $app)
+    public function __construct(ApplicationInterface $application, $persistPerContext, $persistPerEnvironment)
     {
-        $this->app = $app;
+        $this->application = $application;
+        $this->persistPerContext = (true === $persistPerContext);
+        $this->persistPerEnvironment = (true === $persistPerEnvironment);
+    }
+
+    /**
+     * Returns the registry scope.
+     *
+     * @param  string $key
+     *
+     * @return string
+     */
+    public function getScope($key)
+    {
+        $scope = ('application' === $key) ? 'APPLICATION_CONFIG' : 'BUNDLE_CONFIG';
+
+        if ($this->application->getContainer()->has('config.configurator')) {
+            $scope = $this
+                    ->application
+                    ->getContainer()
+                    ->get('config.configurator')
+                    ->getRegistryScope($scope, $this->persistPerContext, $this->persistPerEnvironment)
+            ;
+        }
+
+        return $scope;
     }
 
     /**
@@ -59,16 +98,14 @@ class Registry implements PersistorInterface
             );
         }
 
-        $baseScope = 'BUNDLE_CONFIG.';
-        $key = $this->app->getContainer()->get('bundle.loader')->getBundleIdByBaseDir($config->getBaseDir());
+        $key = $this->application->getContainer()->get('bundle.loader')->getBundleIdByBaseDir($config->getBaseDir());
         if (null === $key) {
             $key = 'application';
-            $baseScope = 'APPLICATION_CONFIG.';
         }
 
-        $scope = $baseScope.$this->app->getContext().'.'.$this->app->getEnvironment();
+        $scope = $this->getScope($key);
 
-        $registry = $this->app->getEntityManager()
+        $registry = $this->application->getEntityManager()
             ->getRepository('BackBee\Bundle\Registry')->findOneBy(array(
                 'key'   => $key,
                 'scope' => $scope,
@@ -79,13 +116,13 @@ class Registry implements PersistorInterface
             $registry = new RegistryEntity();
             $registry->setKey($key);
             $registry->setScope($scope);
-            $this->app->getEntityManager()->persist($registry);
+            $this->application->getEntityManager()->persist($registry);
         }
 
         $registry->setValue(serialize($configToPersist));
         $success = true;
         try {
-            $this->app->getEntityManager()->flush($registry);
+            $this->application->getEntityManager()->flush($registry);
         } catch (\Exception $e) {
             $success = false;
         }

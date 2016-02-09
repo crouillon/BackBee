@@ -41,11 +41,27 @@ class File implements PersistorInterface
     private $app;
 
     /**
+     * Is a configuration is persisted by application context ?
+     *
+     * @var boolean
+     */
+    private $persistPerContext;
+
+    /**
+     * Is a configuration is persisted by application environment ?
+     *
+     * @var boolean
+     */
+    private $persistPerEnvironment;
+
+    /**
      * @see BackBee\Config\Persistor\PersistorInterface::__construct
      */
-    public function __construct(ApplicationInterface $app)
+    public function __construct(ApplicationInterface $app, $persistPerContext, $persistPerEnvironment)
     {
         $this->app = $app;
+        $this->persistPerContext = (true === $persistPerContext);
+        $this->persistPerEnvironment = (true === $persistPerEnvironment);
     }
 
     /**
@@ -74,13 +90,13 @@ class File implements PersistorInterface
      */
     private function getConfigDumpRightDirectory($baseDir)
     {
-        $configDumpDir = $this->app->getRepository();
-        if (ApplicationInterface::DEFAULT_CONTEXT !== $this->app->getContext()) {
+        $configDumpDir = $this->app->getBaseRepository();
+        if ($this->persistPerContext && ApplicationInterface::DEFAULT_CONTEXT !== $this->app->getContext()) {
             $configDumpDir .= DIRECTORY_SEPARATOR.$this->app->getContext();
         }
 
         $configDumpDir .= DIRECTORY_SEPARATOR.'Config';
-        if (ApplicationInterface::DEFAULT_ENVIRONMENT !== $this->app->getEnvironment()) {
+        if ($this->persistPerEnvironment && ApplicationInterface::DEFAULT_ENVIRONMENT !== $this->app->getEnvironment()) {
             $configDumpDir .= DIRECTORY_SEPARATOR.$this->app->getEnvironment();
         }
 

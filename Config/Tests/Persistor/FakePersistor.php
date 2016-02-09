@@ -47,7 +47,7 @@ class FakePersistor implements PersistorInterface
     /**
      * {@inheritdoc}
      */
-    public function __construct(ApplicationInterface $application)
+    public function __construct(ApplicationInterface $application, $persistPerContext, $persistPerEnvironment)
     {
         $this->container = $application->getContainer();
     }

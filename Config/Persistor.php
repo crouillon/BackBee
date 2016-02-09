@@ -66,8 +66,10 @@ class Persistor
     /**
      * Persistor's constructor.
      *
-     * @param ApplicationInterface $application  the application this persistor belongs to
-     * @param Configurator         $configurator provider of config default settings
+     * @param ApplicationInterface $application           The application this persistor belongs to.
+     * @param Configurator         $configurator          Provider of config default settings.
+     * @param boolean              $persistPerContext     Is a config is persisted by application context ?
+     * @param boolean              $persistPerEnvironment Is a config is persisted by application environment ?
      */
     public function __construct(ApplicationInterface $application, Configurator $configurator)
     {
@@ -134,13 +136,16 @@ class Persistor
         if (null !== $config = $this->application->getConfig()) {
             $config_config = $config->getConfigConfig();
 
-            if (false === is_array($config_config) || false === array_key_exists('persistor', $config_config)) {
+            if (!is_array($config_config) || !array_key_exists('persistor', $config_config)) {
                 throw new PersistorListNotFoundException();
             }
 
+            $persistPerContext = !isset($config_config['persist_per_context']) || true === $config_config['persist_per_context'];
+            $persistPerEnvironment = !isset($config_config['persist_per_environment']) || true === $config_config['persist_per_environment'];
+
             $persistors = (array) $config_config['persistor'];
             foreach ($persistors as $persistor_classname) {
-                $persistor = new $persistor_classname($this->application);
+                $persistor = new $persistor_classname($this->application, $persistPerContext, $persistPerEnvironment);
                 if (false === ($persistor instanceof PersistorInterface)) {
                     throw new InvalidArgumentException(
                         get_class($persistor).' must implements BackBee\Config\Persistor\PersistorInterface'

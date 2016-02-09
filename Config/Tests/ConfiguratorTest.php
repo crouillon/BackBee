@@ -141,4 +141,56 @@ class ConfiguratorTest extends \PHPUnit_Framework_TestCase
             $config->getAllSections()
         );
     }
+
+    /**
+     * @covers ::getRegistryScope
+     */
+    public function testGetDefaultRegistryScope()
+    {
+        $configurator = new Configurator($this->application, $this->bundleLoader);
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', true, true));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', false, true));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', true, false));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', false, false));
+    }
+
+    /**
+     * @covers ::getRegistryScope
+     */
+    public function testGetRegistryScopeWithContext()
+    {
+        $this->application->setContext('api');
+        $configurator = new Configurator($this->application, $this->bundleLoader);
+        $this->assertEquals('PREFIX.api', $configurator->getRegistryScope('PREFIX', true, true));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', false, true));
+        $this->assertEquals('PREFIX.api', $configurator->getRegistryScope('PREFIX', true, false));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', false, false));
+    }
+
+    /**
+     * @covers ::getRegistryScope
+     */
+    public function testGetRegistryScopeWithEnvironment()
+    {
+        $this->application->setEnvironment('preprod');
+        $configurator = new Configurator($this->application, $this->bundleLoader);
+        $this->assertEquals('PREFIX.preprod', $configurator->getRegistryScope('PREFIX', true, true));
+        $this->assertEquals('PREFIX.preprod', $configurator->getRegistryScope('PREFIX', false, true));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', true, false));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', false, false));
+    }
+
+    /**
+     * @covers ::getRegistryScope
+     */
+    public function testGetRegistryScopeWithContextAndEnvironment()
+    {
+        $this->application->setContext('api');
+        $this->application->setEnvironment('preprod');
+        $configurator = new Configurator($this->application, $this->bundleLoader);
+        $this->assertEquals('PREFIX.api.preprod', $configurator->getRegistryScope('PREFIX', true, true));
+        $this->assertEquals('PREFIX.preprod', $configurator->getRegistryScope('PREFIX', false, true));
+        $this->assertEquals('PREFIX.api', $configurator->getRegistryScope('PREFIX', true, false));
+        $this->assertEquals('PREFIX', $configurator->getRegistryScope('PREFIX', false, false));
+    }
 }
