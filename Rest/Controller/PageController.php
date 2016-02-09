@@ -769,7 +769,7 @@ class PageController extends AbstractRestController
                 $qb->andIsDescendantOf($parent, true, null, $this->getOrderCriteria($request->query->get('order_by', null)), $count, $start);
             } else {
                 // Ordering is disabled for descendants, BackBee takes care of that
-                $qb->andIsDescendantOf($parent, true, $request->query->get('level_offset', 1), $this->getOrderCriteria(), $count, $start);
+                $qb->andIsDescendantOf($parent, true, $request->query->get('level_offset', 1), $this->getOrderCriteria(null, $qb), $count, $start);
             }
         } else {
             if ($request->query->has('site_uid')) {
@@ -842,7 +842,7 @@ class PageController extends AbstractRestController
      *
      * @return array
      */
-    private function getOrderCriteria(array $requestedOrder = null)
+    private function getOrderCriteria(array $requestedOrder = null, $qb = null)
     {
         if (!empty($requestedOrder)) {
             $orderBy = [];
@@ -854,10 +854,11 @@ class PageController extends AbstractRestController
                 $orderBy[$key] = $value;
             }
         } else {
-            $orderBy = [
-                '_position' => 'ASC',
-                '_leftnode' => 'ASC',
-            ];
+            $orderBy['_position'] = 'ASC';
+            if ($qb) {
+                $orderBy[ $qb->getSectionAlias().'._has_children'] = 'DESC';
+            }
+            $orderBy['_leftnode'] = 'ASC';
         }
 
         return $orderBy;
