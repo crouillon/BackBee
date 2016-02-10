@@ -748,11 +748,10 @@ class PageRepositoryTest extends BackBeeTestCase
         $page2 = $this->repository->find('page2');
         $page3 = $this->repository->find('page3');
 
-        $this->assertEquals(1, $this->repository->toTrash($page3));
+        $this->assertEquals($page3, $this->repository->toTrash($page3));
         $this->assertEquals(Page::STATE_DELETED, $page3->getState());
 
-        $this->assertEquals(3, $this->repository->toTrash($section1));
-        self::$em->refresh($section1);
+        $this->assertEquals($section1, $this->repository->toTrash($section1));
         self::$em->refresh($page1);
         self::$em->refresh($page2);
         $this->assertEquals(Page::STATE_DELETED, $section1->getState());

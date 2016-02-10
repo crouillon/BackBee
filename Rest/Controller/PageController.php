@@ -592,6 +592,8 @@ class PageController extends AbstractRestController
         }
 
         $this->getPageRepository()->toTrash($page);
+        
+        $this->getEntityManager()->flush($page);
 
         return $this->createJsonResponse(null, 204);
     }

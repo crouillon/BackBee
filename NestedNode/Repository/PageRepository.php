@@ -796,30 +796,29 @@ class PageRepository extends EntityRepository
      *
      * @param  Page                 $page               The page to delete.
      *
-     * @return integer                                  The number of page having their state changed.
+     * @return Page                                     The instance of Page entity.
      */
     public function toTrash(Page $page)
     {
-        if (true === $page->isLeaf()) {
-            $page->setState(Page::STATE_DELETED);
-            $this->getEntityManager()->flush($page);
+        $page->setState(Page::STATE_DELETED);
+  
+        if (!$page->isLeaf()) {
+            $subquery = $this->getEntityManager()
+                    ->getRepository('BackBee\NestedNode\Section')
+                    ->createQueryBuilder('n')
+                    ->select('n._uid')
+                    ->andIsDescendantOf($page->getSection());
 
-            return 1;
+            $this->createQueryBuilder('p')
+                            ->update()
+                            ->set('p._state', Page::STATE_DELETED)
+                            ->andWhere('p._section IN ('.$subquery->getDQL().')')
+                            ->setParameters($subquery->getParameters())
+                            ->getQuery()
+                            ->execute();
         }
 
-        $subquery = $this->getEntityManager()
-                ->getRepository('BackBee\NestedNode\Section')
-                ->createQueryBuilder('n')
-                ->select('n._uid')
-                ->andIsDescendantOf($page->getSection());
-
-        return $this->createQueryBuilder('p')
-                        ->update()
-                        ->set('p._state', Page::STATE_DELETED)
-                        ->andWhere('p._section IN ('.$subquery->getDQL().')')
-                        ->setParameters($subquery->getParameters())
-                        ->getQuery()
-                        ->execute();
+        return $page;
     }
 
     /**
