@@ -75,7 +75,7 @@ class metadata extends AbstractHelper
         }
 
         $result = '';
-        foreach ($metadata as $meta) {
+        foreach ($page->getMetadata() as $meta) {
             $result .= $this->generateMeta($meta);
         }
 
