@@ -712,7 +712,7 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
                 // ContentSet accepts only AbstractClassContent elements
                 return false;
             }
-            
+
             if (in_array('!' . $this->_getType($value), $this->_accept)) {
                 // ContentSet can exclude content types
                 return false;
@@ -939,8 +939,8 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
             }
 
             if ('scalar' === $type) {
-                $decode = json_decode($value);
-                $data[] = (JSON_ERROR_NONE === json_last_error()) ? $decode : $value;
+                $decode = json_decode($value, true);
+                $data[] = (JSON_ERROR_NONE === json_last_error()) ? ((null === $decode) ? $value : $decode) : $value;
             } elseif ('array' !== $type) {
                 try {
                     $type = self::getFullClassname($type);

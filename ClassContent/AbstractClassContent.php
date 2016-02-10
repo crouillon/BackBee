@@ -408,8 +408,8 @@ abstract class AbstractClassContent extends AbstractContent
                     }
 
                     if ('scalar' === $type) {
-                        $decode = json_decode($value);
-                        $clone->$key = (JSON_ERROR_NONE === json_last_error()) ? $decode : $value;
+                        $decode = json_decode($value, true);
+                        $clone->$key = (JSON_ERROR_NONE === json_last_error()) ? ((null === $decode) ? $value : $decode) : $value;
                     } elseif ('array' !== $type) {
                         foreach ($this->_subcontent as $subcontent) {
                             if ($subcontent->getUid() == $value) {
