@@ -80,9 +80,19 @@ class ClassContentController extends AbstractRestController
      */
     public function getCategoryCollectionAction()
     {
-        $categories = [];
-        foreach ($this->getCategoryManager()->getCategories() as $id => $category) {
-            $categories[] = array_merge(['id' => $id], $category->jsonSerialize());
+        $application = $this->getApplication();
+        $cache = $application->getContainer()->get('cache.control');
+        $cacheId = md5('classcontent_categories_'.$application->getContext().'_'.$application->getEnvironment());
+
+        if (!$application->isDebugMode() && false !== $value = $cache->load($cacheId)) {
+            $categories = json_decode($value, true);
+        } else {
+            $categories = [];
+            foreach ($this->getCategoryManager()->getCategories() as $id => $category) {
+                $categories[] = array_merge(['id' => $id], $category->jsonSerialize());
+            }
+
+            $cache->save($cacheId, json_encode($categories));
         }
 
         return $this->addContentRangeHeadersToResponse($this->createJsonResponse($categories), $categories, 0);
