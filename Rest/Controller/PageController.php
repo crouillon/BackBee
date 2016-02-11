@@ -518,10 +518,49 @@ class PageController extends AbstractRestController
         }
     }
 
+    /**
+     * Moves the pages in trash.
+     * 
+     * @param  Page $page The page to be moved in trash.
+     * 
+     * @throws BadRequestHttpException Occures if $page is a root.
+     */
+    private function softDelete(Page $page)
+    {
+        if ($page->isRoot()) {
+            throw new BadRequestHttpException('Cannot remove root page of a site.');
+        }
+
+        $this->granted('DELETE', $page);
+        $this->granted('EDIT', $page->getParent()); // user must have edit permission on parent
+
+        if ($page->isOnline(true)) {
+            $this->granted('PUBLISH', $page); // user must have publish permission on the page
+        }
+
+        $this->getPageRepository()->toTrash($page);        
+    }
+
+    /**
+     * Remove page from the database.
+     * 
+     * @param  Page $page The page to be removeed.
+     * 
+     * @throws BadRequestHttpException Occures if $page is not in trash or is a root.
+     */
     private function hardDelete(Page $page)
     {
-        $this->getEntityManager()->getRepository('BackBee\NestedNode\Page')->deletePage($page);
-        $this->getEntityManager()->flush();
+        if (!$page->isDeleted()) {
+            throw new BadRequestHttpException('Page is not in trash, cannot remove it.');
+        }
+
+        if (true === $page->isRoot()) {
+            throw new BadRequestHttpException('Cannot remove root page of a site.');
+        }
+
+        $this->granted('DELETE', $page);        
+
+        $this->getPageRepository()->deletePage($page);
     }
 
     /**
@@ -579,23 +618,75 @@ class PageController extends AbstractRestController
      */
     public function deleteAction(Page $page)
     {
-        if (true === $page->isRoot()) {
-            throw new BadRequestHttpException('Cannot remove root page of a site.');
+        if ($page->isDeleted()) {
+            $this->hardDelete($page);
+        } else {
+            $this->softDelete($page);
         }
 
-        $this->granted('DELETE', $page);
-
-        $this->granted('EDIT', $page->getParent()); // user must have edit permission on parent
-
-        if (true === $page->isOnline(true)) {
-            $this->granted('PUBLISH', $page); // user must have publish permission on the page
-        }
-
-        $this->getPageRepository()->toTrash($page);
-        
-        $this->getEntityManager()->flush($page);
+        $this->getEntityManager()->flush();
 
         return $this->createJsonResponse(null, 204);
+    }
+
+    /**
+     * Delete page collecton.
+     *
+     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     */
+    public function deleteCollectionAction(Request $request)
+    {
+        if (null === $uids = $request->get('uids', null)) {
+            throw new BadRequestHttpException('uid is missing.');
+        }
+
+        $result = [];
+        $statusCode = 204;
+        $pages = $this->getPageRepository()->findBy(['_uid' => $uids]);
+        foreach ($pages as $page) {
+            try {
+                if ($page->isDeleted()) {
+                    $this->hardDelete($page);
+                } else {
+                    $this->softDelete($page);
+                }
+
+                $result[] = [
+                    'uid'        => $page->getUid(),
+                    'statusCode' => 204,
+                    'message'    => 'OK',
+                ];
+            } catch (AccessDeniedException $e) {
+                $result[] = [
+                    'uid'        => $page->getUid(),
+                    'statusCode' => 401,
+                    'message'    => $e->getMessage(),
+                ];
+                $statusCode = ($statusCode < 401) ? 401 : $statusCode;
+            } catch (\Exception $e) {
+                if ($e instanceof BadRequestHttpException || $e instanceof InsufficientAuthenticationException) {
+                    $result[] = [
+                        'uid'        => $page->getUid(),
+                        'statusCode' => 403,
+                        'message'    => $e->getMessage(),
+                    ];
+                    $statusCode = ($statusCode < 403) ? 403 : $statusCode;
+                } else {
+                    $result[] = [
+                        'uid'        => $page->getUid(),
+                        'statusCode' => 500,
+                        'message'    => $e->getMessage(),
+                    ];
+                    $statusCode = ($statusCode < 500) ? 500 : $statusCode;
+                }
+            }
+        }
+
+        $this->getEntityManager()->flush();
+
+        return $this->createJsonResponse($result, $statusCode);
     }
 
     /**

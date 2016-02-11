@@ -149,6 +149,7 @@ class SectionRepository extends NestedNodeRepository
     {
         $page_repo = $this->getEntityManager()
                 ->getRepository('BackBee\NestedNode\Page');
+
         $pages = $page_repo->createQueryBuilder('p')
             ->andParentIs($section->getPage())
             ->andIsNotSection()
@@ -165,8 +166,18 @@ class SectionRepository extends NestedNodeRepository
             ->getQuery()
             ->execute();
 
-        foreach ($sections as $section) {
-            $this->deleteSection($section->getSection());
+        $this->getEntityManager()
+                ->createQueryBuilder()
+                ->update('BackBee\NestedNode\Page', 'p')
+                ->set('p._section', ':null')
+                ->where('p._section = :uid')
+                ->setParameter('uid', $section->getUid())
+                ->setParameter('null', null)
+                ->getQuery()
+                ->execute();
+
+        foreach ($sections as $subsection) {
+            $this->deleteSection($subsection->getSection());
         }
 
         $this->getEntityManager()->remove($section);

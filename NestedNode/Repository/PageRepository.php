@@ -801,7 +801,7 @@ class PageRepository extends EntityRepository
     public function toTrash(Page $page)
     {
         $page->setState(Page::STATE_DELETED);
-  
+
         if (!$page->isLeaf()) {
             $subquery = $this->getEntityManager()
                     ->getRepository('BackBee\NestedNode\Section')
@@ -1022,6 +1022,11 @@ class PageRepository extends EntityRepository
         }
     }
 
+    /**
+     * Remove a page from databse.
+     *
+     * @param Page $page
+     */
     public function deletePage(Page $page)
     {
         if ($page->hasMainSection()) {
@@ -1030,9 +1035,31 @@ class PageRepository extends EntityRepository
                     ->deleteSection($page->getSection());
         }
 
-        if ($page->getContentSet() !== null) {
-            $this->getEntityManager()->getRepository('BackBee\ClassContent\AbstractClassContent')->deleteContent($page->getContentSet());
+        if (null !== $page->getContentSet()) {
+            $this->getEntityManager()
+                    ->createQueryBuilder()
+                    ->update('BackBee\NestedNode\\Page', 'p')
+                    ->set('p._contentset', ':null')
+                    ->where('p._contentset = :uid')
+                    ->setParameter('uid', $page->getContentSet()->getUid())
+                    ->setParameter('null', null)
+                    ->getQuery()
+                    ->execute();
+
+            $this->getEntityManager()
+                    ->getRepository('BackBee\ClassContent\AbstractClassContent')
+                    ->deleteContent($page->getContentSet());
         }
+
+        $this->getEntityManager()
+                ->createQueryBuilder()
+                ->update('BackBee\ClassContent\AbstractClassContent', 'c')
+                ->set('c._mainnode', ':null')
+                ->where('c._mainnode = :uid')
+                ->setParameter('uid', $page->getUid())
+                ->setParameter('null', null)
+                ->getQuery()
+                ->execute();
 
         $this->getEntityManager()->remove($page);
     }
