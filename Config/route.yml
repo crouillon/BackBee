@@ -351,6 +351,15 @@ bb.rest.page.delete:
         uid: \w{32}
         _method: DELETE
 
+bb.rest.page.delete_collection:
+    pattern: /rest/{version}/page
+    defaults:
+        _action:     deleteCollectionAction
+        _controller: BackBee\Rest\Controller\PageController
+    requirements:
+        version: \d+
+        _method: DELETE
+
 bb.rest.layout.get_workflow_state:
     pattern: /rest/{version}/layout/{uid}/workflow_state
     defaults:

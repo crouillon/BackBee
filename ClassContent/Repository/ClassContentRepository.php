@@ -893,6 +893,13 @@ class ClassContentRepository extends EntityRepository
      */
     public function deleteContent(AbstractClassContent $content, $mainContent = true)
     {
+        if (!$this->getEntityManager()->contains($content)) {
+            // Ensure $content is managed
+            $content = $this->getEntityManager()
+                    ->getRepository(AbstractClassContent::getFullClassname($content))
+                    ->find($content->getUid());
+        }
+
         $parents = $this->getParentContents($content);
         $media = $this->_em->getRepository('BackBee\NestedNode\Media')->findOneBy([
             '_content' => $content->getUid(),
@@ -929,7 +936,7 @@ class ClassContentRepository extends EntityRepository
             }
 
             $this->cleanUpContentHardDelete($content);
-            $this->_em->remove($content);
+            $this->_em->remove($content->setMainNode(null));
         }
     }
 
