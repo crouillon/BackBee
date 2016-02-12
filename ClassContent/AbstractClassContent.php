@@ -827,6 +827,16 @@ abstract class AbstractClassContent extends AbstractContent
         return $this->getDefaultImageName();
     }
 
+    /**
+     * Returns the default options of current content.
+     *
+     * @return array
+     */
+    public function getDefaultOptions()
+    {
+        return $this->defaultOptions;
+    }
+
     /*     * **************************************************************** */
     /*                                                                        */
     /*                   Implementation of RenderableInterface                        */
