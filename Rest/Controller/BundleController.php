@@ -56,13 +56,21 @@ class BundleController extends AbstractRestController
      */
     public function getCollectionAction()
     {
-        $bundles = array();
-        foreach ($this->getApplication()->getBundles() as $bundle) {
-            if ($this->isGranted('EDIT', $bundle) || ($bundle->isEnabled() && $this->isGranted('VIEW', $bundle))) {
-                $bundles[] = $bundle;
-            }
-        }
+        $application = $this->getApplication();
+        $cache = $application->getContainer()->get('cache.control');
+        $cacheId = md5('bundle_list_'.$application->getContext().'_'.$application->getEnvironment());
 
+        if (!$application->isDebugMode() && false !== $value = $cache->load($cacheId)) {
+            $bundles = json_decode($value, true);
+        } else {
+            $bundles = [];
+            foreach ($this->getApplication()->getBundles() as $bundle) {
+                if ($this->isGranted('EDIT', $bundle) || ($bundle->isEnabled() && $this->isGranted('VIEW', $bundle))) {
+                    $bundles[] = $bundle;
+                }
+            }
+            $cache->save($cacheId, json_encode($bundles));
+        }
         return $this->createJsonResponse($bundles, 200, array(
             'Content-Range' => '0-'.(count($bundles) - 1).'/'.count($bundles),
         ));
