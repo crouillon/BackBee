@@ -900,6 +900,10 @@ class ClassContentRepository extends EntityRepository
                     ->find($content->getUid());
         }
 
+        if (null === $content) {
+            return;
+        }
+
         $parents = $this->getParentContents($content);
         $media = $this->_em->getRepository('BackBee\NestedNode\Media')->findOneBy([
             '_content' => $content->getUid(),
