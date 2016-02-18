@@ -382,7 +382,7 @@ abstract class AbstractClassContent extends AbstractContent
     {
         $class = ClassUtils::getRealClass($this);
         $clone = new $class(null, null);
-        $clone->_accept = $this->_accept;
+        $clone->_accept = self::getShortClassname($this->_accept);
         $clone->_maxentry = $this->_maxentry;
         $clone->_minentry = $this->_minentry;
         $clone->_parameters = $this->_parameters;

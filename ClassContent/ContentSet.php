@@ -606,7 +606,7 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
         parent::setParam($key, $value);
 
         if ('accept' === $key && is_array($value)) {
-            $value = $this->convertToContentType($value);
+            $value = self::getShortClassname($value);
 
             if (null !== $this->getDraft()) {
                 $this->getDraft()->setAccept($value);
@@ -624,7 +624,7 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
         $params = parent::getAllParams();
 
         if (isset($params['accept'])) {
-            $params['accept']['value'] = $this->convertToClassname($this->getAccept());
+            $params['accept']['value'] = self::getFullClassname($this->getAccept());
         }
 
         return $params;
@@ -637,52 +637,10 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
     {
         $param = parent::getParam($key);
         if (is_array($param) && 'accept' === $key) {
-            $param['value'] = $this->convertToClassname($this->getAccept());
+            $param['value'] = self::getFullClassname($this->getAccept());
         }
 
         return $param;
-    }
-
-    /**
-     * Returns the short classname of several types.
-     *
-     * @param string  $types
-     * @return array short classname array
-     */
-    protected function convertToContentType($types = array())
-    {
-        $types = (array) $types;
-
-        array_walk($types, function(&$item) {
-            if ('!' === $item[0]) {
-                $item = '!' . AbstractContent::getShortClassname(substr($item, 1));
-            } else {
-                $item = AbstractContent::getShortClassname($item);
-            }
-        });
-
-        return $types;
-    }
-
-    /**
-     * Returns the full classname of several types.
-     *
-     * @param string  $types
-     * @return array full classname array
-     */
-    protected function convertToClassname($types = array())
-    {
-        $types = (array) $types;
-
-        array_walk($types, function(&$item) {
-            if ('!' === $item[0]) {
-                $item = '!' . AbstractContent::getClassnameByContentType(substr($item, 1));
-            } else {
-                $item = AbstractContent::getClassnameByContentType($item);
-            }
-        });
-
-        return $types;
     }
 
     /**
@@ -711,8 +669,7 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
      */
     protected function _addAcceptedType($type, $var = null)
     {
-        $types = $this->convertToContentType($type);
-
+        $types = self::getShortClassname($type);
         $this->_accept = array_unique(array_merge($this->_accept, $types));
 
         return $this;
