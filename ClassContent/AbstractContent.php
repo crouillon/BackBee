@@ -1210,9 +1210,9 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
             'parameters' => $this->getAllParams(),
             'accept'     => array_map(
                 function ($classname) {
-                    return str_replace([self::CLASSCONTENT_BASE_NAMESPACE, '\\'], ['', '/'], $classname);
+                    return str_replace(NAMESPACE_SEPARATOR, '/', $classname);
                 },
-                $this->getAccept()
+                self::getShortClassname($this->getAccept())
             ),
             'minentry'   => $this->getMinEntry(),
             'maxentry'   => $this->getMaxEntry(),
@@ -1290,54 +1290,94 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
     /**
      * Returns the sort classname of the given $classname.
      *
-     * @param  mixed $classname A classname or an AbstractClassContent instance, if null the object itself.
+     * @param  mixed $classname A classname or an AbstractClassContent instance.
      *
      * @return string|null      The short classname if found, NULL otherwise.
      */
     public static function getShortClassname($classname)
     {
-        if (is_object($classname)) {
-            $classname = ClassUtils::getRealClass($classname);
+        if (is_array($classname)) {
+            return  array_map(['BackBee\ClassContent\AbstractContent', 'getShortClassname'], $classname);
         }
+
+        if (in_array($classname, ['scalar', 'array'])) {
+            return $classname;
+        }
+
+        $isExcluded = self::isExcludedClassname($classname);
 
         try {
             if (!is_subclass_of($classname, 'BackBee\ClassContent\AbstractClassContent')) {
                 throw new ClassNotFoundException();
             }
         } catch (ClassNotFoundException $ex) {
-            return self::onUnknownClassname(sprintf('Given classname %s or object is not a subclass of AbstractClassContent.', $classname), $ex);
+            return self::onUnknownClassname(
+                sprintf('Given classname %s is not a subclass of AbstractClassContent.', $classname),
+                $ex
+            );
         }
 
-        return str_replace(self::CLASSCONTENT_BASE_NAMESPACE, '', ltrim($classname, NAMESPACE_SEPARATOR));
+        return ($isExcluded ? '!' : '').str_replace(self::CLASSCONTENT_BASE_NAMESPACE, '', $classname);
     }
 
     /**
      * Returns the full classname of the given $classname.
      *
-     * @param  mixed $classname A classname or an AbstractClassContent instance, if null the object itself.
+     * @param  mixed $classname A classname or an AbstractClassContent instance.
      *
      * @return string|null      The full classname if found, NULL otherwise.
      */
     public static function getFullClassname($classname)
     {
-        if (is_object($classname)) {
-            if (!$classname instanceof AbstractClassContent) {
-                throw new \InvalidArgumentException('First parameter must be a string or an AbstractClassContent object.');
-            }
-
-            return ClassUtils::getRealClass($classname);
+        if (is_array($classname)) {
+            return  array_map(['BackBee\ClassContent\AbstractContent', 'getFullClassname'], $classname);
         }
 
+        $isExcluded = self::isExcludedClassname($classname);
+
         try {
-            if (0 !== strpos($classname, self::CLASSCONTENT_BASE_NAMESPACE)) {
-                $classname = self::CLASSCONTENT_BASE_NAMESPACE.$classname;
-            }
             class_exists($classname);
         } catch (ClassNotFoundException $ex) {
             return self::onUnknownClassname($classname.' is not a short classname of an AbstractClassContent instance.', $ex);
         }
 
-        return $classname;
+        return ($isExcluded ? '!' : '').$classname;
+    }
+
+    /**
+     * Checks if $classname is excluded, ie prefixed by a '!' character.
+     * 
+     * Note that $classname, either a string or an AbstractClassContent, is passed 
+     * by reference and will be changed to the corresponding fully namespaced 
+     * class name string.
+     * 
+     * @param  mixed $classname          A classname or an AbstractClassContent instance.
+     *                                   $classname will be completed with self::CLASSCONTENT_BASE_NAMESPACE
+     *                                   if need.
+     *
+     * @return boolean                   TRUE if $classname is prefixed by '!', false elsewhere.
+     * @throws \InvalidArgumentException Raises if $classname is an object but not an AbstractClassContent.
+     */
+    private static function isExcludedClassname(&$classname)
+    {
+        $isExcluded = false;
+
+        if (is_object($classname)) {
+            if (!$classname instanceof AbstractClassContent) {
+                throw new \InvalidArgumentException('First parameter must be a string or an AbstractClassContent object.');
+            }
+            $classname = ClassUtils::getRealClass($classname);
+        } elseif ('!' === substr($classname, 0, 1)) {
+            $classname = substr($classname, 1);
+            $isExcluded = true;
+        }
+
+        $classname = ltrim($classname, NAMESPACE_SEPARATOR);
+        if (0 !== strpos($classname, self::CLASSCONTENT_BASE_NAMESPACE)) {
+            $classname = self::CLASSCONTENT_BASE_NAMESPACE.$classname;
+        }
+
+        return $isExcluded;
     }
 
     /**

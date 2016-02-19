@@ -265,6 +265,10 @@ class ClassContentTest extends BackBeeTestCase
         }
 
         $this->assertEquals('foobar', $data['image']);
+        
+        $contentset = new \BackBee\ClassContent\ContentSet();
+        $contentset->setAccept([$this->content]);
+        $this->assertEquals(['Tests/Mock/MockContent'], $contentset->JsonSerialize()['accept']);
     }
 
     public function testJsonSerializeDefinitionFormat()
@@ -340,8 +344,20 @@ class ClassContentTest extends BackBeeTestCase
     public function testGetShortClassname()
     {
         $this->assertEquals('Tests\Mock\MockContent', AbstractClassContent::getShortClassname(new MockContent()));
+        $this->assertEquals('Tests\Mock\MockContent', AbstractClassContent::getShortClassname('Tests\Mock\MockContent'));
         $this->assertEquals('Tests\Mock\MockContent', AbstractClassContent::getShortClassname('BackBee\ClassContent\Tests\Mock\MockContent'));
         $this->assertEquals('Tests\Mock\MockContent', AbstractClassContent::getShortClassname('\BackBee\ClassContent\Tests\Mock\MockContent'));
+        $this->assertEquals('Tests\Mock\MockContent', AbstractClassContent::getShortClassname('\BackBee\ClassContent\Tests\Mock\MockContent'));
+        $this->assertEquals(['scalar', 'array'], AbstractClassContent::getShortClassname(['scalar', 'array']));
+        $this->assertEquals(['ContentSet', 'Tests\Mock\MockContent'], AbstractClassContent::getShortClassname(['\BackBee\ClassContent\ContentSet', '\BackBee\ClassContent\Tests\Mock\MockContent']));
+    }
+
+    public function testGetShortClassnameExcluded()
+    {
+        $this->assertEquals('!Tests\Mock\MockContent', AbstractClassContent::getShortClassname('!Tests\Mock\MockContent'));
+        $this->assertEquals('!Tests\Mock\MockContent', AbstractClassContent::getShortClassname('!BackBee\ClassContent\Tests\Mock\MockContent'));
+        $this->assertEquals('!Tests\Mock\MockContent', AbstractClassContent::getShortClassname('!\BackBee\ClassContent\Tests\Mock\MockContent'));
+        $this->assertEquals('!Tests\Mock\MockContent', AbstractClassContent::getShortClassname('!\BackBee\ClassContent\Tests\Mock\MockContent'));
     }
 
     /**
@@ -364,6 +380,16 @@ class ClassContentTest extends BackBeeTestCase
     {
         $this->assertEquals('BackBee\ClassContent\Tests\Mock\MockContent', AbstractClassContent::getFullClassname(new MockContent()));
         $this->assertEquals('BackBee\ClassContent\Tests\Mock\MockContent', AbstractClassContent::getFullClassname('Tests\Mock\MockContent'));
+        $this->assertEquals('BackBee\ClassContent\Tests\Mock\MockContent', AbstractClassContent::getFullClassname('BackBee\ClassContent\Tests\Mock\MockContent'));
+        $this->assertEquals('BackBee\ClassContent\Tests\Mock\MockContent', AbstractClassContent::getFullClassname('\BackBee\ClassContent\Tests\Mock\MockContent'));
+        $this->assertEquals(['BackBee\ClassContent\ContentSet', 'BackBee\ClassContent\Tests\Mock\MockContent'], AbstractClassContent::getFullClassname(['ContentSet', 'Tests\Mock\MockContent']));
+    }
+
+    public function testGetFullClassnameExcluded()
+    {
+        $this->assertEquals('!BackBee\ClassContent\Tests\Mock\MockContent', AbstractClassContent::getFullClassname('!Tests\Mock\MockContent'));
+        $this->assertEquals('!BackBee\ClassContent\Tests\Mock\MockContent', AbstractClassContent::getFullClassname('!BackBee\ClassContent\Tests\Mock\MockContent'));
+        $this->assertEquals('!BackBee\ClassContent\Tests\Mock\MockContent', AbstractClassContent::getFullClassname('!\BackBee\ClassContent\Tests\Mock\MockContent'));
     }
 
     /**
