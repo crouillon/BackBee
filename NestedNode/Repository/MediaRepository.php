@@ -56,6 +56,17 @@ class MediaRepository extends EntityRepository
             ])
         ;
 
+        /* find media by content */
+        $contentType = isset($cond['contentType']) ? $cond['contentType'] : null;
+        if (null !== $contentType) {
+            $contentUid = isset($cond['contentUid']) ? $cond['contentUid'] : null;
+            $content = $this->_em->find($contentType, $contentUid);
+            if (null !== $content) {
+                $parents = $content->getParentContent();
+                $q->andWhere('m._content IN (:contents)')->setParameter('contents', $parents->toArray());
+            }
+        }
+
         $typeField = isset($cond['typeField']) && 'all' !== $cond['typeField'] ? $cond['typeField'] : null;
         if (null !== $typeField) {
             $q->andWhere('mc INSTANCE OF '.$typeField);

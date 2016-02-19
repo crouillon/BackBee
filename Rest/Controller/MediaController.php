@@ -24,6 +24,8 @@
 namespace BackBee\Rest\Controller;
 
 use BackBee\NestedNode\Media;
+use BackBee\ClassContent\AbstractContent;
+use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\Rest\Controller\Annotations as Rest;
 
 use Doctrine\ORM\Tools\Pagination\Paginator;
@@ -68,15 +70,26 @@ class MediaController extends AbstractRestController
         $queryParams = $request->query->all();
         $mediaFolderUid = $request->get('mediaFolder_uid', null);
         $usePagination = $request->get("usePagination", false);
-        if (empty($mediaFolderUid)) {
-            throw new BadRequestHttpException('A media folder uid should be provided.');
+        $contentType =  $request->get('contentType', null);
+
+        if (null === $mediaFolderUid) {
+            $mediaFolder = $this->getMediaFolderRepository()->getRoot();
+        } else {
+            $mediaFolder = $this->getMediaFolderRepository()->find($mediaFolderUid);
         }
 
-        $mediaFolder = $this->getMediaFolderRepository()->find($mediaFolderUid);
         if (null === $mediaFolder) {
-            throw new NotFoundHttpException(sprintf('Cannot find media folder with uid `%s`.', $mediaFolderUid));
+            throw new NotFoundHttpException('Cannot find a media folder');
         }
 
+        if (null !== $contentType) {
+            try {
+                $queryParams['contentType'] = AbstractContent::getClassnameByContentType($contentType);
+            } catch (InvalidContentTypeException $e) {
+                throw new NotFoundHttpException(sprintf('Provided content type (:%s) is invalid.', $queryParams['contentType']));
+            }
+        }
+        
         $paging = [
             'start' => $start,
             'limit' => $count
@@ -112,6 +125,7 @@ class MediaController extends AbstractRestController
         }
 
         $em = $this->getEntityManager();
+
         try {
             $em->getRepository('BackBee\ClassContent\AbstractClassContent')->deleteContent($media->getContent(), true);
             $em->remove($media);
@@ -156,7 +170,16 @@ class MediaController extends AbstractRestController
         $mediaTitle = $request->request->get('title', 'Untitled media');
 
         $content = $this->getClassContentManager()->findOneByTypeAndUid($contentType, $contentUid);
-        $mediaFolder = $this->getMediaFolderRepository()->find($mediaFolderUid);
+
+        if (null === $mediaFolderUid) {
+            $mediaFolder = $this->getMediaFolderRepository()->getRoot();
+        } else {
+            $mediaFolder = $this->getMediaFolderRepository()->find($mediaFolderUid);
+        }
+
+        if (null === $mediaFolder) {
+            throw new NotFoundHttpException('Cannot find a media folder');
+        }
 
         $media = new Media();
         $media->setContent($content);
