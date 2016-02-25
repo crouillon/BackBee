@@ -652,7 +652,7 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
 
         if ('accept' === $var) {
             if (null !== $options) {
-                $this->_addAcceptedType($this->getParamValue('accept'));
+                $this->_addAcceptedType(array_merge((array) $options, $this->getParamValue('accept')));
             }
         }
 
