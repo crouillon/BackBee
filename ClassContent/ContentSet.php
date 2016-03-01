@@ -614,6 +614,8 @@ class ContentSet extends AbstractClassContent implements \Iterator, \Countable
                 $this->setAccept($value);
             }
         }
+
+        return $this;
     }
 
     /**
