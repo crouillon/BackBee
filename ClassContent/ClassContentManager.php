@@ -545,8 +545,8 @@ class ClassContentManager
                         ;
                     }
                 }
-                unset($subcontent);
 
+                unset($subcontent);
                 if (in_array('Element\Keyword', $content->getAccept()[$key])) {
                     $this->entityManager
                         ->getRepository('BackBee\ClassContent\Element\Keyword')
@@ -660,11 +660,15 @@ class ClassContentManager
                 )
             )
         ) {
-            $this->entityManager->remove($draft);
+            if ($content instanceof ContentSet) {
+                $draft->clear();
+            }
 
             if (AbstractClassContent::STATE_NEW === $content->getState()) {
                 $classname = AbstractClassContent::getClassnameByContentType($content->getContentType());
                 $this->entityManager->getRepository($classname)->deleteContent($content);
+            } else {
+                $this->entityManager->remove($draft);
             }
         }
 
