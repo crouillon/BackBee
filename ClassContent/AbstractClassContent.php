@@ -1007,6 +1007,10 @@ abstract class AbstractClassContent extends AbstractContent
             $data['label'] = $this->getProperty('name');
         }
 
+        if (self::JSON_CONCISE_FORMAT === $format || self::JSON_DEFAULT_FORMAT === $format) {
+            $data['is_mainnode_online'] = $this->getMainNode() ? $this->getMainNode()->isOnline() : null;
+        }
+
         if (self::JSON_CONCISE_FORMAT === $format) {
             $data['image'] = $this->getImageName();
 

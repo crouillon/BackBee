@@ -1199,8 +1199,6 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
      */
     public function jsonSerialize($format = self::JSON_DEFAULT_FORMAT)
     {
-        $node = $this->getMainNode();
-
         $data = [
             'uid'        => $this->_uid,
             'label'      => $this->_label,
@@ -1221,7 +1219,6 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
             'elements'   => $this->computeElementsToJson($this->getData()),
             'has_elements' => count($this->getData()) === 0 ? false : true,
             'extra'      => [],
-            'is_mainnode_online' => (null !== $node) ? $node->isOnline() : null,
         ];
 
         if (0 === count($data['parameters'])) {
