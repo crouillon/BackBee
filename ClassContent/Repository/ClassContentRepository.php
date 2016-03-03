@@ -959,12 +959,10 @@ class ClassContentRepository extends EntityRepository
             ]
         );
 
-        $this->_em->getConnection()->executeUpdate(
-            'DELETE FROM revision WHERE content_uid = :uid',
-            [
-                'uid' => $content->getUid(),
-            ]
-        );
+        $revisions = $this->_em->getRepository('BackBee\ClassContent\Revision')->findBy(['_content' => $content]);
+        foreach ($revisions as $revision) {
+            $this->_em->remove($revision);
+        }
 
         return $this;
     }

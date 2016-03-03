@@ -123,6 +123,7 @@ class ClassContentPersistenceTest extends BackBeeTestCase
 
         $repository->deleteContent($content);
         self::$em->flush();
+        self::$em->clear();
 
         $this->assertNull($repository->find($uid));
     }
