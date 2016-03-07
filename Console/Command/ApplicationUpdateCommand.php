@@ -25,12 +25,15 @@ namespace BackBee\Console\Command;
 
 use BackBee\BBApplication;
 use BackBee\Exception\BBException;
+use BackBee\Util\Doctrine\EntityManagerCreator;
+use BackBee\Exception\DatabaseConnectionException;
 use Doctrine\DBAL\Event\SchemaAlterTableEventArgs;
 use Doctrine\DBAL\Events;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Yaml\Yaml;
 
 use BackBee\Console\AbstractCommand;
 
@@ -52,13 +55,24 @@ class ApplicationUpdateCommand extends AbstractCommand
     private $em;
 
     /**
+     * The current BackBee application
+     * @var \BackBee\BBApplication
+     */
+    private $bbapp;
+
+    /**
      * {@inheritdoc}
      */
     protected function configure()
     {
         $this
             ->setName('bbapp:update')
+            ->addOption('drop', null, InputOption::VALUE_NONE, 'Drop all tables found in DB')
             ->addOption('force', null, InputOption::VALUE_NONE, 'The update SQL will be executed against the DB')
+            ->addOption('host', 'host', InputOption::VALUE_OPTIONAL, 'server host.')
+            ->addOption('port', 'port', InputOption::VALUE_OPTIONAL, 'server port.')
+            ->addOption('user', 'user', InputOption::VALUE_OPTIONAL, 'server user.')
+            ->addOption('password', 'pwd', InputOption::VALUE_OPTIONAL, 'server password.')
             ->setDescription('Updated bbapp')
             ->setHelp(<<<EOF
 The <info>%command.name%</info> updates app:
@@ -70,57 +84,136 @@ EOF
     }
 
     /**
+     * Initiate doctrine connection for the Command on master database if its configure
+     *
+     * @param object       $input       The input option of command
+     * @param object       $output      The output of command
+     *
+     * @throws \DatabaseConnectionException When Unable to connect to database
+     */
+    protected function initConnection($input, $output)
+    {
+
+        if (null !== $input->getOption('host')) {
+            $connection['host'] = $input->getOption('host');
+        }
+
+        if (null !== $input->getOption('port')) {
+            $connection['port'] = $input->getOption('port');
+        }
+
+        if (null !== $input->getOption('user')) {
+            $connection['user'] = $input->getOption('user');
+        }
+
+        if (null !== $input->getOption('password')) {
+            $connection['password'] = $input->getOption('password');
+        }
+
+        $doctrine_config = $this->bbapp->getConfig()->getDoctrineConfig();
+
+        if(isset($connection['user']) && isset($connection['password'])) {
+            if (isset($doctrine_config['dbal']['master'])) {
+                $doctrine_config['dbal']['master'] = array_merge($doctrine_config['dbal']['master'], $connection);
+            } else {
+                $doctrine_config['dbal'] = array_merge($doctrine_config['dbal'], $connection);
+            }
+        }
+
+        // DISABLE CACHE DOCTRINE
+        unset($doctrine_config['dbal']['metadata_cache_driver']);
+        unset($doctrine_config['dbal']['query_cache_driver']);
+
+        if (!array_key_exists('proxy_ns', $doctrine_config['dbal'])) {
+            $doctrine_config['dbal']['proxy_ns'] = 'Proxies';
+        }
+
+        if (!array_key_exists('proxy_dir', $doctrine_config['dbal'])) {
+            $doctrine_config['dbal']['proxy_dir'] = $this->bbapp->getCacheDir() . '/' . 'Proxies';
+        }
+
+        try {
+            $em = EntityManagerCreator::create($doctrine_config['dbal']);
+
+            if (isset($doctrine_config['dbal']['master'])) {
+                $em->getConnection()
+                    ->connect('master');
+            } else {
+                $em->getConnection()
+                    ->connect();
+            }
+
+        } catch (\Exception $e) {
+            throw new DatabaseConnectionException(
+                'Unable to connect to the database.', 0, $e);
+        }
+
+        return $em;
+    }
+
+    /**
      * {@inheritdoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $force = $input->getOption('force');
+        $drop = $input->getOption('drop');
 
-        $bbapp = $this->getContainer()->get('bbapp');
-        $this->em = $this->getContainer()->get('em');
+        $this->bbapp = $this->getContainer()->get('bbapp');
+
+        $this->em = $this->initConnection($input, $output);
 
         $this->checkBeforeUpdate();
 
         $this->em->getConfiguration()->getMetadataDriverImpl()->addPaths([
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Bundle',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Cache'.DIRECTORY_SEPARATOR.'DAO',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'ClassContent',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'ClassContent'.DIRECTORY_SEPARATOR.'Indexes',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Logging',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'NestedNode',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Security',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Site',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Stream'.DIRECTORY_SEPARATOR.'ClassWrapper',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Util'.DIRECTORY_SEPARATOR.'Sequence'.DIRECTORY_SEPARATOR.'Entity',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Workflow',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Bundle',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Cache'.DIRECTORY_SEPARATOR.'DAO',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'ClassContent',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'ClassContent'.DIRECTORY_SEPARATOR.'Indexes',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Logging',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'NestedNode',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Security',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Site',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Stream'.DIRECTORY_SEPARATOR.'ClassWrapper',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Util'.DIRECTORY_SEPARATOR.'Sequence'.DIRECTORY_SEPARATOR.'Entity',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Workflow',
         ]);
 
         $this->em->getConfiguration()->getMetadataDriverImpl()->addExcludePaths([
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'ClassContent'.DIRECTORY_SEPARATOR.'Tests',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'NestedNode'.DIRECTORY_SEPARATOR.'Tests',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Security'.DIRECTORY_SEPARATOR.'Tests',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Util'.DIRECTORY_SEPARATOR.'Tests',
-            $bbapp->getBBDir().DIRECTORY_SEPARATOR.'Workflow'.DIRECTORY_SEPARATOR.'Tests',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'ClassContent'.DIRECTORY_SEPARATOR.'Tests',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'NestedNode'.DIRECTORY_SEPARATOR.'Tests',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Security'.DIRECTORY_SEPARATOR.'Tests',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Util'.DIRECTORY_SEPARATOR.'Tests',
+            $this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'Workflow'.DIRECTORY_SEPARATOR.'Tests',
         ]);
 
-        if (is_dir($bbapp->getBBDir().DIRECTORY_SEPARATOR.'vendor')) {
-            $this->em->getConfiguration()->getMetadataDriverImpl()->addExcludePaths([$bbapp->getBBDir().DIRECTORY_SEPARATOR.'vendor']);
+        if (is_dir($this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'vendor')) {
+            $this->em->getConfiguration()->getMetadataDriverImpl()->addExcludePaths([$this->bbapp->getBBDir().DIRECTORY_SEPARATOR.'vendor']);
         }
 
         $sqls = $this->getUpdateQueries();
 
-        if ($force) {
-            $output->writeln('<info>Running update</info>');
-
+        if ($force || $drop) {
             $metadata = $this->em->getMetadataFactory()->getAllMetadata();
             $schema = new SchemaTool($this->em);
 
-            $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=0');
-            $schema->updateSchema($metadata, true);
-            $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
+            if ($drop) {
+                $sqls = array_merge($schema->getDropDatabaseSQL(), $sqls);
+            }
+
+            if ($force) {
+                $output->writeln('<info>Running drop/update</info>');
+
+                $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=0');
+                $drop ? $schema->dropDatabase() : '';
+                $schema->updateSchema($metadata, true);
+                $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
+            }
         }
 
-        $output->writeln('<info>SQL executed: </info>'.PHP_EOL.implode(";".PHP_EOL, $sqls).'');
+        $output->writeln(
+            ($force ? '<info>SQL executed: </info>' : '<info>SQL to be executed: </info>').PHP_EOL.implode(";".PHP_EOL, $sqls).''
+        );
     }
 
     /**
