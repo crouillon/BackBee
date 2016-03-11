@@ -83,8 +83,8 @@ class CreateWebsiteCommand extends AbstractCommand
     {
         $this
             ->setName('bbapp:create_site')
-            ->addOption('site_label', 'site_label', InputOption::VALUE_OPTIONAL, 'site label.')
-            ->addOption('site_domain', 'site_domain', InputOption::VALUE_OPTIONAL, 'site domain.')
+            ->addOption('site_label', 'site_label', InputOption::VALUE_REQUIRED, 'site label.')
+            ->addOption('site_domain', 'site_domain', InputOption::VALUE_REQUIRED, 'site domain.')
             ->setDescription('Create new website.')
             ->setHelp(<<<EOF
 The <info>%command.name%</info> updates app:
@@ -100,6 +100,10 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        if (!$input->getOption('site_label') || !$input->getOption('site_domain')) {
+            throw new \InvalidArgumentException('Both options `site_label` and `site_domain` are required.');
+        }
+
     	$this
     		->init($input, $output)
     		->runSitesYmlProcess()
@@ -123,7 +127,7 @@ EOF
     	$this->siteLabel = $this->input->getOption('site_label');
 
         if (!filter_var($this->input->getOption('site_domain'), FILTER_VALIDATE_URL)){
-                $this->output->writeln('<error>Invalid site domain format. Example of valid domain: http://backbee.com</error>');
+            $this->output->writeln('<error>Invalid site domain format. Example of valid domain: http://backbee.com</error>');
         }
 
         $host = parse_url($this->input->getOption('site_domain'),PHP_URL_HOST);
@@ -148,9 +152,13 @@ EOF
             return $this;
         }
 
-        if (is_array($sitesConf) && in_array($this->siteDomain, array_column($sitesConf, 'domain'))) {
-            $this->output->writeln('<info>This domain already present in sites.yml</info>');
-            return $this;
+        if (is_array($sitesConf)) {
+            foreach ($sitesConf as $siteConfig) {
+                if (in_array($this->siteDomain, $siteConfig)) {
+                    $this->output->writeln('<info>This domain already present in sites.yml</info>');
+                    return $this;
+                }
+            }
         }
 
         $newSite = [
