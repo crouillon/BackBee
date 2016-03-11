@@ -151,14 +151,12 @@ class UpdateUsersRightsCommand extends AbstractCommand
         $usersRights = $this->bbapp->getConfig()->getGroupsConfig();
 
         if (null === $this->aclProvider) {
-            $this->writeln('None ACL provider found' . "\n", OutputInterface::VERBOSITY_NORMAL);
-            exit(0);
+            throw new \InvalidArgumentException('None ACL provider found');
         }
 
         // Vérifier que les groups de droit sont bien définis
         if (false === is_array($usersRights)) {
-            $this->writeln('Malformed groups.yml file, aborting' . "\n", OutputInterface::VERBOSITY_NORMAL);
-            exit(0);
+            throw new \InvalidArgumentException('Malformed groups.yml file, aborting');
         }
 
         if($this->checksBackBeeVersion()) {
@@ -208,7 +206,7 @@ class UpdateUsersRightsCommand extends AbstractCommand
         ];
 
         foreach ($tablesMapping as $key => $value) {
-            if ($schemaManager->tablesExist(array($value)) == true) {
+            if ($schemaManager->tablesExist(array($value)) === true) {
                 $dropTableSql[] = 'DROP TABLE IF EXISTS `' . $value. '`;';
             }
         }
@@ -372,7 +370,7 @@ class UpdateUsersRightsCommand extends AbstractCommand
     private function cleanTables()
     {
         foreach ($this->tables as $table) {
-            $this->em->getConnection()->executeQuery('DELETE FROM `' . $table.'`');
+            $this->em->getConnection()->executeQuery("DELETE FROM `$table`");
         }
     }
 
@@ -384,7 +382,6 @@ class UpdateUsersRightsCommand extends AbstractCommand
         if (true === is_array($usersRights)) {
             $this->writeln('<info>- Updating groups: </info>' . "\n");
 
-            // $this->em->getConnection()->executeQuery('DELETE FROM `user_group` WHERE 1=1');
             $this->em->getConnection()->executeQuery('DELETE FROM `acl_classes` WHERE 1=1');
             $this->em->getConnection()->executeQuery('DELETE FROM `acl_entries` WHERE 1=1');
             $this->em->getConnection()->executeQuery('DELETE FROM `acl_object_identities` WHERE 1=1');
@@ -781,7 +778,6 @@ class UpdateUsersRightsCommand extends AbstractCommand
             }
             $aclProvider->updateAcl($acl);
         } catch(\Exception $e) {
-            var_dump($objectIdentity, $securityIdentity, $rights);
             throw new \Exception($e->getMessage(), 0, $e);
         }
     }
