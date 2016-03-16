@@ -509,6 +509,12 @@ class PageController extends AbstractRestController
             } else {
                 throw new NotModifiedException();
             }
+        } elseif ($state === 'restore') {
+            if ($page->isDeleted()) {
+                $page->setState(0);
+            } else {
+                throw new NotModifiedException();
+            }
         } elseif ($state === 'delete') {
             if ($page->getState() >= 4) {
                 $this->hardDelete($page);
