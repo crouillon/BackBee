@@ -565,6 +565,16 @@ class FrontController implements HttpKernelInterface
             $actionArguments = $controllerResolver->getArguments($request, $controller);
 
             $response = call_user_func_array($controller, $actionArguments);
+            if (!($response instanceof Response)) {
+                $this->application->warning(sprintf(
+                    'Action %s from controller %s should return an object Response, got %s.',
+                    $request->attributes->get('_action'),
+                    get_class($controller[0]),
+                    gettype($response)
+                ));
+
+                $response = new Response();
+            }
             $dispatcher->dispatch($eventName.'.postcall', new Event\PostResponseEvent($response, $request));
 
             return $response;
