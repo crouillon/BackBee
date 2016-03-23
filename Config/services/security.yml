@@ -82,7 +82,7 @@ services:
     security.access.decision_manager:
         class: BackBee\Security\Access\DecisionManager
         arguments:
-            - [@security.voter.sudo, @security.voter.bb_role, @security.voter.role, @security.voter.authenticated, @security.voter.bb_acl]
+            - [@security.voter.sudo, @security.voter.bb_role, @security.voter.authenticated, @security.voter.bb_acl]
             - affirmative
             - false
             - true
