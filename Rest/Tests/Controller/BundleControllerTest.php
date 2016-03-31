@@ -99,7 +99,7 @@ class BundleControllerTest extends RestTestCase
         $this->assertTrue($response->isOk());
         $bundleConfig = json_decode($response->getContent(), true);
         $this->assertInternalType('array', $bundleConfig);
-        $this->assertCount(10, $bundleConfig);
+        $this->assertCount(12, $bundleConfig);
         $this->assertArrayHasKey('id', $bundleConfig);
         $this->assertArrayHasKey('name', $bundleConfig);
         $this->assertArrayHasKey('description', $bundleConfig);

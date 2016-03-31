@@ -79,9 +79,9 @@
         "phpunit/dbunit": "1.3.1",
         "mikey179/vfsStream": "1.4.0",
         "fzaninotto/faker": "1.4.0",
-        "backbee/demo-bundle": "1.0.1",
-        "backbee/toolbar-bundle": "1.0.1",
-        "backbee/bb-core-js": "1.0.0",
+        "backbee/demo-bundle": "1.1.0",
+        "backbee/toolbar-bundle": "1.1.0",
+        "backbee/bb-core-js": "1.1.0",
         "symfony/phpunit-bridge": "~2.7.0"
     },
     "suggest": {
@@ -90,7 +90,7 @@
     "minimum-stability": "stable",
     "extra": {
         "branch-alias": {
-            "dev-master": "1.0-dev"
+            "dev-master": "1.1-dev"
         }
     }
 }
