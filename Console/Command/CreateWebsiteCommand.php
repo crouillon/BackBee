@@ -19,6 +19,7 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Bogdan Oanes <bogdan.oanes@lp-digital.fr>
+ * @author Alexandre Gobjila <alexandre.gobjila@lp-digital.fr>
  */
 
 namespace BackBee\Console\Command;
@@ -104,12 +105,19 @@ EOF
             throw new \InvalidArgumentException('Both options `site_label` and `site_domain` are required.');
         }
 
-    	$this
-    		->init($input, $output)
-    		->runSitesYmlProcess()
-    		->runLayoutsGenerationProcess()
-		;
-    }        
+        try {
+            $this
+                ->init($input, $output)
+                ->runSitesYmlProcess()
+                ->runLayoutsGenerationProcess()
+            ;
+        } catch (\Exception $e) {
+            $output->writeln('<error>'.$e->getMessage().'</error>');
+            return 1;
+        }
+
+        return 0;
+    }
 
     /**
      * Init main tools
@@ -126,14 +134,15 @@ EOF
 
     	$this->siteLabel = $this->input->getOption('site_label');
 
-        if (!filter_var($this->input->getOption('site_domain'), FILTER_VALIDATE_URL)){
-            $this->output->writeln('<error>Invalid site domain format. Example of valid domain: http://backbee.com</error>');
+        if (filter_var($this->input->getOption('site_domain'), FILTER_VALIDATE_URL)) {
+            $urlData = parse_url($this->input->getOption('site_domain'));
+
+            if(!empty($urlData['host']) && $urlData['host'] !== null) {
+                $this->siteDomain = $urlData['host'].(empty($urlData['port']) ? '' : ':'.$urlData['port']).(empty($urlData['path']) ? '' : $urlData['path']);
+            }
+        } else {
+            throw new \InvalidArgumentException('Invalid site domain format. Example of valid domain: http://backbee.com');
         }
-
-        $host = parse_url($this->input->getOption('site_domain'),PHP_URL_HOST);
-        $port = parse_url($this->input->getOption('site_domain'), PHP_URL_PORT);
-
-        $this->siteDomain = $host.(empty($port) ? '' : ':'.$port);
 
     	return $this;
     }
@@ -147,18 +156,12 @@ EOF
     {
         $sitesConf = $this->bbapp->getConfig()->getSitesConfig();
 
-        if (is_array($sitesConf) && array_key_exists($this->siteLabel, $sitesConf)) {
-            $this->output->writeln('<info>This label already present in sites.yml</info>');
-            return $this;
+        if ($this->siteDomain === null) {
+            throw new \InvalidArgumentException('This site domain is not valid (empty value)');
         }
 
-        if (is_array($sitesConf)) {
-            foreach ($sitesConf as $siteConfig) {
-                if (in_array($this->siteDomain, $siteConfig)) {
-                    $this->output->writeln('<info>This domain already present in sites.yml</info>');
-                    return $this;
-                }
-            }
+        if (is_array($sitesConf) && array_key_exists($this->siteLabel, $sitesConf)) {
+            throw new \InvalidArgumentException('This label `'.$this->siteLabel.'` already present in sites.yml');
         }
 
         $newSite = [
@@ -166,7 +169,7 @@ EOF
                 'label'  => $this->siteLabel,
                 'domain' => $this->siteDomain,
             ],
-        ];		
+        ];
 
         $newSitesConf = (is_array($sitesConf)) ? array_merge($sitesConf, $newSite) : $newSite;
         file_put_contents(
@@ -174,7 +177,7 @@ EOF
                 Yaml::dump($newSitesConf)
         );
 
-	return $this;
+        return $this;
     }
 
     /**
