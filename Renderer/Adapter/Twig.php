@@ -191,6 +191,8 @@ class Twig extends AbstractRendererAdapter
                 if($e->getPrevious() instanceof FrontControllerException) {
                     throw $e->getPrevious();
                 }
+
+                throw $e;
             }
 
         } catch (FrontControllerException $fe) {
