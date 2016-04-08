@@ -201,6 +201,10 @@ class FrontController implements HttpKernelInterface
         $event = new GetResponseEvent($this, $this->getRequest(), $type);
         $this->application->getEventDispatcher()->dispatch(KernelEvents::REQUEST, $event);
 
+        if (null !== $response = $event->getResponse()) {
+            return $response;
+        }
+
         try {
             if (null !== $request) {
                 $this->request = $request;
