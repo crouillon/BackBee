@@ -370,6 +370,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
         $definition = new Definition($classname, array(new Reference('bbapp'), $bundleId, $baseDir));
         $definition->addTag('bundle', array('dispatch_event' => false));
         $definition->addMethodCall('start');
+        $definition->addMethodCall('started');
 
         return $definition;
     }
