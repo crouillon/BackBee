@@ -61,15 +61,23 @@ class MockBBApplication extends BBApplication
     private $mockedStructure;
 
     /**
+     * Path to a specific vendor directory.
+     *
+     * @var string
+     */
+    private $vendorDir;
+
+    /**
      * Mock the BBApplication class constructor.
      *
      * @param string  $context
      * @param boolean $debug
      * @param boolean $overwrite_config
      */
-    public function __construct($context = null, $environment = false, $overwrite_config = false, array $mockConfig = null)
+    public function __construct($context = null, $environment = false, $overwrite_config = false, array $mockConfig = null, $vendorDir = null)
     {
         $this->mockInitStructure($mockConfig);
+        $this->vendorDir = $vendorDir;
         parent::__construct($context, $environment, $overwrite_config);
     }
 
@@ -90,7 +98,7 @@ class MockBBApplication extends BBApplication
      */
     public function getVendorDir()
     {
-        return $this->getBBDir().'/vendor';
+        return $this->vendorDir ?: $this->getBBDir().'/vendor';
     }
 
     /**
