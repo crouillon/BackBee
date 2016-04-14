@@ -106,7 +106,7 @@ class ResourceControllerTest extends RestTestCase
         $fileProperties = json_decode($response->getContent(), true);
         $this->assertInternalType('array', $fileProperties);
 
-        $properties = ['originalname', 'path', 'filename'];
+        $properties = ['originalname', 'path', 'filename', 'size', 'width', 'height'];
 
         foreach ($properties as $property) {
             $this->assertArrayHasKey($property, $fileProperties);

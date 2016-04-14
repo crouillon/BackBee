@@ -94,6 +94,16 @@ class ResourceController extends AbstractRestController
                 if ($file->getClientSize() <= $file->getMaxFilesize()) {
                     $data = $this->buildData($file->getClientOriginalName(), $file->guessExtension());
                     $file->move($tmpDirectory, $data['filename']);
+                    $data['size'] = round($file->getClientSize() / 1024, 2);
+                    if ($imageInfo = @getimagesize( $data['path'])) {
+                        if (isset($imageInfo[0]) && isset($imageInfo[1])) {
+                            $data['width'] = $imageInfo[0];
+                            $data['height'] = $imageInfo[1];
+                        }
+                    } else {
+                        $data['width'] = 0;
+                        $data['height'] = 0;
+                    }
                 } else {
                     throw new BadRequestHttpException('Too big file, the max file size is ' . $file->getMaxFilesize());
                 }
