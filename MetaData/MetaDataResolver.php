@@ -271,7 +271,7 @@ class MetaDataResolver implements MetaDataResolverInterface
      *
      * @return string
      */
-    private function resolveConst($const, Page $page = null)
+    protected function resolveConst($const, Page $page = null)
     {
         $value = '';
         switch (strtolower($const)) {
