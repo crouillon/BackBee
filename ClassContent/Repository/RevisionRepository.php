@@ -23,15 +23,15 @@
 
 namespace BackBee\ClassContent\Repository;
 
-use Doctrine\ORM\EntityRepository;
-use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-
 use BackBee\ClassContent\AbstractClassContent;
 use BackBee\ClassContent\ContentSet;
 use BackBee\ClassContent\Exception\ClassContentException;
 use BackBee\ClassContent\Revision;
 use BackBee\Security\Token\BBUserToken;
+use Doctrine\DBAL\Types\ConversionException;
+use Doctrine\ORM\EntityRepository;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
 /**
  * Revision repository.
@@ -223,10 +223,43 @@ class RevisionRepository extends EntityRepository
      */
     public function getAllDrafts(TokenInterface $token)
     {
-        return $this->findBy([
-            '_owner' => UserSecurityIdentity::fromToken($token),
-            '_state' => [Revision::STATE_ADDED, Revision::STATE_MODIFIED],
-        ]);
+        $owner = UserSecurityIdentity::fromToken($token);
+        $states = [Revision::STATE_ADDED, Revision::STATE_MODIFIED];
+
+        $result = [];
+
+        try {
+            $result = $this->findBy([
+                '_owner' => $owner,
+                '_state' => $states,
+            ]);
+        } catch (ConversionException $e) {
+            $qb = $this->createQueryBuilder('r');
+
+            $uids = $qb
+                ->select('r._uid')
+                ->where('r._owner = :owner')
+                ->setParameter('owner', $owner)
+                ->andWhere($qb->expr()->in('r._state', $states))
+                ->getQuery()
+                ->getResult()
+            ;
+
+            $result = [];
+            foreach ($uids as $data) {
+                try {
+                    $result[] = $this->find($data['_uid']);
+                } catch (ConversionException $e) {
+                    $this->_em->getConnection()->executeUpdate(
+                        'DELETE FROM revision WHERE uid = :uid',
+                        ['uid' => $data['_uid']]
+                    );
+
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**
