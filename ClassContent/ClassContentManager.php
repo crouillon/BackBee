@@ -133,6 +133,34 @@ class ClassContentManager
 
         return $this;
     }
+    
+    /**
+     * Check if a contentset is a main zone on a page
+     *
+     * @param  AbstractClassContent $content The content to be updated.
+     *
+     */
+    public function isMainZone($content)
+    {
+        if ($content instanceof ContentSet) {
+            $pages = $this->entityManager->getRepository('BackBee\ClassContent\ContentSet')->findPagesByContent($content);
+
+            if (count($pages) > 0) {
+                foreach($pages as $page) {
+                    if ($page instanceof \BackBee\NestedNode\Page) {    
+                        if (false !== $index = $page->getContentSet()->indexOf($content, true)) {
+                            $zone = $page->getLayout()->getZone($index);
+                            if (is_a($zone, '\stdClass') && 1 === $zone->mainZone) {
+                                return $page;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
 
     /**
      * Calls ::jsonSerialize of the content and build valid url for image.
@@ -360,7 +388,8 @@ class ClassContentManager
     {
         if ($content instanceof ContentSet) {
             $elements = $this->prepareElements($elementsData, false);
-            $this->updateContentSetElements($content, $elements);
+            $page = $this->isMainZone($content);
+            $this->updateContentSetElements($content, $elements, $page);
         } else {
             $elements = $this->prepareElements($elementsData);
             $this->updateContentElements($content, $elements);
@@ -377,11 +406,14 @@ class ClassContentManager
      *
      * @return ClassContentManager
      */
-    private function updateContentSetElements(ContentSet $content, array $elementsData)
+    private function updateContentSetElements(ContentSet $content, array $elementsData, Page $page = null)
     {
         $content->clear();
         foreach ($elementsData as $data) {
             if ($data instanceof AbstractClassContent) {
+                if (null !== $page && null === $data->getMainNode()) {
+                    $data->setMainNode($page);
+                }
                 $content->push($data);
             }
         }
