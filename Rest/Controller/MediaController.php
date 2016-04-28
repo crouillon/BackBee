@@ -24,6 +24,7 @@
 namespace BackBee\Rest\Controller;
 
 use BackBee\NestedNode\Media;
+use BackBee\NestedNode\MediaFolder;
 use BackBee\ClassContent\AbstractContent;
 use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\Rest\Controller\Annotations as Rest;
@@ -67,43 +68,33 @@ class MediaController extends AbstractRestController
      */
     public function getCollectionAction(Request $request, $start, $count)
     {
-        $queryParams = $request->query->all();
-        $mediaFolderUid = $request->get('mediaFolder_uid', null);
-        $usePagination = $request->get("usePagination", false);
-        $contentType =  $request->get('contentType', null);
-
-        if (null === $mediaFolderUid) {
-            $mediaFolder = $this->getMediaFolderRepository()->getRoot();
+        $mediafolder = null;
+        $folderUid = $request->get('mediaFolder_uid', null);
+        if (null === $folderUid) {
+            $mediafolder = $this->getMediaFolderRepository()->getRoot();
         } else {
-            $mediaFolder = $this->getMediaFolderRepository()->find($mediaFolderUid);
+            $mediafolder = $this->getMediaFolderRepository()->find($folderUid);
         }
 
-        if (null === $mediaFolder) {
+        if (null === $mediafolder) {
             throw new NotFoundHttpException('Cannot find a media folder');
         }
 
-        if (null !== $contentType) {
-            try {
-                $queryParams['contentType'] = AbstractContent::getClassnameByContentType($contentType);
-            } catch (InvalidContentTypeException $e) {
-                throw new NotFoundHttpException(sprintf('Provided content type (:%s) is invalid.', $queryParams['contentType']));
-            }
+        $paginator = null;
+        if ($request->query->has('content_uid')) {
+            $paginator = $this->getCollectionByContent($request->query->get('content_uid'), $mediafolder);
+        } else {
+            $paginator = $this->getClassicCollection($request, $mediafolder);
         }
-        
-        $paging = [
-            'start' => $start,
-            'limit' => $count
-        ];
 
-        $paginator = $this->getMediaRepository()->getMedias($mediaFolder, $queryParams, '_modified', 'desc', $paging);
-        $resultsIter = $paginator->getIterator();
+        $iterator = $paginator->getIterator();
         $results = [];
-        while ($resultsIter->valid()) {
-          $results [] = $resultsIter->current();
-          $resultsIter->next();
+        while ($iterator->valid()) {
+          $results [] = $iterator->current();
+          $iterator->next();
         }
 
-        $pager = $usePagination ? $paginator : null;
+        $pager = $request->query->has('usePagination') ? $paginator : null;
 
         return $this->addRangeToContent(
             $this->createJsonResponse($this->mediaToJson($results)),
@@ -262,5 +253,51 @@ class MediaController extends AbstractRestController
         $response->headers->set('Content-Range', "$offset-$lastResult/" . $total);
 
         return $response;
+    }
+
+    private function getClassicCollection(Request $request, $mediafolder)
+    {
+        $params = $request->query->all();
+        $contentType =  $request->get('contentType', null);
+
+        if (null !== $contentType) {
+            try {
+                $params['contentType'] = AbstractContent::getClassnameByContentType($contentType);
+            } catch (InvalidContentTypeException $e) {
+                throw new NotFoundHttpException(sprintf('Provided content type (:%s) is invalid.', $params['contentType']));
+            }
+        }
+
+        return $this->getMediaRepository()->getMedias($mediafolder, $params, '_modified', 'desc', [
+            'start' => $start,
+            'limit' => $count,
+        ]);
+    }
+
+    private function getCollectionByContent($contentUid, MediaFolder $mediafolder)
+    {
+        $content = $this->getEntityManager()->find('BackBee\ClassContent\AbstractClassContent', $contentUid);
+
+        if (null === $content) {
+            throw new NotFoundHttpException("No content find with uid '{$contentUid}'");
+        }
+
+        $query = $this->getMediaRepository()->createQueryBuilder('m')
+            ->leftJoin('m._media_folder', 'mf')
+            ->where('m._content = :content')
+            ->andWhere('mf._root = :root')
+            ->andWhere('mf._leftnode >= :leftnode')
+            ->andWhere('mf._rightnode <= :rightnode')
+            ->orderBy('m._modified', 'desc')
+            ->setParameters([
+                'content'   => $content,
+                'root'      => $mediafolder->getRoot(),
+                'leftnode'  => $mediafolder->getLeftnode(),
+                'rightnode' => $mediafolder->getRightnode(),
+            ])
+            ->getQuery()
+        ;
+
+        return new Paginator($query, false);
     }
 }
