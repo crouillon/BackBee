@@ -84,7 +84,7 @@ class MediaController extends AbstractRestController
         if ($request->query->has('content_uid')) {
             $paginator = $this->getCollectionByContent($request->query->get('content_uid'), $mediafolder);
         } else {
-            $paginator = $this->getClassicCollection($request, $mediafolder);
+            $paginator = $this->getClassicCollection($request, $mediafolder, $start, $count);
         }
 
         $iterator = $paginator->getIterator();
@@ -255,7 +255,7 @@ class MediaController extends AbstractRestController
         return $response;
     }
 
-    private function getClassicCollection(Request $request, $mediafolder)
+    private function getClassicCollection(Request $request, $mediafolder, $start, $count)
     {
         $params = $request->query->all();
         $contentType =  $request->get('contentType', null);
