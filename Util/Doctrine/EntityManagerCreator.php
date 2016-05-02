@@ -75,6 +75,9 @@ class EntityManagerCreator
             }
         }
 
+        // Force a connection to the database
+        $em->getConnection()->errorInfo();
+
         self::setConnectionCharset($em->getConnection(), $options);
         self::setConnectionCollation($em->getConnection(), $options);
 
