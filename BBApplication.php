@@ -39,6 +39,7 @@ use Doctrine\Common\Annotations\AnnotationRegistry;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Debug\Debug;
+use Symfony\Component\Debug\Exception\ContextErrorException;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
@@ -126,6 +127,8 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
         $this->initAnnotationReader();
         $this->initContainer();
 
+        register_shutdown_function([$this, 'onFatalError']);
+
         if ($this->isDebugMode()) {
             Debug::enable();
         }
@@ -137,7 +140,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
         try {
             $this->initEntityManager();
         } catch (\Exception $e) {
-            $this->getLogging()->notice('BackBee starting without EntityManager');
+            $this->getLogging()->notice('BackBee initialized without EntityManager');
         }
 
         $this->initBundles();
@@ -154,7 +157,15 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
         }
 
         // Force container to create SecurityContext object to activate listener
-        $this->getSecurityContext();
+        try {
+            $this->getSecurityContext();
+        } catch (ContextErrorException $ex) {
+            if (null === $this->getEntityManager()) {
+                throw new \InvalidArgumentException('Unable to initialize security context, did you try to activate ACL voter without database connection?');
+            }
+
+            throw $ex;
+        }
 
         $this->debug(sprintf(
             'BBApplication (v.%s) initialization with context `%s`, debugging set to %s',
@@ -274,6 +285,10 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     public function start(Site $site = null)
     {
+        if (null === $this->getEntityManager()) {
+            throw new \LogicException('Cannot start BackBee without database connection');
+        }
+
         if (null === $site) {
             $site = $this->getEntityManager()->getRepository('BackBee\Site\Site')->findOneBy([]);
         }
@@ -517,8 +532,6 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
             try {
                 $this->initEntityManager();
             } catch (\Exception $ex) {
-                $this->getLogging()->notice('BackBee starting without EntityManager');
-
                 return null;
             }
         }
@@ -1207,5 +1220,17 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
         }
 
         return $this;
+    }
+
+    /**
+     * Registered function for execution on shutdown.
+     * Logs fatal error message if exists.
+     */
+    public function onFatalError()
+    {
+        $error = error_get_last();
+        if (null !== $error && in_array($error['type'], [E_ERROR, E_RECOVERABLE_ERROR])) {
+            $this->error($error['message']);
+        }
     }
 }
