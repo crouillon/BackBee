@@ -90,7 +90,7 @@ class MediaController extends AbstractRestController
         $iterator = $paginator->getIterator();
         $results = [];
         while ($iterator->valid()) {
-          $results [] = $iterator->current();
+          $results[] = $iterator->current();
           $iterator->next();
         }
 
@@ -282,22 +282,6 @@ class MediaController extends AbstractRestController
             throw new NotFoundHttpException("No content find with uid '{$contentUid}'");
         }
 
-        $query = $this->getMediaRepository()->createQueryBuilder('m')
-            ->leftJoin('m._media_folder', 'mf')
-            ->where('m._content = :content')
-            ->andWhere('mf._root = :root')
-            ->andWhere('mf._leftnode >= :leftnode')
-            ->andWhere('mf._rightnode <= :rightnode')
-            ->orderBy('m._modified', 'desc')
-            ->setParameters([
-                'content'   => $content,
-                'root'      => $mediafolder->getRoot(),
-                'leftnode'  => $mediafolder->getLeftnode(),
-                'rightnode' => $mediafolder->getRightnode(),
-            ])
-            ->getQuery()
-        ;
-
-        return new Paginator($query, false);
+        return $this->getMediaRepository()->getMediasByContent($content, $mediafolder);
     }
 }

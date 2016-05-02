@@ -23,6 +23,7 @@
 
 namespace BackBee\NestedNode\Repository;
 
+use BackBee\ClassContent\AbstractClassContent;
 use BackBee\NestedNode\Media;
 use BackBee\NestedNode\MediaFolder;
 
@@ -180,5 +181,26 @@ class MediaRepository extends EntityRepository
         ;
 
         return $q->getQuery()->getResult();
+    }
+
+    public function getMediasByContent(AbstractClassContent $content, MediaFolder $mediafolder)
+    {
+        $query = $this->createQueryBuilder('m')
+            ->leftJoin('m._media_folder', 'mf')
+            ->where('m._content = :content')
+            ->andWhere('mf._root = :root')
+            ->andWhere('mf._leftnode >= :leftnode')
+            ->andWhere('mf._rightnode <= :rightnode')
+            ->orderBy('m._modified', 'desc')
+            ->setParameters([
+                'content'   => $content,
+                'root'      => $mediafolder->getRoot(),
+                'leftnode'  => $mediafolder->getLeftnode(),
+                'rightnode' => $mediafolder->getRightnode(),
+            ])
+            ->getQuery()
+        ;
+
+        return new Paginator($query, false);
     }
 }
