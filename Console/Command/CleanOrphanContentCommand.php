@@ -26,6 +26,7 @@ namespace BackBee\Console\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use BackBee\AutoLoader\Exception\ClassNotFoundException;
+use BackBee\ClassContent\AbstractContent;
 use BackBee\Console\AbstractCommand;
 
 /**
@@ -73,8 +74,9 @@ class CleanOrphanContentCommand extends AbstractCommand
 
         foreach ($orphans as $orphan) {
             try {
-                $orphan_object = $em->find($orphan['classname'], $orphan['uid']);
-                $em->getRepository($orphan['classname'])->deleteContent($orphan_object);
+                $classname = AbstractContent::getFullClassname($orphan['classname']);
+                $orphan_object = $em->find($classname, $orphan['uid']);
+                $em->getRepository($classname)->deleteContent($orphan_object);
             } catch (ClassNotFoundException $e) {
                 $uid = $orphan['uid'];
                 $em->getConnection()->executeUpdate(
