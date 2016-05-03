@@ -23,6 +23,7 @@
 
 namespace BackBee\ClassContent\Repository;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -313,7 +314,7 @@ class IndexationRepository extends EntityRepository
                     ->from('content_has_subcontent', 'j');
 
             $notElementUids = array_merge(
-                    $notElementUids, 
+                    $notElementUids,
                     $this->executeQueryIn($query, 'j.content_uid', $elementUids)
             );
         }
@@ -335,7 +336,7 @@ class IndexationRepository extends EntityRepository
      * @param  QueryBuilder $query
      * @param  string       $field
      * @param  string[]     $values
-     * 
+     *
      * @return string[]
      */
     private function executeQueryIn(QueryBuilder $query, $field, array $values)
@@ -403,17 +404,26 @@ class IndexationRepository extends EntityRepository
      */
     public function getNodeUids(array $contentUids)
     {
-        $meta = $this->_em->getClassMetadata('BackBee\ClassContent\AbstractClassContent');
+        if (empty($contentUids)) {
+            return [];
+        }
 
-        $q = $this->_em->getConnection()
+        $meta = $this
+                ->getEntityManager()
+                ->getClassMetadata('BackBee\ClassContent\AbstractClassContent');
+
+        $nodeUids = $this
+                ->getEntityManager()
+                ->getConnection()
                 ->createQueryBuilder()
                 ->select('c.node_uid')
-                ->from($meta->getTableName(), 'c');
+                ->from($meta->getTableName(), 'c')
+                ->andWhere('c.' . $meta->getColumnName('_uid') . ' IN (:ids)')
+                ->setParameter('ids', $contentUids, Connection::PARAM_STR_ARRAY)
+                ->execute()
+                ->fetchAll(\PDO::FETCH_COLUMN);
 
-        $q->andWhere('c.'.$meta->getColumnName('_uid').' IN (:ids)')
-              ->setParameter('ids', $contentUids);
-
-        return (false === empty($contentUids)) ? array_unique($q->execute()->fetchAll(\PDO::FETCH_COLUMN)) : array();
+        return array_unique(array_filter($nodeUids));
     }
 
     /**
@@ -770,7 +780,7 @@ class IndexationRepository extends EntityRepository
 
     /**
      * Saves an indexation entity, persists it first if need.
-     * 
+     *
      * @param Indexation $index The indexation entity to save.
      */
     public function save(Indexation $index)
