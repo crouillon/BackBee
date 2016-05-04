@@ -26,6 +26,7 @@ namespace BackBee\ClassContent;
 use BackBee\ApplicationInterface;
 use BackBee\ClassContent\Iconizer\IconizerInterface;
 use BackBee\Exception\InvalidArgumentException;
+use BackBee\NestedNode\Page;
 use BackBee\Security\Token\BBUserToken;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Security\Core\Util\ClassUtils;
@@ -133,7 +134,7 @@ class ClassContentManager
 
         return $this;
     }
-    
+
     /**
      * Check if a contentset is a main zone on a page
      *
@@ -147,7 +148,7 @@ class ClassContentManager
 
             if (count($pages) > 0) {
                 foreach($pages as $page) {
-                    if ($page instanceof \BackBee\NestedNode\Page) {    
+                    if ($page instanceof Page) {
                         if (false !== $index = $page->getContentSet()->indexOf($content, true)) {
                             $zone = $page->getLayout()->getZone($index);
                             if (is_a($zone, '\stdClass') && 1 === $zone->mainZone) {
@@ -299,14 +300,10 @@ class ClassContentManager
      *
      * @return ClassContentManager
      */
-    public function commit(AbstractClassContent $content, array $data)
+    public function commit(AbstractClassContent $content, array $data = [])
     {
         foreach ($this->getAllClassContentClassnames() as $classname) {
             class_exists($classname);
-        }
-
-        if (!isset($data['parameters']) && !isset($data['elements'])) {
-            throw new \InvalidArgumentException('Provided data are not valids for ClassContentManager::commit.');
         }
 
         if (null === $draft = $this->getDraft($content)) {
@@ -317,10 +314,14 @@ class ClassContentManager
             ));
         }
 
-        $cleanDraft = clone $draft;
-        $this->prepareDraftForCommit($content, $draft, $data);
-        $this->executeCommit($content, $draft);
-        $this->commitPostProcess($content, $cleanDraft);
+        if (isset($data['parameters']) || isset($data['elements'])) {
+            $cleanDraft = clone $draft;
+            $this->prepareDraftForCommit($content, $draft, $data);
+            $this->executeCommit($content, $draft);
+            $this->commitPostProcess($content, $cleanDraft);
+        } else {
+            $this->executeCommit($content, $draft);
+        }
 
         return $this;
     }
@@ -333,8 +334,17 @@ class ClassContentManager
      *
      * @return ClassContentManager
      */
-    public function revert(AbstractClassContent $content, array $data)
+    public function revert(AbstractClassContent $content, array $data = [])
     {
+        if (0 === count($data)) {
+            $data['parameters'] = array_keys($content->getAllParams());
+            if ($content instanceof ContentSet) {
+                $data['elements'] = true;
+            } else {
+                $data['elements'] = array_keys($content->getData());
+            }
+        }
+
         if (!isset($data['parameters']) && !isset($data['elements'])) {
             throw new \InvalidArgumentException('Provided data are not valids for ClassContentManager::revert.');
         }
