@@ -906,19 +906,23 @@ class PageController extends AbstractRestController
         }
 
         if (null !== $createdBefore = $request->query->get('created_before', null)) {
-            $qb->andWhere($qb->getAlias().'._created > :created_before')->setParameter('created_before', $createdBefore);
+            $createdBeforeParam = new \DateTime('@' . $createdBefore);
+            $qb->andWhere($qb->getAlias().'._created < :created_before')->setParameter('created_before', $createdBeforeParam);
         }
 
         if (null !== $createdAfter = $request->query->get('created_after', null)) {
-            $qb->andWhere($qb->getAlias().'._created < :created_after')->setParameter('created_after', $createdAfter);
+            $createdAfterParam = new \DateTime('@' . $createdAfter);
+            $qb->andWhere($qb->getAlias().'._created > :created_after')->setParameter('created_after', $createdAfterParam);
         }
 
         if (null !== $modifiedBefore = $request->query->get('modified_before', null)) {
-            $qb->andWhere($qb->getAlias().'._modified > :modified_before')->setParameter('modified_before', $modifiedBefore);
+            $modifiedBeforeParam = new \DateTime('@' . $modifiedBefore);
+            $qb->andWhere($qb->getAlias().'._modified < :modified_before')->setParameter('modified_before', $modifiedBeforeParam);
         }
 
         if (null !== $modifiedAfter = $request->query->get('modified_after', null)) {
-            $qb->andWhere($qb->getAlias().'._modified < :modified_after')->setParameter('modified_after', $modifiedAfter);
+            $modifiedAfterParam = new \DateTime('@' . $modifiedAfter);
+            $qb->andWhere($qb->getAlias().'._modified > :modified_after')->setParameter('modified_after', $modifiedAfterParam);
         }
 
         return $this->paginateClassicCollectionAction($qb, $start, $count);
