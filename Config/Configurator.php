@@ -223,13 +223,17 @@ class Configurator
         $configConfig = $this->application->getConfig()->getConfigConfig();
         if (
             null === $configConfig
-            || array_key_exists('save_in_registry', $configConfig)
-            || true === $configConfig['save_in_registry']
+            || (
+                array_key_exists('save_in_registry', $configConfig)
+                && true === $configConfig['save_in_registry']
+            )
         ) {
-            $this->overrideConfigByRegistry($config, $options['bundle_id'], false, false) // First without context and environment
-                ->overrideConfigByRegistry($config, $options['bundle_id'], false, true)   // Second, only with environment
-                ->overrideConfigByRegistry($config, $options['bundle_id'], true, false)   // Third, only with context
-                ->overrideConfigByRegistry($config, $options['bundle_id'], true, true);   // Then, with both context and environment
+            $this
+                ->overrideConfigByRegistry($config, $options['bundle_id'], false, false) // First without context and environment
+                ->overrideConfigByRegistry($config, $options['bundle_id'], false, true)  // Second, only with environment
+                ->overrideConfigByRegistry($config, $options['bundle_id'], true, false)  // Third, only with context
+                ->overrideConfigByRegistry($config, $options['bundle_id'], true, true)   // Then, with both context and environment
+            ;
         }
     }
 
