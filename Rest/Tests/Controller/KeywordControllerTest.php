@@ -90,6 +90,23 @@ class KeywordControllerTest extends RestTestCase
       $this->assertCount(0, $keywordCollection);
     }
 
+    public function testGetCollectionWithUids()
+    {
+      $url = '/rest/2/keyword';
+      $responseEmpty = $this->sendRequest(self::requestGet($url, ['uids' => '']));
+      $this->assertTrue($responseEmpty->isOk(), sprintf('HTTP 200 expected, HTTP %s returned.', $responseEmpty->getStatusCode()));
+      $keywordCollectionEmpty = json_decode($responseEmpty->getContent(), true);
+      $this->assertInternalType('array', $keywordCollectionEmpty);
+      $this->assertCount(1, $keywordCollectionEmpty);
+      $this->assertEquals('uid-root', $keywordCollectionEmpty[0]['uid']);
+
+      $response = $this->sendRequest(self::requestGet($url, ['uids' => ',uid-backbee,uid-backbee,,uid-patrovski,']));
+      $this->assertTrue($response->isOk(), sprintf('HTTP 200 expected, HTTP %s returned.', $response->getStatusCode()));
+      $keywordCollection = json_decode($response->getContent(), true);
+      $this->assertInternalType('array', $keywordCollection);
+      $this->assertCount(2, $keywordCollection);
+    }
+
     public function testDeleteAction()
     {
         $url = '/rest/2/keyword/'. $this->keyword->getUid();
@@ -120,7 +137,7 @@ class KeywordControllerTest extends RestTestCase
     }
 
     private function createAKeyword($label, KeyWord $parent = null) {
-        $keyword = new KeyWord();
+        $keyword = new KeyWord('uid-' . $label);
         $keyword->setKeyWord($label);
         if ($parent instanceof KeyWord) {
             $keyword->setParent($parent);

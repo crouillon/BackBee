@@ -56,9 +56,14 @@ class KeywordController extends AbstractRestController
     public function getCollectionAction(Request $request, $start, $count, KeyWord $parent = null)
     {
         $results = [];
+
         $term = $request->query->get('term', null);
+        $uids = array_filter(explode(',', $request->query->get('uids')));
+
         if (null !== $term) {
             $results = $this->getKeywordRepository()->getLikeKeyWords($term);
+        } elseif (!empty($uids)) {
+            $results = $this->getKeywordRepository()->findBy(['_uid' => $uids]);
         } else {
             $orderInfos = [
                 'field' => '_leftnode',
