@@ -150,9 +150,19 @@ class EntityManagerCreator
                         'service' === $options['orm']['metadata_cache_driver']['type']
                         && isset($options['orm']['metadata_cache_driver']['id'])
                     ) {
-                        $serviceId = str_replace('@', '', $options['orm']['metadata_cache_driver']['id']);
-                        if (null !== $container && $container->has($serviceId)) {
-                            $config->setMetadataCacheImpl($container->get($serviceId));
+                        $service = null;
+                        $serviceId = $options['orm']['metadata_cache_driver']['id'];
+                        if (is_object($serviceId)) {
+                            $service = $serviceId;
+                        } elseif (is_string($serviceId)) {
+                            $serviceId = str_replace('@', '', $serviceId);
+                            if (null !== $container && $container->has($serviceId)) {
+                                $service = $container->get($serviceId);
+                            }
+                        }
+
+                        if (null !== $service) {
+                            $config->setMetadataCacheImpl($service);
                         }
                     }
                 }
