@@ -69,7 +69,7 @@ class EntityFinder
         foreach ($objects as $filename => $object) {
             $file = explode('/', $filename);
             if (!preg_filter($this->ignoredFolder, [], $file)) {
-                $classname = $this->getNamespace($filename).NAMESPACE_SEPARATOR.  substr(basename($filename), 0, -4);
+                $classname = $this->getNamespace($filename) . NAMESPACE_SEPARATOR . substr(basename($filename), 0, -4);
                 if ($this->isValidNamespace($classname)) {
                     $entities[] = $classname;
                 }
@@ -124,11 +124,13 @@ class EntityFinder
     public function getNamespace($file)
     {
         $src = file_get_contents($file);
+        $offset = strpos($src, 'namespace');
+        $src = substr($src, 0, strpos($src, '{', $offset));
         $tokens = token_get_all($src);
         $count = count($tokens);
         $namespace = '';
 
-        for ($i=0; $i < $count; $i++) {
+        for ($i = 0; $i < $count; $i++) {
             $token = $tokens[$i];
             if (is_array($token) && $token[0] === T_NAMESPACE) {
                 while (++$i < $count) {
@@ -136,12 +138,14 @@ class EntityFinder
                         $namespace = trim($namespace);
                         break;
                     }
+
                     $namespace .= is_array($tokens[$i]) ? $tokens[$i][1] : $tokens[$i];
                 }
+
                 break;
             }
         }
-        
+
         return $namespace;
     }
 
@@ -152,10 +156,7 @@ class EntityFinder
      */
     private function isValidNamespace($namespace)
     {
-        return (
-            true === class_exists($namespace)
-            && $this->isEntity(new \ReflectionClass($namespace))
-        );
+        return class_exists($namespace) && $this->isEntity(new \ReflectionClass($namespace));
     }
 
     /**
@@ -165,7 +166,7 @@ class EntityFinder
      */
     private function isEntity(\ReflectionClass $reflection)
     {
-        return (!is_null($this->getEntityAnnotation($reflection)));
+        return null !== $this->getEntityAnnotation($reflection);
     }
 
     /**
