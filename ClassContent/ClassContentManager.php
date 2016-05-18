@@ -28,7 +28,9 @@ use BackBee\ClassContent\Iconizer\IconizerInterface;
 use BackBee\Exception\InvalidArgumentException;
 use BackBee\NestedNode\Page;
 use BackBee\Security\Token\BBUserToken;
+
 use Doctrine\ORM\Tools\Pagination\Paginator;
+
 use Symfony\Component\Security\Core\Util\ClassUtils;
 
 /**
@@ -359,6 +361,50 @@ class ClassContentManager
 
         $this->executeRevert($content, $draft, $data);
         $this->revertPostProcess($content, $draft);
+
+        return $this;
+    }
+
+    /**
+     * Reverts a content to a specific revision.
+     *
+     * @param  AbstractClassContent $content  The content to revert.
+     * @param  integer              $revision The revision number.
+     *
+     * @return ClassContentManager            The current class content manager.
+     */
+    public function revertToRevision(AbstractClassContent $content, $revision)
+    {
+        // First remove existing draft for user
+        if (null !== $draft = $this->getDraft($content)) {
+            $this->entityManager->remove($draft);
+        }
+
+        // If asked $revision is the last one, all is done.
+        if ($content->getRevision() === (int) $revision) {
+            return $this;
+        }
+
+        $source = $this->entityManager
+                ->getRepository('BackBee\ClassContent\Revision')
+                ->getRevision($content, (int) $revision);
+
+        if (null === $source) {
+            throw new \InvalidArgumentException(sprintf('Unknown revision %d for content %s.', $revision, $content->getObjectIdentifier()));
+        }
+
+        $token = $this->token ? : $this->app->getBBUserToken();
+
+        $draft = clone $source;
+        $draft->setOwner($token->getUser());
+        $draft->setRevision($content->getRevision());
+        $draft->setState(Revision::STATE_MODIFIED);
+        $draft->setComment(sprintf('Revert to revision %d.', $revision));
+        $draft->setCreated();
+        $draft->setModified();
+
+        $this->entityManager->persist($draft);
+        $content->setDraft($draft);
 
         return $this;
     }

@@ -106,6 +106,24 @@ class Revision extends AbstractContent implements \Iterator, \Countable
     const STATE_TO_DELETE = 1005;
 
     /**
+     * Supported formats by ::jsonSerialize.
+     */
+    const JSON_REVISION_FORMAT = 4;
+
+    /**
+     * Formats supported by ::jsonSerialize.
+     *
+     * @var array
+     */
+    public static $jsonFormats = [
+        'default'    => self::JSON_DEFAULT_FORMAT,
+        'definition' => self::JSON_DEFINITION_FORMAT,
+        'concise'    => self::JSON_CONCISE_FORMAT,
+        'info'       => self::JSON_INFO_FORMAT,
+        'revision'   => self::JSON_REVISION_FORMAT,
+    ];
+
+    /**
      * The attached revisionned content.
      *
      * @var AbstractClassContent
@@ -576,7 +594,38 @@ class Revision extends AbstractContent implements \Iterator, \Countable
     /**
      * {@inheritdoc}
      */
-    public function jsonSerialize()
+    public function jsonSerialize($format = self::JSON_DEFAULT_FORMAT)
+    {
+        if (self::JSON_REVISION_FORMAT === $format) {
+            $data = $this->getSerializedRevisionData();
+        } else {
+            $data = $this->getSerializedDraftData();
+        }
+
+        return array_merge(parent::jsonSerialize(self::JSON_INFO_FORMAT), $data);
+    }
+
+    /**
+     * Returns an array of information to be returned on JSON_REVISON_FORMAT serialization.
+     *
+     * @return array
+     */
+    private function getSerializedRevisionData()
+    {
+        return [
+            'type' => $this->getShortClassname($this->getContent()),
+            'content_uid' => $this->getContent()->getUid(),
+            'owner' => $this->getOwner(),
+            'comment' => $this->getComment()
+        ];
+    }
+
+    /**
+     * Returns an array of information to be returned on not JSON_REVISON_FORMAT serialization.
+     *
+     * @return array
+     */
+    private function getSerializedDraftData()
     {
         $currentDraft = $this->getContent()->getDraft();
         $this->getContent()->setDraft(null);
@@ -605,7 +654,7 @@ class Revision extends AbstractContent implements \Iterator, \Countable
             $draftData['state'] = self::STATE_CONFLICTED;
         }
 
-        return array_merge(parent::jsonSerialize(self::JSON_INFO_FORMAT), $draftData);
+        return $draftData;
     }
 
     /**

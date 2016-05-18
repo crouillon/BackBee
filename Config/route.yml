@@ -544,6 +544,17 @@ bb.rest.classcontent.put_draft:
         type: "[a-zA-Z_\/]+"
         _method: PUT
 
+bb.rest.classcontent.patch_draft:
+    pattern: /rest/{version}/classcontent-draft/{type}/{uid}
+    defaults:
+        _action: patchDraftAction
+        _controller: BackBee\Rest\Controller\ClassContentController
+    requirements:
+        version: \d+
+        uid: \w{32}
+        type: "[a-zA-Z_\/]+"
+        _method: PATCH
+
 bb.rest.classcontent.put_draft_collection:
     pattern: /rest/{version}/classcontent-draft
     defaults:
@@ -739,6 +750,27 @@ bb.rest.keyword.patch:
     requirements:
         version: \d+
         _method: PATCH
+
+# API Rest Revision
+bb.rest.revision.get:
+    pattern: /rest/{version}/revision/{uid}
+    defaults:
+        _action: getAction
+        _controller: BackBee\Rest\Controller\RevisionController
+    requirements:
+        version: \d+
+        _method: GET
+
+bb.rest.revision.get_collection_by_content:
+  pattern: /rest/{version}/revision/{type}/{uid}
+  defaults:
+    _action: getCollectionByContentAction
+    _controller: BackBee\Rest\Controller\RevisionController
+  requirements:
+    version: \d+
+    uid: \w{32}
+    type: "[a-zA-Z_\/]+"
+    _method: GET
 
 # BackBee rss
 bb.rss:

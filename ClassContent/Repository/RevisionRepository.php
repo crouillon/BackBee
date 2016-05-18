@@ -28,8 +28,11 @@ use BackBee\ClassContent\ContentSet;
 use BackBee\ClassContent\Exception\ClassContentException;
 use BackBee\ClassContent\Revision;
 use BackBee\Security\Token\BBUserToken;
+
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\Tools\Pagination\Paginator;
+
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
@@ -43,6 +46,7 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
  */
 class RevisionRepository extends EntityRepository
 {
+
     /**
      * Checkouts a new revision for $content
      *
@@ -194,7 +198,7 @@ class RevisionRepository extends EntityRepository
                     ->orderBy('r._modified', 'desc')
                     ->setParameters([
                         'content' => $content,
-                        'owner'   => ''.UserSecurityIdentity::fromToken($token),
+                        'owner'   => '' . UserSecurityIdentity::fromToken($token),
                         'states'  => [Revision::STATE_ADDED, Revision::STATE_MODIFIED, Revision::STATE_CONFLICTED],
                     ])
                     ->getQuery()
@@ -254,7 +258,6 @@ class RevisionRepository extends EntityRepository
                         'DELETE FROM revision WHERE uid = :uid',
                         ['uid' => $data['_uid']]
                     );
-
                 }
             }
         }
@@ -265,13 +268,52 @@ class RevisionRepository extends EntityRepository
     /**
      * Returns revisions for $content
      *
-     * @param AbstractClassContent $content
+     * @param  AbstractClassContent $content The content of the revisions to look for.
+     * @param  array                $states  Optional, an array of states of revision
+     *                                       (empty by default).
+     * @param  integer              $start   Optional, the first result number (0 by default).
+     * @param  integer              $limit   Optional, the max number of results
      *
-     * @return array
+     * @return Paginator|Revision[]          If $limit is provided returns a Doctrine Paginator
+     *                                       elsewhere an array of maching revisions.
      */
-    public function getRevisions(AbstractClassContent $content)
+    public function getRevisions(AbstractClassContent $content, array $states = [], $start = 0, $limit = null)
     {
-        return $this->_em->getRepository('BackBee\ClassContent\Revision')->findBy(['_content' => $content]);
+        $query = $this->createQueryBuilder('r')
+                ->setFirstResult($start)
+                ->andWhere('r._content = :content')
+                ->orderBy('r._revision', 'desc')
+                ->setParameter('content', $content);
+
+        if (!empty($states)) {
+            $query->andWhere($query->expr()->in('r._state', $states));
+        }
+
+        if (null !== $limit) {
+            $query->setMaxResults($limit);
+
+            return new Paginator($query);
+        }
+
+        return $query->getQuery()->getResult();
+    }
+
+    /**
+     * Returns a revision of $content.
+     *
+     * @param  AbstractClassContent $content  The content.
+     * @param  integer              $revision Optional, the revision number (the last one by default).
+     *
+     * @return Revision|null                  The matching revision if found, null elsewhere.
+     */
+    public function getRevision(AbstractClassContent $content, $revision = null)
+    {
+        $criteria = ['_content' => $content];
+        if (!empty($revision)) {
+            $criteria['_revision'] = $revision;
+        }
+
+        return $this->findOneBy($criteria, ['_revision' => 'desc']);
     }
 
     /**
