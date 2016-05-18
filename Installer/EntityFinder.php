@@ -125,7 +125,7 @@ class EntityFinder
     {
         $src = file_get_contents($file);
         $offset = strpos($src, 'namespace');
-        $src = substr($src, 0, strpos($src, '{', $offset));
+        $src = substr($src, 0, strpos($src, ';', $offset)) . ';';
         $tokens = token_get_all($src);
         $count = count($tokens);
         $namespace = '';
