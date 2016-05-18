@@ -384,6 +384,40 @@ class ClassContentController extends AbstractRestController
     }
 
     /**
+     * Set draft of a content to a specific revision
+     *
+     * @param  string  $type    Type of the class content (ex: Element/text)
+     * @param  string  $uid     Unique identifier of the class content
+     * @param  Request $request The current request, parameter `revision` will be
+     *                          looked for. Possible values for `revision` are:
+     *                           * negative value: revert to current revision decrease from value.
+     *                           * empty value: revert to last committed revision.
+     *                           * positive value: revert to specific revision if exists.
+     *
+     * @return Symfony\Component\HttpFoundation\JsonResponse
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     */
+    public function  patchDraftAction($type, $uid, Request $request)
+    {
+        $this->granted('EDIT', $content = $this->getClassContentByTypeAndUid($type, $uid));
+
+        $revision = (int) $request->get('revision', 0);
+        if (0 >= $revision) {
+            $revision += $content->getRevision();
+        }
+
+        try {
+            $this->getClassContentManager()->revertToRevision($content, $revision);
+            $this->getEntityManager()->flush();
+        } catch (\InvalidArgumentException $e) {
+            throw new NotFoundHttpException(sprintf('Unknown revision %d for content %s.', $revision, $content->getObjectIdentifier()), $e);
+        }
+
+        return $this->createJsonResponse(null, 204);
+    }
+
+    /**
      * Updates collection of classcontents' drafts.
      *
      * @param Request $request
