@@ -26,7 +26,13 @@ namespace BackBee\Rest\Controller;
 use BackBee\ClassContent\AbstractClassContent;
 use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\Rest\Controller\Annotations as Rest;
+use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
+use BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException;
+use BackBee\Rest\Patcher\OperationSyntaxValidator;
+use BackBee\Rest\Patcher\PatcherInterface;
+
 use Doctrine\ORM\Tools\Pagination\Paginator;
+
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -400,18 +406,34 @@ class ClassContentController extends AbstractRestController
      */
     public function  patchDraftAction($type, $uid, Request $request)
     {
-        $this->granted('EDIT', $content = $this->getClassContentByTypeAndUid($type, $uid));
-
-        $revision = (int) $request->get('revision', 0);
-        if (0 >= $revision) {
-            $revision += $content->getRevision();
+        $operations = $request->request->all();
+        try {
+            (new OperationSyntaxValidator())->validate($operations);
+        } catch (InvalidOperationSyntaxException $e) {
+            throw new BadRequestHttpException('operation invalid syntax: ' . $e->getMessage());
         }
 
-        try {
-            $this->getClassContentManager()->revertToRevision($content, $revision);
-            $this->getEntityManager()->flush();
-        } catch (\InvalidArgumentException $e) {
-            throw new NotFoundHttpException(sprintf('Unknown revision %d for content %s.', $revision, $content->getObjectIdentifier()), $e);
+        $this->granted('EDIT', $content = $this->getClassContentByTypeAndUid($type, $uid));
+
+        foreach($operations as $operation) {
+            if (
+                PatcherInterface::REPLACE_OPERATION !== $operation['op'] ||
+                '/revision' !== $operation['path']
+            ) {
+                throw new UnauthorizedPatchOperationException($content, $operation['path'], $operation['op']);
+            }
+
+            $revision = (int) $operation['value'];
+            if (0 >= $revision) {
+                $revision += $content->getRevision();
+            }
+
+            try {
+                $this->getClassContentManager()->revertToRevision($content, $revision);
+                $this->getEntityManager()->flush();
+            } catch (\InvalidArgumentException $e) {
+                throw new NotFoundHttpException(sprintf('Unknown revision %d for content %s.', $revision, $content->getObjectIdentifier()), $e);
+            }
         }
 
         return $this->createJsonResponse(null, 204);
