@@ -251,7 +251,7 @@ class Configurator
         );
 
         foreach ($directories as $directory) {
-            $config->extend($directory, true);
+            $config->extend($directory, false);
         }
     }
 
