@@ -152,8 +152,10 @@ class ClassContentQueryBuilder extends QueryBuilder
         if (is_array($classes) && count($classes) !== 0) {
             $filters = array();
             foreach ($classes as $class) {
+                class_exists($class);
                 $filters[] = 'cc INSTANCE OF \''.  $class .'\'';
             }
+
             $filter = implode(' OR ', $filters);
 
             $this->andWhere($filter);
