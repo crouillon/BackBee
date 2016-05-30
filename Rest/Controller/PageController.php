@@ -519,6 +519,7 @@ class PageController extends AbstractRestController
             if ($page->getState() >= 4) {
                 $this->hardDelete($page);
             } else {
+                $this->granted('DELETE', $page);
                 $page->setState(4);
             }
         }
@@ -526,9 +527,9 @@ class PageController extends AbstractRestController
 
     /**
      * Moves the pages in trash.
-     * 
+     *
      * @param  Page $page The page to be moved in trash.
-     * 
+     *
      * @throws BadRequestHttpException Occures if $page is a root.
      */
     private function softDelete(Page $page)
@@ -544,14 +545,14 @@ class PageController extends AbstractRestController
             $this->granted('PUBLISH', $page); // user must have publish permission on the page
         }
 
-        $this->getPageRepository()->toTrash($page);        
+        $this->getPageRepository()->toTrash($page);
     }
 
     /**
      * Remove page from the database.
-     * 
+     *
      * @param  Page $page The page to be removeed.
-     * 
+     *
      * @throws BadRequestHttpException Occures if $page is not in trash or is a root.
      */
     private function hardDelete(Page $page)
@@ -564,7 +565,7 @@ class PageController extends AbstractRestController
             throw new BadRequestHttpException('Cannot remove root page of a site.');
         }
 
-        $this->granted('DELETE', $page);        
+        $this->granted('DELETE', $page);
 
         $this->getPageRepository()->deletePage($page);
     }

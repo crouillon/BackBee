@@ -412,12 +412,7 @@ class PageControllerTest extends RestTestCase
         $res4 = json_decode($response4->getContent(), true);
         $this->assertInternalType('array', $res4);
         $this->assertCount(1, $res4);
-        $this->assertEquals(200, $res4[0]['statusCode']);
-        $this->em->refresh($pages['offline']);
-        $this->assertEquals(4, $pages['offline']->getState());
-
-        // hard delete not working yet
-        //
+        $this->assertEquals(403, $res4[0]['statusCode']); // forbidden cause current user has not the right
     }
 
     public function testGetAncestorsAction()
