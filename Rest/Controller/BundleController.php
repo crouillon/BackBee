@@ -53,12 +53,19 @@ class BundleController extends AbstractRestController
 {
     /**
      * Returns a collection of declared bundles.
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function getCollectionAction()
     {
         $application = $this->getApplication();
         $cache = $application->getContainer()->get('cache.control');
-        $cacheId = md5('bundle_list_'.$application->getContext().'_'.$application->getEnvironment());
+        $cacheId = md5(
+                'bundle_list_'.
+                $application->getContext().'_'.
+                $application->getEnvironment().'_'.
+                $this->getApplication()->getBBUserToken()->getUser()->getUsername()
+        );
 
         if (!$application->isDebugMode() && false !== $value = $cache->load($cacheId)) {
             $bundles = json_decode($value, true);
@@ -80,6 +87,8 @@ class BundleController extends AbstractRestController
      * Returns the bundle with id $id if it exists, else a 404 response will be generated.
      *
      * @param string $id the id of the bundle we are looking for
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function getAction($id)
     {
@@ -106,6 +115,8 @@ class BundleController extends AbstractRestController
      * })
      *
      * @param string $id the id of the bundle we are looking for
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function patchAction($id, Request $request)
     {
@@ -152,6 +163,8 @@ class BundleController extends AbstractRestController
      * @param string $parameters     optionnal, action's parameters
      *
      * @return Response              Bundle Controller Response
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function accessBundleExposedRoutesAction($bundleName, $controllerName, $actionName, $parameters)
     {
