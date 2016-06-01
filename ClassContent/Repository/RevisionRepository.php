@@ -29,6 +29,7 @@ use BackBee\ClassContent\Exception\ClassContentException;
 use BackBee\ClassContent\Revision;
 use BackBee\Security\Token\BBUserToken;
 
+use Doctrine\Common\Persistence\Mapping\MappingException;
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Tools\Pagination\Paginator;
@@ -238,22 +239,24 @@ class RevisionRepository extends EntityRepository
                 '_state' => $states,
             ]);
         } catch (ConversionException $e) {
-            $qb = $this->createQueryBuilder('r');
-
-            $uids = $qb
-                ->select('r._uid')
-                ->where('r._owner = :owner')
-                ->setParameter('owner', $owner)
-                ->andWhere($qb->expr()->in('r._state', $states))
-                ->getQuery()
-                ->getResult()
-            ;
-
             $result = [];
-            foreach ($uids as $data) {
+            foreach ($this->getAllDraftsUids($owner, $states) as $data) {
                 try {
                     $result[] = $this->find($data['_uid']);
                 } catch (ConversionException $e) {
+                    $this->_em->getConnection()->executeUpdate(
+                        'DELETE FROM revision WHERE uid = :uid',
+                        ['uid' => $data['_uid']]
+                    );
+                }
+            }
+        } catch (MappingException $e) {
+            $result = [];
+            foreach ($this->getAllDraftsUids($owner, $states) as $data) {
+                $draft = $this->find($data['_uid']);
+                if (null !== $draft->getContent()) {
+                    $result[] = $draft;
+                } else {
                     $this->_em->getConnection()->executeUpdate(
                         'DELETE FROM revision WHERE uid = :uid',
                         ['uid' => $data['_uid']]
@@ -314,6 +317,20 @@ class RevisionRepository extends EntityRepository
         }
 
         return $this->findOneBy($criteria, ['_revision' => 'desc']);
+    }
+
+    protected function getAllDraftsUids($owner, array $states)
+    {
+         $qb = $this->createQueryBuilder('r');
+
+        return $qb
+            ->select('r._uid')
+            ->where('r._owner = :owner')
+            ->setParameter('owner', $owner)
+            ->andWhere($qb->expr()->in('r._state', $states))
+            ->getQuery()
+            ->getResult()
+        ;
     }
 
     /**
