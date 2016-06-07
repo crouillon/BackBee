@@ -19,7 +19,10 @@ trait FileJsonSerializeTrait
         if (AbstractContent::JSON_DEFAULT_FORMAT === $format || AbstractContent::JSON_CONCISE_FORMAT === $format) {
             $data['extra']['file_size'] = null;
             if (null !== $stat = $this->getParamValue('stat')) {
-                $stat = json_decode($stat, true);
+                if (is_string($stat)) {
+                    $stat = json_decode($stat, true);
+                }
+
                 if (is_array($stat) && isset($stat['size'])) {
                     $data['extra']['file_size'] = $stat['size'];
                 }
