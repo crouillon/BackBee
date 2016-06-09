@@ -132,7 +132,7 @@ class GroupController extends AbstractRestController
      *  @Assert\NotBlank(message="Name is required"),
      *  @Assert\Length(max=50, minMessage="Maximum length of name is 50 characters")
      * })
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('CREATE', '\BackBee\Security\Group')")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('CREATE', 'BackBee\\Security\\Group')")
      */
     public function postAction(Request $request)
     {

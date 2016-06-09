@@ -58,7 +58,7 @@ class MediaFolderController extends AbstractRestController
      * @Rest\ParamConverter(
      *   name="parent", id_name="parent_uid", id_source="query", class="BackBee\NestedNode\MediaFolder", required=false
      * )
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('VIEW','\BackBee\NestedNode\MediaFolder')")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('VIEW','BackBee\\NestedNode\\MediaFolder')")
      */
     public function getCollectionAction($start, MediaFolder $parent = null)
     {
@@ -148,7 +148,7 @@ class MediaFolderController extends AbstractRestController
      * @Rest\ParamConverter(
      *   name="parent", id_name="parent_uid", id_source="request", class="BackBee\NestedNode\MediaFolder", required=false
      * )
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('CREATE', '\BackBee\NestedNode\MediaFolder')")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('CREATE', 'BackBee\\NestedNode\\MediaFolder')")
      */
     public function postAction(Request $request, $parent = null)
     {
