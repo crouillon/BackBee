@@ -92,6 +92,7 @@ class PageListener
         $updateParents = false;
         $new = $old = null;
 
+        $pageCountModifier = -1;
         if ($eventArgs instanceof PreUpdateEventArgs) {
             if ($page instanceof Page && $eventArgs->hasChangedField('_section')) {
                 $old = $eventArgs->getOldValue('_section');
@@ -107,6 +108,9 @@ class PageListener
                 if ($page->getParent() !== null) {
                     if ($eventArgs->getNewValue('_state') >= 4) {
                         $old = $page->getParent()->getSection();
+                        if (!$page->isLeaf()) {
+                            $pageCountModifier = 0;
+                        }
                     } else {
                         $new = $page->getParent()->getSection();
                     }
@@ -123,7 +127,7 @@ class PageListener
             if ($updateParents) {
                 $em = $event->getApplication()->getEntityManager();
 
-                self::setSectionHasChildren($em, $old, -1);
+                self::setSectionHasChildren($em, $old, $pageCountModifier);
                 self::setSectionHasChildren($em, $new, +1);
             }
         }
