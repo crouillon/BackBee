@@ -394,10 +394,10 @@ class UpdateUsersRightsCommand extends AbstractCommand
                 // Création du group si introuvable
                 if (null === $group = $this->em
                         ->getRepository('BackBee\Security\Group')
-                        ->findOneBy(array('_description' => $group_identifier))) {
+                        ->findOneBy(array('_name' => $group_identifier))) {
                     // ensure group exists
                     $group = new Group();
-                    $group->setDescription($group_identifier)
+                    $group->setDescription(isset($rights['description']) ? $rights['description'] : $group_identifier)
                           ->setName($group_identifier);
 
                     $this->em->persist($group);
