@@ -25,7 +25,7 @@ namespace BackBee\Rest\Controller;
 
 use BackBee\NestedNode\Media;
 use BackBee\NestedNode\MediaFolder;
-use BackBee\ClassContent\AbstractContent;
+use BackBee\ClassContent\AbstractClassContent;
 use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\Rest\Controller\Annotations as Rest;
 
@@ -142,6 +142,8 @@ class MediaController extends AbstractRestController
 
         $media->setTitle($mediaTitle);
 
+        $this->autoCommitContent($media->getContent());
+
         $this->getEntityManager()->persist($media);
         $this->getEntityManager()->flush();
 
@@ -160,8 +162,6 @@ class MediaController extends AbstractRestController
         $mediaFolderUid = $request->request->get('folder_uid', null);
         $mediaTitle = $request->request->get('title', 'Untitled media');
 
-        $content = $this->getClassContentManager()->findOneByTypeAndUid($contentType, $contentUid);
-
         if (null === $mediaFolderUid) {
             $mediaFolder = $this->getMediaFolderRepository()->getRoot();
         } else {
@@ -170,6 +170,10 @@ class MediaController extends AbstractRestController
 
         if (null === $mediaFolder) {
             throw new NotFoundHttpException('Cannot find a media folder');
+        }
+
+        if (null !== $content = $this->getClassContentManager()->findOneByTypeAndUid($contentType, $contentUid)) {
+            $this->autoCommitContent($content);
         }
 
         $media = new Media();
@@ -262,7 +266,7 @@ class MediaController extends AbstractRestController
 
         if (null !== $contentType) {
             try {
-                $params['contentType'] = AbstractContent::getClassnameByContentType($contentType);
+                $params['contentType'] = AbstractClassContent::getClassnameByContentType($contentType);
             } catch (InvalidContentTypeException $e) {
                 throw new NotFoundHttpException(sprintf('Provided content type (:%s) is invalid.', $params['contentType']));
             }
@@ -283,5 +287,39 @@ class MediaController extends AbstractRestController
         }
 
         return $this->getMediaRepository()->getMediasByContent($content, $mediafolder);
+    }
+
+    /**
+     * Auto commit content put or post in the library.
+     *
+     * @param AbstractClassContent $content
+     */
+    private function autoCommitContent(AbstractClassContent $content)
+    {
+        // Commit subelement of the Media content
+        foreach ($content->getData() as $subcontent) {
+            if (!($subcontent instanceof AbstractClassContent)) {
+                continue;
+            }
+
+            $this->commit($subcontent);
+        }
+
+        // Commit the Media content itself
+        $this->commit($content);
+    }
+
+    /**
+     * Commit the content ignoring the execption throws if no draft available.
+     *
+     * @param AbstractClassContent $content
+     */
+    private function commit(AbstractClassContent $content)
+    {
+        try {
+            $this->getClassContentManager()->commit($content);
+        } catch (\Exception $ex) {
+            // No draft available, skip it
+        }
     }
 }
