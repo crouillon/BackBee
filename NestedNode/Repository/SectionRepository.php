@@ -177,7 +177,7 @@ class SectionRepository extends NestedNodeRepository
                 ->execute();
 
         foreach ($sections as $subsection) {
-            $this->deleteSection($subsection->getSection());
+            $page_repo->deletePage($subsection);
         }
 
         $this->getEntityManager()->remove($section);
