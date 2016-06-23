@@ -668,7 +668,7 @@ class PageRepository extends EntityRepository
      */
     private function moveSectionAsSiblingOf(Page $page, Page $target, $asPrevious = true)
     {
-        $delta = $page->getLevel() - $target->getLevel();
+        $delta = $target->getLevel() - $page->getLevel();
         $this->shiftLevel($page, $delta);
 
         $this->getEntityManager()
