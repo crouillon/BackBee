@@ -312,4 +312,17 @@ class MediaFolderController extends AbstractRestController
 
         return $response;
     }
+
+    /**
+     * Get folder ancestors
+     * @param Folder $folder the folder we want to get its ancestors
+     * @return \Symfony\Component\HttpFoundation\Response
+     * @Rest\ParamConverter(name="folder", class="BackBee\NestedNode\MediaFolder")
+     */
+    public function getAncestorsAction(MediaFolder $folder)
+    {
+        $ancestors = $this->getMediaFolderRepository()->getAncestors($folder);
+
+        return $this->createJsonResponse($ancestors);
+    }
 }
