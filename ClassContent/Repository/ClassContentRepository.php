@@ -607,7 +607,7 @@ class ClassContentRepository extends EntityRepository
             $qb->andWhere('cc._modified < :beforePubdateField')->setParameter('beforePubdateField', date('Y/m/d', $beforePubdateField));
         }
 
-        $hideNotLinked = (isset($cond['hideNotLinked'])) ? $cond['hideNotLinked'] : false;
+        $hideNotLinked = (isset($cond['hideNotLinked']) && $cond['hideNotLinked']) ? true : false;
         if (true === $hideNotLinked) {
             $qb->andWhere('cc._mainnode IS NOT NULL');
         }
