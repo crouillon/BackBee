@@ -380,6 +380,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function loadFullBundles()
     {
+        $data = [];
         foreach ($this->bundlesBaseDir as $serviceId => $baseDir) {
             $config = $this->loadAndGetBundleConfigByBaseDir($serviceId, $baseDir);
             $bundleConfig = $config->getSection('bundle');
@@ -389,7 +390,14 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
 
             $recipes = $this->getLoaderRecipesByConfig($config);
 
+            $data[] = [$config, $recipes];
+
             $this->loadServices($config, $this->getCallbackFromRecipes(self::SERVICE_RECIPE_KEY, $recipes));
+        }
+
+        foreach ($data as $row) {
+            list($config, $recipes) = $row;
+
             $this->loadEvents($config, $this->getCallbackFromRecipes(self::EVENT_RECIPE_KEY, $recipes));
             $this->loadRoutes($config, $this->getCallbackFromRecipes(self::ROUTE_RECIPE_KEY, $recipes));
             $this->addClassContentDir($config, $this->getCallbackFromRecipes(self::CLASSCONTENT_RECIPE_KEY, $recipes));
