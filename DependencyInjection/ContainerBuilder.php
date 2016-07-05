@@ -222,6 +222,7 @@ class ContainerBuilder
         $this->container->setParameter('environment', $this->environment);
 
         // set default backbee base directory, config directory and repository directory
+        $this->container->setParameter('bbapp.root.dir', $this->application->getBaseDir());
         $this->container->setParameter('bbapp.base.dir', $this->application->getBBDir());
         $this->container->setParameter('bbapp.config.dir', $this->application->getConfigDir());
         $this->container->setParameter('bbapp.repository.dir', $this->application->getRepository());
