@@ -657,6 +657,14 @@ bb.rest.media_folder.delete:
         version: \d+
         _method: DELETE
 
+bb.rest.media_folder.get_ancestors:
+  pattern: /rest/{version}/media-folder/{uid}/ancestors
+  defaults:
+    _action: getAncestorsAction
+    _controller: BackBee\Rest\Controller\MediaFolderController
+  requirements:
+    version: \d+
+    _method: GET
 
 # Media
 bb.media.get_collection:
