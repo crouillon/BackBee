@@ -149,16 +149,15 @@ class UserAuthenticationProvider implements AuthenticationProviderInterface
      */
     private function authenticateWithEncoder(TokenInterface $token, UserInterface $user)
     {
-        try {
-            $classname = \Symfony\Component\Security\Core\Util\ClassUtils::getRealClass($user);
-            if (true === $this->_encoderFactory
-                            ->getEncoder($classname)
-                            ->isPasswordValid($user->getPassword(), $token->getCredentials(), $user->getSalt())) {
-                return new UsernamePasswordToken($user, $user->getPassword(), $user->getRoles());
-            }
-        } catch (Exception $e) {
-            return false;
+        $classname = \Symfony\Component\Security\Core\Util\ClassUtils::getRealClass($user);
+
+        if (true === $this->_encoderFactory
+                ->getEncoder($classname)
+                ->isPasswordValid($user->getPassword(), $token->getCredentials(), $user->getSalt())) {
+            return new UsernamePasswordToken($user, $user->getPassword(), $user->getRoles());
         }
+
+        return false;
     }
 
     /**
