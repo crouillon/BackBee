@@ -156,10 +156,8 @@ class UserAuthenticationProvider implements AuthenticationProviderInterface
                     ->isPasswordValid($user->getPassword(), $token->getCredentials(), $user->getSalt())) {
                 return new UsernamePasswordToken($user, $user->getPassword(), $user->getRoles());
             }
-        } catch (Exception $e) {
-            return false;
-        }
-        
+        } catch (Exception $e) {}
+
         return false;
     }
 
