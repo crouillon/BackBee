@@ -31,7 +31,7 @@ use Doctrine\ORM\Mapping as ORM;
  * @copyright   Lp digital system
  * @author e.chau <eric.chau@lp-digital.fr>
  *
- * @ORM\Table(name="registry", indexes={@ORM\Index(name="IDX_KEY_SCOPE", columns={"`key`", "`scope`"})})
+ * @ORM\Table(name="registry", indexes={@ORM\Index(name="IDX_KEY_SCOPE_TYPE", columns={"`key`", "`scope`", "`type`"})})
  * @ORM\Entity(repositoryClass="BackBee\Bundle\Registry\Repository")
  */
 class Registry
