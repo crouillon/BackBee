@@ -39,8 +39,6 @@ use BackBee\Site\Site;
  * @ORM\Entity(repositoryClass="BackBee\NestedNode\Repository\SectionRepository")
  * @ORM\Table(name="section",
  *    indexes={
- *              @ORM\Index(name="IDX_UID", columns={"uid"}),
- *              @ORM\Index(name="IDX_ROOT_UID", columns={"root_uid"}),
  *              @ORM\Index(name="IDX_LEFTNODE", columns={"leftnode"}),
  *              @ORM\Index(name="IDX_RIGHTNODE", columns={"rightnode"}),
  *            }
