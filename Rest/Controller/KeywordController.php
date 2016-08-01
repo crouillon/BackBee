@@ -59,11 +59,16 @@ class KeywordController extends AbstractRestController
 
         $term = $request->query->get('term', null);
         $uids = array_filter(explode(',', $request->query->get('uids')));
+        $preserveOrder = (boolean) $request->query->get('preserve_order');
 
         if (null !== $term) {
             $results = $this->getKeywordRepository()->getLikeKeyWords($term);
         } elseif (!empty($uids)) {
             $results = $this->getKeywordRepository()->findBy(['_uid' => $uids]);
+
+            if ($preserveOrder === true) {
+                $results = $this->sortByUids($uids, $results);
+            }
         } else {
             $orderInfos = [
                 'field' => '_leftnode',
@@ -71,6 +76,7 @@ class KeywordController extends AbstractRestController
             ];
             $results = $this->getKeywordRepository()->getKeyWords($parent, $orderInfos, array('start' => $start, 'limit' => $count));
         }
+
         $total = count($results);
         if ($results instanceof Paginator) {
             $results = iterator_to_array($results->getIterator());

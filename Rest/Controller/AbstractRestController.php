@@ -250,4 +250,33 @@ abstract class AbstractRestController extends Controller implements RestControll
     {
         return $this->getRequest()->attributes->get($name);
     }
+
+    /**
+     * Keep the order of contents by the list of uids
+     *
+     * @param array $uids
+     * @param Paginator $contents
+     *
+     * @return null|Paginator
+     */
+    protected function sortByUids($uids, $contents)
+    {
+        $uids = (array) $uids;
+
+        $orderedUids = [];
+        foreach ($uids as $key => $uid) {
+            $orderedUids[$uid] = $key;
+        }
+
+        $formattedResult = [];
+        foreach ($contents as $content) {
+            if (isset($orderedUids[$content->getUid()])) {
+                $formattedResult[$orderedUids[$content->getUid()]] = $content;
+            }
+        }
+
+        ksort($formattedResult);
+
+        return $formattedResult;
+    }
 }

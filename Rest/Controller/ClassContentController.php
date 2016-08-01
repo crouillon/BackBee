@@ -718,6 +718,7 @@ class ClassContentController extends AbstractRestController
         ], $this->getRequest()->query->all());
 
         $criterias['only_online'] = (boolean) $criterias['only_online'];
+        $preserveOrder = isset($criterias['preserve_order']) ? (boolean) $criterias['preserve_order'] : false;
 
         $order_infos = [
             'column'    => isset($criterias['order_by']) ? $criterias['order_by'] : '_modified',
@@ -732,11 +733,16 @@ class ClassContentController extends AbstractRestController
         $criterias['contentIds'] = array_filter(explode(',', $this->getRequest()->query->get('uids', '')));
 
         unset($criterias['uids']);
+        unset($criterias['preserve_order']);
 
         $contents = $this->getEntityManager()
             ->getRepository('BackBee\ClassContent\AbstractClassContent')
             ->findContentsBySearch($classnames, $order_infos, $pagination, $criterias)
         ;
+
+        if ($preserveOrder === true) {
+            $contents = $this->sortByUids($criterias['contentIds'], $contents);
+        }
 
         foreach ($contents as $content) {
             $content->setDraft($this->getClassContentManager()->getDraft($content));
