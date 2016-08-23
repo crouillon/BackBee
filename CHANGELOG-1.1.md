@@ -2,7 +2,114 @@
 
 This changelog references the relevant changes (bug and security fixes) done in 1.0 minor versions.
 
-## v1.1-dev (still in progress)
+## v1.1.2
+
+### Misc
+
+ - [Improvement] Add unique index for each of three column instead one index on registry table
+ - [Improvement] Remove useless index on section table
+
+###Bundle
+
+ - [Improvement] Update BundleLoader::loadFullBundles() to load every bundle services first
+
+### ClassContent
+
+ - [Improvement] Update ::commit() and ::revert() of ClassContentManager
+ - [BUGFIX] Update ClassContentQueryBuilder::addClassFilter to ensure that requested classes are loaded
+ - [Improvement] Update RevisionRepository::getAllDrafts to delete revision of unknown content
+ - [Improvement] Improve FileJsonSerializeTrait::jsonSerialize()
+ - [Improvement] [CONTENT SELECTOR] Hide content that not are not linked to pages
+
+### Command
+
+ - [BUGFIX] [users:update_rights] An existing group was looked for by its description
+
+### Config
+
+ - [BUGFIX] Fix Configurator::doBundleConfigExtend() to apply registry override only if save_in_registry exists and equals to true
+ - [BUGFIX] Fix bundle configuration extend by file
+
+### DI
+
+ - [Improvement] Add project root directory into container's parameters
+
+### Installer
+
+ - [Improvement] Optimize EntityFinder::getNamespace()
+ - [BUGFIX] Fix EntityFinder::getNamespace() to refer to ';' instead of '{'
+
+### Page
+
+ - [BUGFIX] Tree was empty after deleting a page with sub-pages
+ - [BUGFIX] Fix delete page with section
+ - [BUGFIX] Fix tree levels for Section movements
+
+### REST
+
+ - [Improvement] [LINK SELECTOR] Search engine and page numbering added
+ - [Feature] Introduce Rest\RevisionController + Add ClassContentManager::revertToRevision() feature
+ - [Improvement] KeywordController::getCollectionAction() accepts now uids parameter
+ - [BUGFIX] Fix ClassContentController::patchDraftAction()
+ - [Security] Activate ACL for bundles access and edit
+ - [Secutiry] Add ACL checks on page soft delete
+ - [BugFix] Correction of some Rest\Security annotations
+ - [Improvment] [MediaController] Auto commit contents put or post in the library
+ - [Feature] Introduce Rest\MediaFolderController
+ - [Feature] Add a method to sort elements by uids preserve order
+
+### Security
+
+ - [BUGFIX] Fix authentication method to return a boolean. Fix this error : no authenticationprovider found for token of class usernamepasswordtoken
+ - [Improvement] Leave try catch and add return false
+ 
+### Util
+
+ - [Improvement] Update the way EntityManagerCreator set Doctrine metadata cache
+
+## v1.1.1
+
+### Misc
+
+ - [Improvement] Add registered method to handle fatal errors in BackBee application
+
+### Bundle
+
+ - [Improvement] Update BundleLoader::buildBundleDefinition() to also call ::started()
+ - [Improvement] Make MetaDataResolver::resolveConst() protected to allow proper overload by bundles
+
+### ClassContent
+
+ - [Improvement] Add width and height to the uploaded file infos
+ - [BUGFIX] Update RevisionRepository::getAllDrafts() to handle corrupted drafts
+ - [Improvement] Ensure node_uid is set while created a new content in a main zone of a page
+ - [BUGFIX] Fix IndexationRepository::getNodeUids() to avoid a 'Array to string conversion' notice
+
+### Command
+
+ - [BUGFIX] Fix CleanOrphan command to enable short classnames support
+
+### Controller
+
+ - [Improvement] Update FrontController to return response if exists after dispatch event
+
+### Rendering
+
+ - [BUGFIX] Fix Twig exception catching
+ - [Resources] Remove and rename classcontent element phtml templates
+
+### REST
+
+ - [Improvement] Update MediaController::getCollection() to allow find by content uid
+ - [BUGFIX] Fix MediaController::getCollection() to pass start and count arguments
+ - [Improvement] Refactor MediaRepository and Rest/Controller/MediaController
+
+### Tests
+
+ - [Improvement] Allow to define a specific vendor dir in MockBBApplication
+
+ 
+## v1.1.0
 
 ### Technical debt
 
