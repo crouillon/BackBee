@@ -1,5 +1,5 @@
 {
-    "name": "backbee/backbee",
+    "name": "backbee/backbee-php",
     "description": "BackBee is the next generation open source CMS",
     "keywords": ["CMS", "Core", "Content Management", "No backend CMS", "User Management"],
     "type": "library",
@@ -79,9 +79,9 @@
         "phpunit/dbunit": "1.3.1",
         "mikey179/vfsStream": "1.4.0",
         "fzaninotto/faker": "1.4.0",
-        "backbee/demo-bundle": "1.1.0",
-        "backbee/toolbar-bundle": "1.1.0",
-        "backbee/bb-core-js": "1.1.0",
+        "backbee/demo-bundle": "~1.2.0",
+        "backbee/toolbar-bundle": "~1.2.0",
+        "backbee/backbee-js": "~1.2.0",
         "symfony/phpunit-bridge": "~2.7.0"
     },
     "suggest": {
