@@ -23,8 +23,8 @@
         <em>No route.</em>
     {% else %}
         <table>
-            {% for i, route in collector.routes %}
-                <tr class="{{ i is odd ? 'odd' : 'even' }}" {% if route.name == collector.matchRoute %}style="color: red;"{% endif %}>
+            {% for route in collector.routes %}
+                <tr class="{{ loop.index is odd ? 'odd' : 'even' }}" {% if route.name == collector.matchRoute %}style="color: red;"{% endif %}>
                     <th>
                         @{{ route.name }}
                     </th>
