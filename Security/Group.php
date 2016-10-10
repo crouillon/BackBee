@@ -24,12 +24,12 @@
 namespace BackBee\Security;
 
 use Doctrine\Common\Collections\ArrayCollection;
-
+use Doctrine\ORM\Mapping as ORM;
 use JMS\Serializer\Annotation as Serializer;
-
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
 
-use Doctrine\ORM\Mapping as ORM;
+use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
+
 
 /**
  * @category    BackBee
@@ -41,7 +41,7 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * @Serializer\ExclusionPolicy("all")
  */
-class Group implements DomainObjectInterface
+class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
 {
     /**
      * Unique identifier of the group.
@@ -121,6 +121,16 @@ class Group implements DomainObjectInterface
     public function getId()
     {
         return $this->_id;
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @return integer
+     */
+    public function getUid()
+    {
+        return $this->getId();
     }
 
     /**

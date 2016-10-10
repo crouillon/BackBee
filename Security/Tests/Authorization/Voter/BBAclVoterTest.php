@@ -111,7 +111,7 @@ class BBAclVoterTest extends TestCase
     {
         $aclManager = $this->getBBApp()->getContainer()->get('security.acl_manager');
         $aclManager->insertOrUpdateClassAce(
-            new ObjectIdentity($this->user->getId(), get_class($this->user)),
+            ObjectIdentity::fromDomainObject($this->user),
             new UserSecurityIdentity($this->group->getObjectIdentifier(), get_class($this->group)),
             MaskBuilder::MASK_EDIT
         );
