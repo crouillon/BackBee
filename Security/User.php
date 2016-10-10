@@ -23,10 +23,12 @@
 
 namespace BackBee\Security;
 
-use BackBee\Installer\Annotation as BB;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use JMS\Serializer\Annotation as Serializer;
+
+use BackBee\Installer\Annotation as BB;
+use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 
 /**
  * User object in BackBee5.
@@ -42,7 +44,7 @@ use JMS\Serializer\Annotation as Serializer;
  * @ORM\HasLifecycleCallbacks
  * @BB\Fixtures(qty=20)
  */
-class User implements ApiUserInterface
+class User extends AbstractObjectIdentifiable implements ApiUserInterface
 {
 
     const PASSWORD_NOT_PICKED = 0;
@@ -236,6 +238,16 @@ class User implements ApiUserInterface
 
         $this->_groups = new ArrayCollection();
         $this->_revisions = new ArrayCollection();
+    }
+
+    /**
+     * Returns the user's unique identifier.
+     *
+     * @return integer
+     */
+    public function getUid()
+    {
+        return $this->_id;
     }
 
     /**

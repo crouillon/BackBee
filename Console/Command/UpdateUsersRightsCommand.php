@@ -24,7 +24,6 @@ namespace BackBee\Console\Command;
 use BackBee\BBApplication;
 use BackBee\Console\AbstractCommand;
 use BackBee\Exception\BBException;
-use BackBee\Installer\EntityFinder;
 use BackBee\Security\Group;
 use BackBee\Security\Acl\Permission\MaskBuilder;
 use BackBee\Security\User;
@@ -62,18 +61,12 @@ class UpdateUsersRightsCommand extends AbstractCommand
     private $aclProvider;
 
     /**
-     * EntityFinder object
-     * @var \BackBee\Installer\EntityFinder
-     */
-    private $entitiesFinder;
-
-    /**
      * Users/groups/rights tables
      * @var array
      */
     private $tables = [
         'user_group',
-        'group',  // anciennement groups
+        'group',
         'user',
         'acl_classes',
         'acl_entries',
@@ -127,7 +120,6 @@ class UpdateUsersRightsCommand extends AbstractCommand
 
         $this->em->getConnection()->getConfiguration()->setSQLLogger(null);
         $this->aclProvider = $this->bbapp->getSecurityContext()->getACLProvider();
-        $this->entitiesFinder = new EntityFinder(dirname($this->bbapp->getBBDir()));
         $this->classContentManager = $this->bbapp->getContainer()->get('classcontent.manager')
                                                                  ->setBBUserToken($this->bbapp->getBBUserToken());
 
@@ -388,13 +380,15 @@ class UpdateUsersRightsCommand extends AbstractCommand
             $this->em->getConnection()->executeQuery('DELETE FROM `acl_object_identity_ancestors` WHERE 1=1');
             $this->em->getConnection()->executeQuery('DELETE FROM `acl_security_identities` WHERE 1=1');
 
+            // First create all groups
             foreach ($usersRights as $group_identifier => $rights) {
-                $this->writeln(sprintf('Treating group: %s', $group_identifier));
+                $this->writeln(sprintf('Checking group: %s', $group_identifier));
 
                 // Création du group si introuvable
                 if (null === $group = $this->em
                         ->getRepository('BackBee\Security\Group')
                         ->findOneBy(array('_name' => $group_identifier))) {
+
                     // ensure group exists
                     $group = new Group();
                     $group->setDescription(isset($rights['description']) ? $rights['description'] : $group_identifier)
@@ -404,7 +398,11 @@ class UpdateUsersRightsCommand extends AbstractCommand
                     $this->em->flush($group);
                     $this->writeln(sprintf("\t- New group created: `%s`", $group_identifier));
                 }
+            }
 
+            // Then apply rights
+            foreach ($usersRights as $group_identifier => $rights) {
+                $this->writeln(sprintf('Treating group: %s', $group_identifier));
                 $securityIdentity = new UserSecurityIdentity($group->getObjectIdentifier(), 'BackBee\Security\Group');
 
                 // Sites
@@ -439,6 +437,18 @@ class UpdateUsersRightsCommand extends AbstractCommand
                     if (true === array_key_exists('bundles', $rights)) {
                         $this->addBundleRights($rights['bundles'], $this->aclProvider, $securityIdentity);
                         $this->writeln("\t- Rights set on bundles for group");
+                    }
+
+                    // Groups
+                    if (true === array_key_exists('groups', $rights)) {
+                        $this->addGroupRights($rights['groups'], $this->aclProvider, $securityIdentity);
+                        $this->writeln("\t- Rights set on groups for group");
+                    }
+
+                    // Users
+                    if (true === array_key_exists('users', $rights)) {
+                        $this->addUserRights($rights['users'], $this->aclProvider, $securityIdentity);
+                        $this->writeln("\t- Rights set on users for group");
                     }
 
                 } else {
@@ -719,6 +729,64 @@ class UpdateUsersRightsCommand extends AbstractCommand
             foreach ($this->bbapp->getBundles() as $bundle) {
                 $this->addObjectAcl($bundle, $aclProvider, $securityIdentity, $actions);
             }
+        }
+    }
+
+    private function addGroupRights($group_ref, $aclProvider, $securityIdentity)
+    {
+        if (false === array_key_exists('resources', $group_ref) || false === array_key_exists('actions', $group_ref)) {
+            return null;
+        }
+
+        $actions = $this->getActions($group_ref['actions']);
+        if (0 === count($actions)) {
+            $this->writeln('Notice: none actions defined on group' . PHP_EOL);
+            return array();
+        }
+
+        if (true === is_array($group_ref['resources'])) {
+            foreach ($group_ref['resources'] as $group_name) {
+                try {
+                    $group = $this->em->getRepository('BackBee\Security\Group')->findOneBy(['_name' => $group_name]);
+                } catch (\Exception $e) {
+                    $group = $this->em->getRepository('BackBee\Security\Group')->find($group_name);
+                }
+
+                if (null !== $group) {
+                    $this->addObjectAcl($group, $aclProvider, $securityIdentity, $actions);
+                }
+            }
+        } elseif ('all' === $group_ref['resources']) {
+            $this->addClassAcl('BackBee\Security\Group', $aclProvider, $securityIdentity, $actions);
+        }
+    }
+
+    private function addUserRights($user_ref, $aclProvider, $securityIdentity)
+    {
+        if (false === array_key_exists('resources', $user_ref) || false === array_key_exists('actions', $user_ref)) {
+            return null;
+        }
+
+        $actions = $this->getActions($user_ref['actions']);
+        if (0 === count($actions)) {
+            $this->writeln('Notice: none actions defined on user' . PHP_EOL);
+            return array();
+        }
+
+        if (true === is_array($user_ref['resources'])) {
+            foreach ($user_ref['resources'] as $username) {
+                try {
+                    $user = $this->em->getRepository('BackBee\Security\User')->findOneBy(['_login' => $username]);
+                } catch (\Exception $e) {
+                    $user = $this->em->getRepository('BackBee\Security\User')->find($username);
+                }
+
+                if (null !== $user) {
+                    $this->addObjectAcl($user, $aclProvider, $securityIdentity, $actions);
+                }
+            }
+        } elseif ('all' === $user_ref['resources']) {
+            $this->addClassAcl('BackBee\Security\User', $aclProvider, $securityIdentity, $actions);
         }
     }
 
