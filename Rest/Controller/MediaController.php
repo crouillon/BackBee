@@ -134,7 +134,9 @@ class MediaController extends AbstractRestController
     public function putAction($id, Request $request)
     {
         $mediaTitle = $request->get('title', 'Untitled media');
+        $mediaFolderUid = $request->get('media_folder', null);
         $media = $this->getMediaRepository()->find($id);
+        $currentMediaFoldierUid = $media->getMediaFolder()->getUid();
 
         if (null === $media) {
             throw new BadRequestHttpException(sprintf('Cannot find media with id `%s`.', $id));
@@ -142,8 +144,14 @@ class MediaController extends AbstractRestController
 
         $media->setTitle($mediaTitle);
 
-        $this->autoCommitContent($media->getContent());
+        if ((null !== $mediaFolderUid) && ($mediaFolderUid !== $currentMediaFoldierUid)) {
+            $mediaFolder = $this->getMediaFolderRepository()->find($mediaFolderUid);
+            if (null !== $mediaFolder) {
+                $media->setMediaFolder($mediaFolder);
+            }
+        }
 
+        $this->autoCommitContent($media->getContent());
         $this->getEntityManager()->persist($media);
         $this->getEntityManager()->flush();
 
