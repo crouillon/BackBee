@@ -392,7 +392,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
 
             $data[] = [$config, $recipes];
 
-            $this->loadServices($config, $this->getCallbackFromRecipes(self::SERVICE_RECIPE_KEY, $recipes));
+            $this->loadServices($config, $serviceId, $this->getCallbackFromRecipes(self::SERVICE_RECIPE_KEY, $recipes));
         }
 
         foreach ($data as $row) {
@@ -517,17 +517,24 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      * Loads bundle services into application's dependency injection container.
      *
      * @param Config        $config
+     * @param string        $serviceId
      * @param callable|null $recipe
      */
-    private function loadServices(Config $config, callable $recipe = null)
+    private function loadServices(Config $config, $serviceId, callable $recipe = null)
     {
         if (false === $this->runRecipe($config, $recipe)) {
-            $directories = BundleConfigDirectory::getDirectories(
-                $this->application->getBaseRepository(),
-                $this->application->getContext(),
-                $this->application->getEnvironment(),
-                basename(dirname($config->getBaseDir()))
-            );
+            $directories = array_unique(array_merge(
+                            BundleConfigDirectory::getDirectories(
+                                    $this->application->getBaseRepository(),
+                                    $this->application->getContext(),
+                                    $this->application->getEnvironment(),
+                                    str_replace('bundle.', '', $serviceId)
+                            ), BundleConfigDirectory::getDirectories(
+                                    $this->application->getBaseRepository(),
+                                    $this->application->getContext(),
+                                    $this->application->getEnvironment(),
+                                    basename(dirname($config->getBaseDir()))
+            )));
             array_unshift($directories, $this->getConfigDirByBundleBaseDir(dirname($config->getBaseDir())));
 
             foreach ($directories as $directory) {
