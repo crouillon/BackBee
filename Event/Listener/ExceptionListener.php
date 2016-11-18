@@ -50,7 +50,7 @@ class ExceptionListener
 
     /**
      * Class constructor.
-     * 
+     *
      * @param BBApplication $application
      */
     public function __construct(BBApplication $application)
@@ -71,6 +71,7 @@ class ExceptionListener
         if ($this->application->isDebugMode()) {
             $this->response = $this->getDebugTraceResponse($exception, $statusCode);
         } else {
+
             $this->response = $this->getErrorPageResponse($exception, $statusCode);
         }
 
@@ -82,10 +83,10 @@ class ExceptionListener
 
     /**
      * Return response with debug trace.
-     * 
+     *
      * @param \Exception $exception
      * @param int        $statusCode
-     * 
+     *
      * @return Response
      */
     private function getDebugTraceResponse(\Exception $exception, $statusCode)
@@ -103,16 +104,16 @@ class ExceptionListener
 
     /**
      * Returns response for rendered error page.
-     * 
+     *
      * @param  \Exception $exception
      * @param  int        $statusCode
-     * 
+     *
      * @return Response
      */
     private function getErrorPageResponse(\Exception $exception, $statusCode)
     {
         $parameter = $this->application->getContainer()->getParameter('error.default');
-        if ($this->application->getContainer()->getParameter('error.'.$statusCode)) {
+        if ($this->application->getContainer()->hasParameter('error.'.$statusCode)) {
             $parameter = $this->application->getContainer()->getParameter('error.'.$statusCode);
         }
 
@@ -123,9 +124,9 @@ class ExceptionListener
 
     /**
      * Returns a valid HTTP status code.
-     * 
+     *
      * @param  int $statusCode
-     * 
+     *
      * @return int
      */
     private function getHttpStatusCode($statusCode)
@@ -133,8 +134,8 @@ class ExceptionListener
         if ($statusCode >= 100 && $statusCode < 600) {
             return $statusCode;
         } elseif (
-                FrontControllerException::BAD_REQUEST === $statusCode 
-                || FrontControllerException::INTERNAL_ERROR === $statusCode 
+                FrontControllerException::BAD_REQUEST === $statusCode
+                || FrontControllerException::INTERNAL_ERROR === $statusCode
                 || FrontControllerException::NOT_FOUND === $statusCode
         ) {
             return $statusCode - FrontControllerException::UNKNOWN_ERROR;
