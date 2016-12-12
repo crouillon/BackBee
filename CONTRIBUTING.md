@@ -78,13 +78,13 @@ You need to install php-formatter before.
 Deciders & mergers
 ------------------
 
-BackBee have a core team who have rights on repositories.
+BackBee CMS have a core team who have rights on repositories.
 * Only mergers can merge your work on master branch.
 * If one of deciders give a ``:-1:`` on your suggest, the pull request won't be merged until he changes his mind.
 
 Actual mergers are @eric-chau and @crouillon, actual deciders are @pasinter, @ndufreche and @fkroockmann.
 
-All the core team is here to help you if you want to improve BackBee, we love contribution :)
+All the core team is here to help you if you want to improve BackBee CMS, we love contribution :)
 
 
 Thank you!

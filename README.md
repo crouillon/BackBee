@@ -1,20 +1,20 @@
-BackBee Core library
+BackBee CMS Core library
 =================
 
 [![Stories in Ready](https://badge.waffle.io/backbee/BackBee.png?label=in%20progress&title=Features%20in%20progress)](https://waffle.io/backbee/BackBee)
 [![Build Status](https://travis-ci.org/backbee/BackBee.svg?branch=master)](https://travis-ci.org/backbee/BackBee)
 
-**BackBee core** is the core part of an open source PHP CMS BackBee built on top of Symfony & Doctrine 2 components.
+**BackBee CMS core** is the core part of an open source PHP CMS BackBee built on top of Symfony & Doctrine 2 components.
 
 ## Overview ##
 
-BackBee is an open-source content management system. Because it incorporates HTML5 programming to an unprecedented extent, its usability and design flexibility surpasses all other content management systems that we know of.
+BackBee CMS is an open-source content management system. Because it incorporates HTML5 programming to an unprecedented extent, its usability and design flexibility surpasses all other content management systems that we know of.
 
 All changes in content – adding, deleting or changing text, images or new page elements – can be made directly on the page. Just click and type, or drag and drop. No back office. No shuttling back and forth between the back end and a “preview” page that often fails to match the final page display.
 
-BackBee offers what we like to call WYSIWYRG, What You See Is What You Really Get. And because it automatically saves different page versions, there’s no fear of losing changes along the way. If only everything in life could be this easy and secure.
+BackBee CMS offers what we like to call WYSIWYRG, What You See Is What You Really Get. And because it automatically saves different page versions, there’s no fear of losing changes along the way. If only everything in life could be this easy and secure.
 
-> this is the Core library repository of BackBee CMS, if you are looking for the packaged CMS, take a look to [BackBee standard edition](https://github.com/backbee/backbee-standard)
+> this is the Core library repository of BackBee CMS, if you are looking for the packaged CMS, take a look to [BackBee CMS](https://github.com/backbee/backbee-cms)
 
 
 :speech_balloon: If you want to have more information about the project progression you can take a look at the actual [Roadmap](https://waffle.io/backbee/backbee-standard).
@@ -32,9 +32,8 @@ BackBee offers what we like to call WYSIWYRG, What You See Is What You Really Ge
 
 :book: Documentation for api is available, and you can also follow BlogBee, a tutorial to help you make a complete website with BackBee CMS.
 
- - **[Developer PHP Api docs](http://api.backbee.com)**
- - **[Developper Documentation](http://docs.backbee.com)**
- - **[BlogBee (tutorial)](http://blogbee.backbee.com)**
+ - **[Developer PHP Api docs](http://developers.backbee.com/api)**
+ - **[Developper Documentation](http://developers.backbee.com/docs)**
 
 ## Ask for help ##
 
@@ -111,13 +110,13 @@ You need to install php-formatter before.
 
 ### Deciders & mergers
 
-BackBee have a core team who have rights on repositories.
+BackBee CMS have a core team who have rights on repositories.
 * Only mergers can merge your work on master branch;
 * If one of the deciders gives a ``:-1:`` on your suggestion, the pull request won't be merged until he changes his mind;
 
 Current mergers are @eric-chau and @crouillon, current deciders are @ndufreche,  @fkroockmann, @hbaptiste and @mickaelandrieu.
 
-All the core team is here to help you if you want to improve BackBee, we love contribution :)
+All the core team is here to help you if you want to improve BackBee CMS, we love contribution :)
 
 
 Thank you!
@@ -136,19 +135,19 @@ BackBee also need ``mbstring``, ``mcrypt``, ``pdo`` PHP extensions.
 Installation
 ------------
 
-The recommended way to install BackBee is through
+The recommended way to install BackBee CMS is through
 [Composer](http://getcomposer.org/):
 
 ``` json
 {
     "require": {
-        "backbee/backbee": "@stable"
+        "backbee/backbee-php": "@stable"
     }
 }
 ```
 
 **Protip:** you should browse the
-[`backbee/backbee`](https://packagist.org/packages/backbee/backbee)
+[`backbee/backbee-php`](https://packagist.org/packages/backbee/backbee-php)
 page to choose a stable version to use, avoid the `@stable` meta constraint.
 
 ---
