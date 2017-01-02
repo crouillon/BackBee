@@ -944,6 +944,9 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
             } elseif ('array' !== $type) {
                 try {
                     $type = self::getFullClassname($type);
+                    if (false == $type) {
+                        continue;
+                    }
                 } catch (\InvalidArgumentException $e) {
                     throw new ClassNotFoundException(sprintf('Unknown class content %s.', $type), 0, $e);
                 }
