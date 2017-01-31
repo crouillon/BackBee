@@ -25,6 +25,7 @@ namespace BackBee\Bundle;
 
 use Symfony\Component\Security\Core\Util\ClassUtils;
 use BackBee\ApplicationInterface;
+use BackBee\Bundle\Event\BundleStartEvent;
 use BackBee\Routing\RouteCollection;
 use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 
@@ -226,6 +227,13 @@ abstract class AbstractBundle implements BundleInterface
     public function started()
     {
         $this->started = true;
+
+        if ($this->application->getContainer()->has('event.dispatcher')) {
+            $this->application
+                ->getContainer()
+                ->get('event.dispatcher')
+                ->dispatch(sprintf('bundle.%s.started', $this->getId()), new BundleStartEvent($this));
+        }
     }
 
     /**

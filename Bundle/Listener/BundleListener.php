@@ -23,6 +23,7 @@
 
 namespace BackBee\Bundle\Listener;
 
+use BackBee\Bundle\Event\BundleStopEvent;
 use BackBee\Event\Event;
 
 /**
@@ -35,6 +36,7 @@ use BackBee\Event\Event;
  */
 class BundleListener
 {
+
     /**
      * Occurs on `bbapplication.stop` event to stop every started bundles.
      *
@@ -43,9 +45,21 @@ class BundleListener
     public static function onApplicationStop(Event $event)
     {
         $container = $event->getTarget()->getContainer();
+        $eventDispatcher = $container->has('event.dispatcher') ? $container->get('event.dispatcher') : null;
+
         foreach (array_keys($container->findTaggedServiceIds('bundle')) as $bundleId) {
-            if ($container->hasInstanceOf($bundleId)) {
-                $container->get($bundleId)->stop();
+            if (!$container->hasInstanceOf($bundleId)) {
+                continue;
+            }
+
+            $bundle = $container->get($bundleId);
+            $bundle->stop();
+
+            if (null !== $eventDispatcher) {
+                $eventDispatcher->dispatch(
+                    sprintf('bundle.%s.stopped', $bundleId),
+                    new BundleStopEvent($container->get($bundleId))
+                );
             }
         }
     }
