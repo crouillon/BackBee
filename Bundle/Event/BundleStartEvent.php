@@ -23,51 +23,12 @@
 
 namespace BackBee\Bundle\Event;
 
-use BackBee\Bundle\BundleInterface;
-use BackBee\Event\Event;
-
 /**
  * Event dispatch on bundle start.
  *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @author    Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class BundleStartEvent extends Event
+class BundleStartEvent extends AbstractBundle
 {
 
-    /**
-     * The targeted bundle.
-     *
-     * @var BundleInterface
-     */
-    private $bundle;
-
-    /**
-     * Event constructor.
-     *
-     * @param  BundleInterface $target
-     * @param  mixed           $eventArgs
-     * @throws \InvalidArgumentException if the provided target does not implement BackBee\Bundle\BundleInterface
-     */
-    public function __construct($target, $eventArgs = null)
-    {
-        if (!($target instanceof BundleInterface)) {
-            throw new \InvalidArgumentException(
-                'Target of bundle update or action event must be instance of BackBee\Bundle\BundleInterface'
-            );
-        }
-
-        parent::__construct($target, $eventArgs);
-
-        $this->bundle = $target;
-    }
-
-    /**
-     * Returns the bundle which has just started.
-     *
-     * @return
-     */
-    public function getBundle()
-    {
-        return $this->bundle;
-    }
 }

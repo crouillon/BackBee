@@ -45,14 +45,21 @@ class BundleListener
     public static function onApplicationStop(Event $event)
     {
         $container = $event->getTarget()->getContainer();
-        foreach (array_keys($container->findTaggedServiceIds('bundle')) as $bundleId) {
-            if ($container->hasInstanceOf($bundleId)) {
-                $container->get($bundleId)->stop();
+        $eventDispatcher = $container->has('event.dispatcher') ? $container->get('event.dispatcher') : null;
 
-                if ($container->has('event.dispatcher')) {
-                    $container->get('event.dispatcher')
-                            ->dispatch(sprintf('bundle.%s.stopped', $bundleId), new BundleStopEvent($container->get($bundleId)));
-                }
+        foreach (array_keys($container->findTaggedServiceIds('bundle')) as $bundleId) {
+            if (!$container->hasInstanceOf($bundleId)) {
+                continue;
+            }
+
+            $bundle = $container->get($bundleId);
+            $bundle->stop();
+
+            if (null !== $eventDispatcher) {
+                $eventDispatcher->dispatch(
+                    sprintf('bundle.%s.stopped', $bundleId),
+                    new BundleStopEvent($container->get($bundleId))
+                );
             }
         }
     }
