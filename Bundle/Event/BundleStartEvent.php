@@ -28,7 +28,7 @@ namespace BackBee\Bundle\Event;
  *
  * @author    Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class BundleStartEvent extends AbstractBundle
+class BundleStartEvent extends AbstractBundleEvent
 {
 
 }
