@@ -400,10 +400,10 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
     private function hasRequestAvailable()
     {
         return (
-                null !== $this->application
-                && !$this->application->isClientSAPI()
-                && $this->application->isStarted()
-                );
+            null !== $this->application
+            && !$this->application->isClientSAPI()
+            && $this->application->isStarted()
+        );
     }
 
     /**
@@ -421,12 +421,13 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
             return $pathinfo;
         }
 
-        $protocol = $this->defaultScheme;
-        if (!empty($this->defaultScheme)) {
-            $protocol .= ':';
+        $protocol = '';
+        if (null === parse_url($siteUsed->getServerName(), PHP_URL_SCHEME)) {
+            $protocol = (string) $this->defaultScheme;
+            $protocol = $protocol . ($protocol ? ':' : '') . '//';
         }
 
-        return $protocol.'//'.$siteUsed->getServerName().$pathinfo;
+        return $protocol . $siteUsed->getServerName() . $pathinfo;
     }
 
     /**
@@ -455,9 +456,9 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
 
     /**
      * Returns the current site if defined.
-     * 
+     *
      * @param  Site|null $site Optional, if provided, will be return.
-     * 
+     *
      * @return Site|null
      */
     private function getCurrentSite(Site $site = null)
