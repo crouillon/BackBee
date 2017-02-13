@@ -55,7 +55,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
  */
 class BBApplication implements ApplicationInterface, DumpableServiceInterface, DumpableServiceProxyInterface
 {
-    const VERSION = '1.1.2';
+    const VERSION = '1.2.2';
 
     /**
      * application's service container.
