@@ -28,12 +28,12 @@ use BackBee\ClassContent\ContentSet;
 use BackBee\ClassContent\Exception\ClassContentException;
 use BackBee\ClassContent\Revision;
 use BackBee\Security\Token\BBUserToken;
-
 use Doctrine\Common\Persistence\Mapping\MappingException;
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\NoResultException;
+use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\Tools\Pagination\Paginator;
-
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
@@ -206,13 +206,21 @@ class RevisionRepository extends EntityRepository
                 ;
 
                 $revision = $q->getSingleResult();
-            } catch (\Exception $e) {
+            } catch (NoResultException $e) {
                 if ($checkoutOnMissing) {
                     $revision = $this->checkout($content, $token);
                     $this->_em->persist($revision);
                 } else {
                     $revision = null;
                 }
+            } catch (NonUniqueResultException $e) {
+                $drafts = $q->getResult();
+                $revision = array_shift($drafts);
+                foreach ($drafts as $draft) {
+                    $this->_em->remove($draft);
+                    $this->_em->flush($draft);
+                }
+
             }
         }
 
