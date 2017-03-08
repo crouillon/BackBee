@@ -140,7 +140,7 @@ class ResourceController extends AbstractRestController
     private function buildData($originalName, $extension)
     {
         $tmpDirectory = $this->getApplication()->getTemporaryDir();
-        $fileName = md5($originalName . time()) . '.' . $extension;
+        $fileName = md5($originalName . uniqid('', true)) . '.' . $extension;
 
         $data = [
             'originalname' => $originalName,
