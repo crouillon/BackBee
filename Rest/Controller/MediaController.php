@@ -29,7 +29,8 @@ use BackBee\ClassContent\AbstractClassContent;
 use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\Rest\Controller\Annotations as Rest;
 
-use Doctrine\ORM\Tools\Pagination\Paginator;
+use Doctrine\ORM\EntityRepository,
+    Doctrine\ORM\Tools\Pagination\Paginator;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,13 +42,15 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * Description of MediaController
  *
  * @author h.baptiste <harris.baptiste@lp-digital.fr>
+ * @author Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 class MediaController extends AbstractRestController
 {
     /**
      * Creates an instance of MediaController.
      *
-     * @param ContainerInterface $app
+     * @param ContainerInterface|null $container
+     * @internal param ContainerInterface $app
      */
     public function setContainer(ContainerInterface $container = null)
     {
@@ -65,11 +68,13 @@ class MediaController extends AbstractRestController
      * @param Request $request
      *
      * @Rest\Pagination(default_count=25, max_count=100)
+     * @return Response
      */
     public function getCollectionAction(Request $request, $start, $count)
     {
         $mediafolder = null;
         $folderUid = $request->get('mediaFolder_uid', null);
+
         if (null === $folderUid) {
             $mediafolder = $this->getMediaFolderRepository()->getRoot();
         } else {
@@ -81,6 +86,7 @@ class MediaController extends AbstractRestController
         }
 
         $paginator = null;
+
         if ($request->query->has('content_uid')) {
             $paginator = $this->getCollectionByContent($request->query->get('content_uid'), $mediafolder);
         } else {
@@ -90,8 +96,13 @@ class MediaController extends AbstractRestController
         $iterator = $paginator->getIterator();
         $results = [];
         while ($iterator->valid()) {
-          $results[] = $iterator->current();
-          $iterator->next();
+
+            if($this->isGranted('VIEW', $iterator->current()->getMediaFolder())){
+
+                $results[] = $iterator->current();
+            }
+
+            $iterator->next();
         }
 
         $pager = $request->query->has('usePagination') ? $paginator : null;
@@ -105,6 +116,8 @@ class MediaController extends AbstractRestController
     }
 
     /**
+     * Delete media.
+     *
      * @param  mixed $id
      * @return Response
      * @throws BadRequestHttpException
@@ -159,6 +172,8 @@ class MediaController extends AbstractRestController
     }
 
     /**
+     * Post a new media.
+     *
      * @param  Request $request
      * @return Response
      * @throws BadRequestHttpException
@@ -206,27 +221,47 @@ class MediaController extends AbstractRestController
         ]);
     }
 
+    /**
+     * Return an media repository.
+     *
+     * @return EntityRepository
+     */
     private function getMediaRepository()
     {
         return $this->getEntityManager()->getRepository('BackBee\NestedNode\Media');
     }
 
+    /**
+     * Return an media folder repository.
+     *
+     * @return EntityRepository
+     */
     private function getMediaFolderRepository()
     {
         return $this->getEntityManager()->getRepository('BackBee\NestedNode\MediaFolder');
     }
 
+    /**
+     * Get class content manager.
+     *
+     * @return mixed
+     */
     private function getClassContentManager()
     {
         $manager = $this->getApplication()
-            ->getContainer()
-            ->get('classcontent.manager')
-            ->setBBUserToken($this->getApplication()->getBBUserToken())
-        ;
+                        ->getContainer()
+                        ->get('classcontent.manager')
+                        ->setBBUserToken($this->getApplication()->getBBUserToken());
 
         return $manager;
     }
 
+    /**
+     * Generate json.
+     *
+     * @param $collection
+     * @return array
+     */
     private function mediaToJson($collection)
     {
         $result = [];
@@ -253,6 +288,15 @@ class MediaController extends AbstractRestController
         return $result;
     }
 
+    /**
+     * Add range to content.
+     *
+     * @param   Response    $response
+     * @param   array       $collection
+     * @param   int         $offset
+     * @param   int         $limit
+     * @return  Response
+     */
     private function addRangeToContent(Response $response, $collection, $offset, $limit)
     {
         $total = "*";
@@ -267,7 +311,16 @@ class MediaController extends AbstractRestController
         return $response;
     }
 
-    private function getClassicCollection(Request $request, $mediafolder, $start, $count)
+    /**
+     * Get classic collection.
+     *
+     * @param   Request     $request
+     * @param   MediaFolder $mediaFolder
+     * @param   int         $start
+     * @param   int         $count
+     * @return  mixed
+     */
+    private function getClassicCollection(Request $request, $mediaFolder, $start, $count)
     {
         $params = $request->query->all();
         $contentType =  $request->get('contentType', null);
@@ -280,13 +333,20 @@ class MediaController extends AbstractRestController
             }
         }
 
-        return $this->getMediaRepository()->getMedias($mediafolder, $params, '_modified', 'desc', [
+        return $this->getMediaRepository()->getMedias($mediaFolder, $params, '_modified', 'desc', [
             'start' => $start,
             'limit' => $count,
         ]);
     }
 
-    private function getCollectionByContent($contentUid, MediaFolder $mediafolder)
+    /**
+     * Get collection by content.
+     *
+     * @param   string      $contentUid
+     * @param   MediaFolder $mediaFolder
+     * @return  mixed
+     */
+    private function getCollectionByContent($contentUid, MediaFolder $mediaFolder)
     {
         $content = $this->getEntityManager()->find('BackBee\ClassContent\AbstractClassContent', $contentUid);
 
@@ -294,7 +354,7 @@ class MediaController extends AbstractRestController
             throw new NotFoundHttpException("No content find with uid '{$contentUid}'");
         }
 
-        return $this->getMediaRepository()->getMediasByContent($content, $mediafolder);
+        return $this->getMediaRepository()->getMediasByContent($content, $mediaFolder);
     }
 
     /**

@@ -107,16 +107,6 @@ class GroupController extends AbstractRestController
      */
     public function putAction(Group $group, Request $request)
     {
-        $site = $this->getSite($request);
-
-        if ($this->isDuplicated($request->request->get('name'), $site)) {
-            return new JsonResponse([
-                'errors' => [
-                    'name' => 'Group already exists.',
-                ],
-            ], 400);
-        }
-
         $this->deserializeEntity($request->request->all(), $group);
 
         $this->getEntityManager()->persist($group);
