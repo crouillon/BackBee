@@ -55,7 +55,15 @@ class SecurityController extends AbstractRestController
         $token->setUser($request->request->get('username'));
         $token->setCreated($created);
         $token->setNonce(md5(uniqid('', true)));
-        $token->setDigest(md5($token->getNonce().$created.md5($request->request->get('password'))));
+        $encodedPassword = $this
+            ->getApplication()
+            ->getSecurityContext()
+            ->getEncoderFactory()
+            ->getEncoder('BackBee\Security\User')
+            ->encodePassword($request->request->get('password'))
+        ;
+
+        $token->setDigest(md5($token->getNonce().$created.$encodedPassword));
 
         $tokenAuthenticated = $this->getApplication()->getSecurityContext()->getAuthenticationManager()
             ->authenticate($token)
