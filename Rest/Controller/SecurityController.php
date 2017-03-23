@@ -60,7 +60,7 @@ class SecurityController extends AbstractRestController
             ->getSecurityContext()
             ->getEncoderFactory()
             ->getEncoder('BackBee\Security\User')
-            ->encodePassword($request->request->get('password'))
+            ->encodePassword($request->request->get('password'), '')
         ;
 
         $token->setDigest(md5($token->getNonce().$created.$encodedPassword));
