@@ -23,13 +23,13 @@
 
 namespace BackBee\Rest\Controller;
 
+use BackBee\Rest\Controller\Annotations as Rest;
+use BackBee\Rest\Controller\Event\ValidateFileUploadEvent;
+use BackBee\Utils\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-
-use BackBee\Rest\Controller\Annotations as Rest;
-use BackBee\Utils\File\File;
 
 /**
  * REST API for Resources
@@ -126,6 +126,11 @@ class ResourceController extends AbstractRestController
     {
         $data = $this->buildData($originalName, File::getExtension($originalName, false));
         file_put_contents($data['path'], base64_decode($src));
+
+        $this->application->getEventDispatcher()->dispatch(
+            ValidateFileUploadEvent::EVENT_NAME,
+            new ValidateFileUploadEvent($data['path'])
+        );
 
         return $data;
     }
