@@ -73,7 +73,7 @@ class PageListener
             $repo = $em->getRepository('BackBee\NestedNode\Page');
             $notDeletedDescendants = $repo->getNotDeletedDescendants($section->getPage(), 1, false, [], true, 0, 2);
 
-            $section->setHasChildren(($notDeletedDescendants->getIterator()->count() + $pageCountModifier) > 0);
+            $section->setHasChildren((count($notDeletedDescendants) + $pageCountModifier) > 0);
             $em->getUnitOfWork()->recomputeSingleEntityChangeSet($em->getClassMetadata('BackBee\NestedNode\Section'), $section);
         }
     }
