@@ -931,30 +931,7 @@ abstract class AbstractRenderer implements RendererInterface
      */
     protected function insertInArrayOnPostion(array &$array, $new_value, $position)
     {
-        if (in_array($new_value, $array)) {
-            foreach ($array as $key => $value) {
-                if ($value == $new_value) {
-                    unset($array[$key]);
-                    $count = count($array);
-                    for ($i = ($key + 1); $i < $count; $i++) {
-                        $array[$i - 1] = $array[$i];
-                    }
-                    break;
-                }
-            }
-        }
-        if ($position <= 0) {
-            $position = 0;
-            array_unshift($array, $new_value);
-        } elseif ($position >= count($array)) {
-            $array[count($array) - 1] = $new_value;
-        } else {
-            for ($i = (count($array) - 1); $i >= $position; $i--) {
-                $array[$i + 1] = $array[$i];
-            }
-            $array[$position] = $new_value;
-        }
-        ksort($array);
+        array_splice($array, intval($position), 0, array($new_value));
     }
 
     /**
