@@ -34,6 +34,8 @@ use Symfony\Component\Security\Core\Exception\AccountStatusException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\ProviderNotFoundException;
 
+use BackBee\Security\Exception\SecurityException;
+
 /**
  * @category    BackBee
  *
@@ -108,6 +110,8 @@ class AuthenticationManager implements AuthenticationManagerInterface
             } catch (AccountStatusException $e) {
                 throw $e;
             } catch (AuthenticationException $e) {
+                $lastException = $e;
+            } catch (SecurityException $e) {
                 $lastException = $e;
             }
         }
