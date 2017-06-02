@@ -950,7 +950,7 @@ class Page extends AbstractObjectIdentifiable implements RenderableInterface, Do
             throw new \LogicException("Root page state must be online.");
         }
 
-        if (!$this->isOnline() && (self::STATE_ONLINE & $state) && !$this->getPublishing()) {
+        if (!$this->isOnline() && (self::STATE_ONLINE & $state) && !$this->isRoot() && !$this->getPublishing()) {
             $this->setPublishing(new \DateTime());
         }
 
