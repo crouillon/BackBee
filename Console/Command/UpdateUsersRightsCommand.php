@@ -23,18 +23,27 @@ namespace BackBee\Console\Command;
 
 use BackBee\BBApplication;
 use BackBee\Console\AbstractCommand;
-use BackBee\Exception\BBException;
 use BackBee\Security\Group;
 use BackBee\Security\Acl\Permission\MaskBuilder;
 use BackBee\Security\User;
+use BackBee\Utils\Collection\Collection;
+use BackBee\Site\Site;
+use BackBee\Site\Layout;
+use BackBee\NestedNode\Page;
+use BackBee\NestedNode\MediaFolder;
+use BackBee\ClassContent\AbstractClassContent;
 
-use Doctrine\ORM\Tools\SchemaTool;
+use Doctrine\ORM\EntityManager;
 
+use Symfony\Component\Security\Acl\Dbal\Schema;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Security\Acl\Dbal\MutableAclProvider;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 /**
  * Update base users right command
@@ -42,21 +51,30 @@ use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
  */
 class UpdateUsersRightsCommand extends AbstractCommand
 {
+
     /**
-     * The current entity manager
-     * @var \Doctrine\ORM\EntityManager
+     * @var OutputInterface
+     */
+    private $output;
+
+    /**
+     * The current entity manager.
+     *
+     * @var EntityManager
      */
     private $em;
 
     /**
-     * The current BackBee application
-     * @var \BackBee\BBApplication
+     * The current BackBee application.
+     *
+     * @var BBApplication
      */
     private $bbapp;
 
     /**
-     * ACL provider object
-     * @var \Symfony\Component\Security\Acl\Dbal\MutableAclProvider
+     * ACL provider object.
+     *
+     * @var MutableAclProvider
      */
     private $aclProvider;
 
@@ -88,17 +106,86 @@ class UpdateUsersRightsCommand extends AbstractCommand
     {
         $this
             ->setName('users:update_rights')
-            ->setDescription('Update users rights')
-            ->addOption('clean', null, InputOption::VALUE_OPTIONAL, 'Cleaning all tables', false)
+            ->setDescription('Update users rights from a yaml file')
+            ->addOption('clean', null, InputOption::VALUE_OPTIONAL, 'Cleaning all tables including group and user, <comment>to be used with caution</comment>', false)
             ->addOption('memory-limit', 'm', InputOption::VALUE_OPTIONAL, 'The memory limit to set.')
-            # New user informations
-            ->addOption('user_name', 'user_name', InputOption::VALUE_OPTIONAL, 'username.')
-            ->addOption('user_password', 'user_password', InputOption::VALUE_OPTIONAL, 'user password.')
-            ->addOption('user_email', 'user_email', InputOption::VALUE_OPTIONAL, 'user email.')
-            ->addOption('user_firstname', 'user_firstname', InputOption::VALUE_OPTIONAL, 'user firstname.')
-            ->addOption('user_lastname', 'user_lastname', InputOption::VALUE_OPTIONAL, 'user lastname.')
-            ->addOption('user_group', 'user_group', InputOption::VALUE_OPTIONAL, 'user group.')
+            ->addOption('file', 'f', InputOption::VALUE_OPTIONAL, 'The yaml file to be parsed, <comment>[default: %config_dir%/groups.yml]</comment>')
+            ->setHelp(<<<EOF
+The <info>%command.name%</info> updates users rights from a yaml file. The supported syntax for yaml file is:
+    <info>group_name</info>:
+        <info>description</info>: Description of the group of users
+        # Rights for Site instances
+        <info>sites</info>:
+            <info>resources</info>: (all|[sites uids and/or sites labels])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for Layout instances
+        <info>layouts</info>:
+            <info>resources</info>: (all|[layouts uids and/or layouts labels])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for Workflow instances
+        <info>workflow</info>:
+            <info>resources</info>: (all|[workflow uids and/or workflow labels])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for MediaFolder instances
+        <info>mediafolders</info>:
+            <info>resources</info>: (all|[folders uids and/or folders urls])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for Page instances
+        <info>pages</info>:
+            <info>resources</info>: (all|[pages uids and/or pages urls])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for AbstractClassContent instances
+        <info>contents</info>:
+            <info>resources</info>: (all|[sites uids and/or sites label])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for AbstractBundle instances
+        <info>bundles</info>:
+            <info>resources</info>: (all|[bundle service ids])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for User instances
+        <info>users</info>:
+            <info>resources</info>: (all|[user uids])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+        # Rights for Group instances
+        <info>groups</info>:
+            <info>resources</info>: (all|[group uids])
+            <info>actions</info>: (all|[none or several from view, create, edit, publish, delete])
+EOF
+            )
         ;
+    }
+
+    /**
+     * Initializes the command just after the input has been validated.
+     *
+     * This is mainly useful when a lot of commands extends one main command
+     * where some things need to be initialized based on the input arguments and options.
+     *
+     * @param InputInterface  $input  An InputInterface instance
+     * @param OutputInterface $output An OutputInterface instance
+     */
+    protected function initialize(InputInterface $input, OutputInterface $output)
+    {
+        parent::initialize($input, $output);
+
+        $this->output = $output;
+
+        $this->bbapp = $this->getContainer()->get('bbapp');
+        $this->em = $this->bbapp->getEntityManager();
+        $this->em->getConnection()->getConfiguration()->setSQLLogger(null);
+
+        $this->aclProvider = $this->bbapp
+                                  ->getSecurityContext()
+                                  ->getACLProvider();
+
+        $this->classContentManager = $this->bbapp
+                                          ->getContainer()
+                                          ->get('classcontent.manager')
+                                          ->setBBUserToken($this->bbapp->getBBUserToken());
+
+        if (null !== $input->getOption('memory-limit')) {
+            ini_set('memory_limit', $input->getOption('memory-limit'));
+        }
     }
 
     /**
@@ -108,87 +195,147 @@ class UpdateUsersRightsCommand extends AbstractCommand
     {
         $startingTime = microtime(true);
 
-        $this->bbapp = $this->getContainer()->get('bbapp');
-        $this->em = $this->bbapp->getEntityManager();
+        try {
+            $config = $this->getGroupsConfig($input->getOption('file'));
 
-        $this->output = $output;
-        if ($input->getOption('verbose')) {
-            $this->output->setVerbosity(OutputInterface::VERBOSITY_VERBOSE);
-        } else {
-            $this->output->setVerbosity(OutputInterface::VERBOSITY_NORMAL);
+            $this->checksAclProvider()
+                ->checksBackBeeVersion()
+                ->checksUserTable()
+                ->checksGroupTable()
+                ->checkAclTables()
+                ->cleanTables($input)
+                ->checksGroups($config);
+
+            $this->writeln(sprintf('<info>Update done in %d s.</info>', microtime(true) - $startingTime));
+
+            return 0;
+        } catch (\Exception $ex) {
+            $this->writeln('');
+            $this->writeln(sprintf('<error>    Error: %s    </error>', $ex->getMessage()));
+            $this->writeln('');
         }
 
-        $this->em->getConnection()->getConfiguration()->setSQLLogger(null);
-        $this->aclProvider = $this->bbapp->getSecurityContext()->getACLProvider();
-        $this->classContentManager = $this->bbapp->getContainer()->get('classcontent.manager')
-                                                                 ->setBBUserToken($this->bbapp->getBBUserToken());
+        return -1;
+    }
 
-        if (null !== $input->getOption('memory-limit')) {
-            ini_set('memory_limit', $input->getOption('memory-limit'));
+    /**
+     * Reads the user rights config from $filename if provided, elsewhere Application config.
+     *
+     * @param  string|null $filename     The yaml file to be parsed.
+     *
+     * @return array                     The parsed configuration.
+     *
+     * @throws \InvalidArgumentException if something went wrong.
+     */
+    private function getGroupsConfig($filename = null)
+    {
+        $config = $this->bbapp->getConfig()->getGroupsConfig();
+        if (null !== $filename) {
+            if (!is_readable($filename)) {
+                throw new \InvalidArgumentException(sprintf('Cannot read file %s', $filename));
+            }
+
+            $config = Yaml::parse(file_get_contents($filename));
         }
 
-        $outputCmd = '';
-        $outputCmd .=  ($input->getOption('memory-limit') !== null) ? ' --m='. $input->getOption('memory-limit') : '';
-        $outputCmd .=  ($input->getOption('user_name') !== null) ? ' --user_name='. $input->getOption('user_name') : '';
-        $outputCmd .=  ($input->getOption('user_password') !== null) ? ' --user_password='. $input->getOption('user_password') : '';
-        $outputCmd .=  ($input->getOption('user_email') !== null) ? ' --user_email='. $input->getOption('user_email') : '';
-        $outputCmd .=  ($input->getOption('user_firstname') !== null) ? ' --user_firstname='. $input->getOption('user_firstname') : '';
-        $outputCmd .=  ($input->getOption('user_lastname') !== null) ? ' --user_lastname='. $input->getOption('user_lastname') : '';
-        $outputCmd .=  ($input->getOption('user_group') !== null) ? ' --user_group='. $input->getOption('user_group') : '';
-        $outputCmd .=  ($input->getOption('verbose')) ? ' --v' : '';
+        if (false === is_array($config)) {
+            throw new \InvalidArgumentException('Malformed groups.yml file, aborting');
+        }
 
-        $this->writeln(sprintf('BEGIN : users:update_rights %s', $outputCmd), OutputInterface::VERBOSITY_NORMAL);
+        return $config;
+    }
 
-        // Récupère le fichier users_rights.yml
-        $usersRights = $this->bbapp->getConfig()->getGroupsConfig();
-
+    /**
+     * Checks for a valid ACL provider.
+     *
+     * @return UpdateUsersRightsCommand
+     *
+     * @throws \InvalidArgumentException if thee ACL provider is not valid.
+     */
+    private function checksAclProvider()
+    {
         if (null === $this->aclProvider) {
             throw new \InvalidArgumentException('None ACL provider found');
         }
 
-        // Vérifier que les groups de droit sont bien définis
-        if (false === is_array($usersRights)) {
-            throw new \InvalidArgumentException('Malformed groups.yml file, aborting');
-        }
-
-        if($this->checksBackBeeVersion()) {
-            // Vérification et mise à jour de la structure de la table user
-            $this->checksUserTable();
-
-            // Vérification et mise à jour de la structure de la table group (anciennement groups)
-            $this->checksGroupTable();
-        }
-
-        // Traitement de l'option clean
-        if ($input->getOption('clean')) {
-            $this->writeln("\n" . '<info>[Cleaning all tables]</info>' . "\n");
-            $this->cleanTables();
-            $this->writeln(sprintf('Cleaning done in %d s.', microtime(true) - $startingTime));
-        }
-
-        $this->writeln("\n" . '<info>[Check ACL tables existence]</info>' . "\n");
-        $this->checkAclTables();
-
-        // Update des droits
-        $this->writeln("\n" . '<info>[Updating users rights]</info>' . "\n");
-        $this->updateRights($usersRights);
-
-        // Update des utilisateurs
-        $this->writeln("\n" . '<info>[Updating/Creating user]</info>' . "\n");
-        $this->updateUsers($usersRights, $input);
-
-        $this->writeln(sprintf('<info>Update done in %d s.</info>', microtime(true) - $startingTime), OutputInterface::VERBOSITY_NORMAL);
+        return $this;
     }
 
     /**
-     * Create ACL tables if doesn't exit
+     * Checks for BackBee version, at least 1.1.0 is required
+     *
+     * @return UpdateUsersRightsCommand
+     */
+    private function checksBackBeeVersion()
+    {
+        $this->writeln('<info>Checking BackBee instance</info>', OutputInterface::VERBOSITY_VERBOSE);
+        $this->write(sprintf(' - BackBee version: %s - ', BBApplication::VERSION), false, OutputInterface::VERBOSITY_VERY_VERBOSE);
+
+        if (0 > version_compare(BBApplication::VERSION, '1.1')) {
+            throw new \RuntimeError(sprintf('This command needs at least BackBee v1.1.0 installed, gets BackBee v%s.%sPlease upgrade your distribution.', BBApplication::VERSION, PHP_EOL));
+        }
+
+        $this->writeln('<info>OK</info>', OutputInterface::VERBOSITY_VERY_VERBOSE);
+
+        return $this;
+    }
+
+    /**
+     * Checks for existing table `user`
+     *
+     * @return UpdateUsersRightsCommand
+     *
+     * @throws \RuntimeException
+     */
+    private function checksUserTable()
+    {
+        return $this->checksTable(User::class, [
+            'id',
+            'login',
+            'email',
+            'password',
+            'state',
+            'activated',
+            'firstname',
+            'lastname',
+            'api_key_public',
+            'api_key_private',
+            'api_key_enabled',
+            'created',
+            'modified',
+        ]);
+    }
+
+    /**
+     * Checks for existing table `group`
+     *
+     * @return  UpdateUsersRightsCommand
+     *
+     * @throws \RuntimeException
+     */
+    private function checksGroupTable()
+    {
+        return $this->checksTable(Group::class, [
+            'id',
+            'name',
+            'description',
+            '*site_uid'
+        ]);
+    }
+
+    /**
+     * Checks ACL tables, creates them if they don't exit.
+     *
+     * @return UpdateUsersRightsCommand
      */
     private function checkAclTables()
     {
-        $dropTableSql = [];
+        $this->writeln('<info>Checking ACL tables</info>', OutputInterface::VERBOSITY_VERBOSE);
+        $this->write(' - ACL tables - ', false, OutputInterface::VERBOSITY_VERY_VERBOSE);
 
         $schemaManager = $this->em->getConnection()->getSchemaManager();
-        // Create security Acl tables
+
+        $dropTableSql = [];
         $tablesMapping = [
             'class_table_name'         => 'acl_classes',
             'entry_table_name'         => 'acl_entries',
@@ -197,7 +344,7 @@ class UpdateUsersRightsCommand extends AbstractCommand
             'sid_table_name'           => 'acl_security_identities',
         ];
 
-        foreach ($tablesMapping as $key => $value) {
+        foreach ($tablesMapping as $value) {
             if ($schemaManager->tablesExist(array($value)) === true) {
                 $dropTableSql[] = 'DROP TABLE IF EXISTS `' . $value. '`;';
             }
@@ -210,704 +357,445 @@ class UpdateUsersRightsCommand extends AbstractCommand
                 $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
             }
 
-            $schema = new \Symfony\Component\Security\Acl\Dbal\Schema($tablesMapping);
+            $schema = new Schema($tablesMapping);
             $platform = $this->em->getConnection()->getDatabasePlatform();
 
             foreach ($schema->toSql($platform) as $query) {
                 $this->em->getConnection()->executeQuery($query);
             }
 
-            $this->writeln(sprintf('ACL tables recreated.', $value));
+            $this->writeln('<info>created</info>', OutputInterface::VERBOSITY_VERY_VERBOSE);
         } else {
-            $this->writeln(sprintf('All ACL tables exists.', $value));
-        }
-    }
-
-    /**
-     * Checks for BackBee version, at least 1.1.0 is required
-     *
-     * @return UpdateUsersRightsCommand
-     */
-    private function checksBackBeeVersion()
-    {
-        $this->writeln('<info>Checking BackBee instance</info>');
-        $this->writeln(sprintf(' - BackBee version: %s - ', BBApplication::VERSION));
-
-        if (0 > version_compare(BBApplication::VERSION, '1.1')) {
-            $this->writeln("<error>Failed</error>");
-            throw new BBException(sprintf('This command needs at least BackBee v1.1.0 installed, gets BackBee v%s.%sPlease upgrade your distribution.', BBApplication::VERSION, PHP_EOL));
+            $this->writeln('<info>OK</info>', OutputInterface::VERBOSITY_VERY_VERBOSE);
         }
 
-        $this->writeln('<info>OK</info>');
         return $this;
     }
 
     /**
-     * Checks for existing table `user`
-     */
-    private function checksUserTable()
-    {
-        $schemaManager = $this->em->getConnection()->getSchemaManager();
-        $tableName = $this->em->getClassMetadata('BackBee\Security\User')->getTableName();
-        $this->writeln(sprintf('<info>Checking %s table</info>', $tableName));
-        $this->write(sprintf(' - Existing table `%s` - ', $tableName));
-
-        if (false === $schemaManager->tablesExist([$tableName])) {
-            $this->writeln("<error>Failed</error>");
-            throw new BBException(sprintf('Table `%s` does not exist. Cannot upgrade database storage anymore.', $tableName));
-        }
-
-        $sectionMeta = $this->em->getClassMetadata('BackBee\Security\User');
-
-        $requiredFields['id'] = $sectionMeta->getColumnName('_id');
-        $requiredFields['login'] = $sectionMeta->getColumnName('_login');
-        $requiredFields['email'] = $sectionMeta->getColumnName('_email');
-        $requiredFields['password'] = $sectionMeta->getColumnName('_password');
-        $requiredFields['state'] = $sectionMeta->getColumnName('_state');
-        $requiredFields['activated'] = $sectionMeta->getColumnName('_activated');
-        $requiredFields['firstname'] = $sectionMeta->getColumnName('_firstname');
-        $requiredFields['lastname'] = $sectionMeta->getColumnName('_lastname');
-        $requiredFields['api_key_public'] = $sectionMeta->getColumnName('_api_key_public');
-        $requiredFields['api_key_private'] = $sectionMeta->getColumnName('_api_key_private');
-        $requiredFields['api_key_enabled'] = $sectionMeta->getColumnName('_api_key_enabled');
-        $requiredFields['created'] = $sectionMeta->getColumnName('_created');
-        $requiredFields['modified'] = $sectionMeta->getColumnName('_modified');
-
-        $existingFields = array_keys($schemaManager->listTableColumns($tableName));
-        $missingFields = array_diff($requiredFields, $existingFields);
-
-        if (empty($missingFields)) {
-            $this->writeln('<info>OK</info>');
-            return;
-        }
-
-        if (1 < count($missingFields)) {
-            $this->writeln("<error>Failed</error>");
-            $this->updateUserTable();
-        }
-    }
-
-    /**
-     * Updates the table user
+     * Checks for an existing table for entity.
      *
+     * @param  string $classname
+     * @param  array  $fields
+     *
+     * @return UpdateUsersRightsCommand
+     *
+     * @throws \RuntimeException
      */
-    private function updateUserTable()
-    {
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=0');
-
-        $schemaTool = new SchemaTool($this->em);
-        $sectionMeta = $this->em->getClassMetadata('BackBee\Security\User');
-        $tableLayout = $sectionMeta->getTableName();
-
-        $this->writeln(sprintf('<info>Updating table `%s`</info>',$tableLayout));
-        $this->write(sprintf(' - Structure of table `%s` updated - ', $tableLayout));
-        $schemaTool->updateSchema(array($sectionMeta), true);
-
-        $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=1');
-
-        $this->writeln('<info>OK</info>');
-    }
-
-    /**
-     * Checks for existing table `group`
-     */
-    private function checksGroupTable()
+    private function checksTable($classname, array $fields)
     {
         $schemaManager = $this->em->getConnection()->getSchemaManager();
-        $tableName = $this->em->getClassMetadata('BackBee\Security\Group')->getTableName();
-        $this->writeln(sprintf('<info>Checking %s table</info>', $tableName));
-        $this->write(sprintf(' - Existing table `%s` - ', $tableName));
+        $metadata = $this->em->getClassMetadata($classname);
+        $tableName = $metadata->getTableName();
 
-        if (true === $schemaManager->tablesExist(['groups'])) {
-            $this->writeln("<error>Failed</error> : Start rename `groups` table");
-            $this->write(" - Rename `groups` table - ");
+        $this->writeln(sprintf('<info>Checking %s table</info>', $tableName), OutputInterface::VERBOSITY_VERBOSE);
+        $this->write(sprintf(' - Existing table `%s` - ', $tableName), false, OutputInterface::VERBOSITY_VERY_VERBOSE);
 
-
-            $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=0');
-            $this->em->getConnection()->executeQuery('DROP TABLE `group`');
-            $this->em->getConnection()->executeQuery('RENAME TABLE `groups` TO `' . $tableName.'`');
-            $this->em->getConnection()->executeQuery('ALTER TABLE `'. $tableName.'` CHANGE `identifier` `description` VARCHAR(255);');
-
-            $this->em->getConnection()->executeQuery('SET FOREIGN_KEY_CHECKS=1');
-            if (false === $schemaManager->tablesExist([$tableName])) {
-                $this->writeln("<error>Failed : Renaming table `groups`</error>");
-                throw new BBException(sprintf('Table `%s` does not exist. Cannot upgrade database storage anymore.', $tableName));
+        $requiredFields = [];
+        foreach ($fields as $field) {
+            if ('*' === substr($field, 0, 1)) {
+                $columnName = $metadata->getSingleAssociationJoinColumnName(str_replace(['*', '_uid'], ['_', ''], $field));
+            } else {
+                $columnName = $metadata->getColumnName('_' . $field);
             }
+
+            $requiredFields[$field] = $columnName;
         }
-
-        $sectionMeta = $this->em->getClassMetadata('BackBee\Security\Group');
-
-        $requiredFields['id'] = $sectionMeta->getColumnName('_id');
-        $requiredFields['name'] = $sectionMeta->getColumnName('_name');
-        $requiredFields['description'] = $sectionMeta->getColumnName('_description');
-        $requiredFields['site_uid'] = $sectionMeta->getSingleAssociationJoinColumnName('_site');
 
         $existingFields = array_keys($schemaManager->listTableColumns($tableName));
         $missingFields = array_diff($requiredFields, $existingFields);
 
-        if (empty($missingFields)) {
-            $this->writeln('<info>OK</info>');
-            return;
-        }
-
         if (1 < count($missingFields)) {
-            $this->writeln("<error>Failed : Missing fields</error>");
+            throw new \RuntimeException(sprintf('The table `%s` exists but is not up-to-date, please launch `bbapp:update` command.', $tableName));
         }
+
+        $this->writeln('<info>OK</info>', OutputInterface::VERBOSITY_VERY_VERBOSE);
+
+        return $this;
     }
 
-
     /**
-     * Clean all tables list in $this->tables
+     * Cleans current users and rights if asked.
+     *
+     * @param  InputInterface $input
+     *
+     * @return UpdateUsersRightsCommand
+     *
+     * @throws \InvalidArgumentException
      */
-    private function cleanTables()
+    private function cleanTables(InputInterface $input)
     {
+        $aclOnly = true;
+        if ($input->getOption('clean')) {
+            $this->writeln('<info>Deleting current users and groups.</info>', OutputInterface::VERBOSITY_VERBOSE);
+
+            if (OutputInterface::VERBOSITY_QUIET < $this->output->getVerbosity()) {
+                $helper = $this->getHelper('question');
+                $question = new ConfirmationQuestion('This will delete all existing users and groups, continue?', false, '/^(y)/i');
+
+                if (!$helper->ask($input, $this->output, $question)) {
+                    throw new \InvalidArgumentException('Aborted');
+                }
+            }
+
+            $aclOnly = false;
+        }
+
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=0');
         foreach ($this->tables as $table) {
-            $this->em->getConnection()->executeQuery("DELETE FROM `$table`");
+            if ($aclOnly && 'acl' !== substr($table, 0, 3)) {
+                continue;
+            }
+
+            $this->em->getConnection()->executeQuery(sprintf('TRUNCATE `%s`', $table));
+            $this->writeln(sprintf(' - Table `%s` truncated - <info>OK</info>', $table), OutputInterface::VERBOSITY_VERY_VERBOSE);
         }
+        $this->em->getConnection()->executeUpdate('SET FOREIGN_KEY_CHECKS=1');
+
+        return $this;
     }
 
     /**
-     * Update de la table group
+     * Checks for groups, creates them if they don't exist.
+     *
+     * @param  array $config
+     *
+     * @return UpdateUsersRightsCommand
      */
-    private function updateRights($usersRights)
+    public function checksGroups(array $config)
     {
-        if (true === is_array($usersRights)) {
-            $this->writeln('<info>- Updating groups: </info>' . "\n");
+        $this->writeln('<info>Updating groups and their rights.</info>', OutputInterface::VERBOSITY_VERBOSE);
 
-            $this->em->getConnection()->executeQuery('DELETE FROM `acl_classes` WHERE 1=1');
-            $this->em->getConnection()->executeQuery('DELETE FROM `acl_entries` WHERE 1=1');
-            $this->em->getConnection()->executeQuery('DELETE FROM `acl_object_identities` WHERE 1=1');
-            $this->em->getConnection()->executeQuery('DELETE FROM `acl_object_identity_ancestors` WHERE 1=1');
-            $this->em->getConnection()->executeQuery('DELETE FROM `acl_security_identities` WHERE 1=1');
-
-            // First create all groups
-            foreach ($usersRights as $group_identifier => $rights) {
-                $this->writeln(sprintf('Checking group: %s', $group_identifier));
-
-                // Création du group si introuvable
-                if (null === $group = $this->em
-                        ->getRepository('BackBee\Security\Group')
-                        ->findOneBy(array('_name' => $group_identifier))) {
-
-                    // ensure group exists
-                    $group = new Group();
-                    $group->setDescription(isset($rights['description']) ? $rights['description'] : $group_identifier)
-                          ->setName($group_identifier);
-
-                    $this->em->persist($group);
-                    $this->em->flush($group);
-                    $this->writeln(sprintf("\t- New group created: `%s`", $group_identifier));
-                }
+        foreach ($config as $identifier => $rights) {
+            $group = $this->em->getRepository(Group::class)->findOneBy(['_name' => $identifier]);
+            if (null === $group) {
+                $group = new Group();
+                $group->setName($identifier)
+                    ->setDescription(Collection::get($rights, 'description', $identifier));
+                $this->em->persist($group);
+                $this->em->flush($group);
             }
 
-            // Then apply rights
-            foreach ($usersRights as $group_identifier => $rights) {
-                $this->writeln(sprintf('Treating group: %s', $group_identifier));
-                $securityIdentity = new UserSecurityIdentity($group->getObjectIdentifier(), 'BackBee\Security\Group');
+            $this->writeln(sprintf(' - Group `%s`', $identifier), OutputInterface::VERBOSITY_VERY_VERBOSE);
+            $this->updateRights($group, $rights);
+        }
 
-                // Sites
-                if (true === array_key_exists('sites', $rights)) {
-                    $sites = $this->addSiteRights($rights['sites'], $this->aclProvider, $securityIdentity);
+        return $this;
+    }
 
-                    // Layouts
-                    if (true === array_key_exists('layouts', $rights)) {
-                        $this->addLayoutRights($rights['layouts'], $sites, $this->aclProvider, $securityIdentity);
-                        $this->writeln("\t- Rights set on sites and layouts for group");
-                    }
+    /**
+     * Updates rights associated to a group
+     *
+     * @param Group $group
+     * @param array $config
+     */
+    private function updateRights(Group $group, array $config)
+    {
+        $securityIdentity = new UserSecurityIdentity($group->getObjectIdentifier(), Group::class);
 
-                    // Pages
-                    if (true === array_key_exists('pages', $rights)) {
-                        $this->addPageRights($rights['pages'], $this->aclProvider, $securityIdentity);
-                        $this->writeln("\t- Rights set on pages for group");
-                    }
-
-                    // Mediafolders
-                    if (true === array_key_exists('mediafolders', $rights)) {
-                        $this->addFolderRights($rights['mediafolders'], $this->aclProvider, $securityIdentity);
-                        $this->writeln("\t- Rights set on library folders for group");
-                    }
-
-                    // Contents
-                    if (true === array_key_exists('contents', $rights)) {
-                        $this->addContentRights($rights['contents'], $this->aclProvider, $securityIdentity);
-                        $this->writeln("\t- Rights set on contents for group");
-                    }
-
-                    // Bundles
-                    if (true === array_key_exists('bundles', $rights)) {
-                        $this->addBundleRights($rights['bundles'], $this->aclProvider, $securityIdentity);
-                        $this->writeln("\t- Rights set on bundles for group");
-                    }
-
-                    // Groups
-                    if (true === array_key_exists('groups', $rights)) {
-                        $this->addGroupRights($rights['groups'], $this->aclProvider, $securityIdentity);
-                        $this->writeln("\t- Rights set on groups for group");
-                    }
-
-                    // Users
-                    if (true === array_key_exists('users', $rights)) {
-                        $this->addUserRights($rights['users'], $this->aclProvider, $securityIdentity);
-                        $this->writeln("\t- Rights set on users for group");
-                    }
-
-                } else {
-                    $this->writeln(sprintf("\t- No site rights defined for %s group, skip", $group_identifier));
-                }
+        foreach ($config as $object => $rights) {
+            $methodName = sprintf('add%sRights', ucfirst($object));
+            if (method_exists($this, $methodName)) {
+                call_user_func_array([$this, $methodName], [$rights, $securityIdentity]);
             }
         }
     }
 
     /**
-     * Update de la table user
+     * Adding rights on generic objects.
+     *
+     * @param string               $classname
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     * @param string               $labelField
      */
-    private function updateUsers($userRights, $input)
+    private function addObjectRights($classname, array $config, UserSecurityIdentity $securityIdentity, $labelField = '_label')
     {
-
-        if (!is_array($userRights)) {
-            return;
-        }
-        if (!$input->getOption('user_name') || !$input->getOption('user_password') || !$input->getOption('user_email')) {
-            return;
-        }
-
-        if (null === $user = $this->em->getRepository('BackBee\Security\User')->findOneBy(array('_login' => $input->getOption('user_name')))) {
-            $encoderFactory = $this->bbapp->getContainer()->get('security.context')->getEncoderFactory();
-
-            $user = new User($input->getOption('user_name'));
-
-            $encoder = $encoderFactory->getEncoder($user);
-
-            $user
-                ->setPassword($encoder->encodePassword($input->getOption('user_password'), ''))
-                ->setEmail($input->getOption('user_email'))
-                ->setLastname($input->getOption('user_firstname'))
-                ->setFirstname($input->getOption('user_lastname'))
-                ->setApiKeyEnabled(true)
-                ->setActivated(true)
-            ;
-            $user->generateRandomApiKey();
-            $user->setApiKeyEnabled(true);
-            $this->em->persist($user);
-            $this->em->flush($user);
-        }
-
-        if ($input->getOption('user_group')) {
-            if (null !== $group = $this->em->getRepository('BackBee\Security\Group')
-                    ->findOneBy(array('_name' => $input->getOption('user_group')))) {
-                if (false === $group->getUsers()->indexOf($user)) {
-                    $group->addUser($user);
-                    $this->em->persist($group);
-                    $this->em->flush($group);
-                }
-            } else {
-                $this->writeln(sprintf('Warning: unknown group %s', $input->getOption('user_group')));
+        $rights = $this->getActionsOnResources($config);
+        foreach ((array) $rights as $resource => $actions) {
+            if ('all' === $resource) {
+                $this->addClassAcl($classname, $securityIdentity, $actions);
+                $this->writeln(sprintf('    - Setting [%s] on all %s', implode(', ', $actions), $classname), OutputInterface::VERBOSITY_DEBUG);
+                continue;
             }
-        }
 
-        $this->em->persist($user);
-        $this->em->flush($user);
-     
-        $this->writeln("\t- ".sprintf ("|%-20s|", $input->getOption('user_name')).": ".$input->getOption('user_password'));
-    }
-
-    /**
-     * Update de la table site
-     */
-    private function addSiteRights($sites_def, $aclProvider, $securityIdentity)
-    {
-        if (false === array_key_exists('resources', $sites_def) || false === array_key_exists('actions', $sites_def)) {
-            return array();
-        }
-
-        $actions = $this->getActions($sites_def['actions']);
-        if (0 === count($actions)) {
-            $this->writeln("\t- No actions defined on site");
-            return array();
-        }
-
-        $sites = array();
-        if (true === is_array($sites_def['resources'])) {
-
-            foreach ($sites_def['resources'] as $site_label) {
-                if (null === $site = $this->em->getRepository('BackBee\Site\Site')->findOneBy(array('_label' => $site_label))) {
-                    $this->writeln(sprintf("\t- Unknown site with label %s, skip", $site_label));
-                    continue;
-                }
-
-                $sites[] = $site;
-                $this->addObjectAcl($site, $aclProvider, $securityIdentity, $actions);
+            $object = $this->em->getRepository($classname)->findOneBy([$labelField => $resource]);
+            if (null === $object) {
+                $object = $this->em->find($classname, $resource);
             }
-        } elseif ('all' === $sites_def['resources']) {
-            $sites = $this->em->getRepository('BackBee\Site\Site')->findAll();
-            $this->addClassAcl('BackBee\Site\Site', $aclProvider, $securityIdentity, $actions);
-        }
 
-        return $sites;
-    }
-
-    /**
-     * Update de la table layout
-     */
-    private function addLayoutRights($layout_def, $sites, $aclProvider, $securityIdentity)
-    {
-        if (false === array_key_exists('resources', $layout_def) || false === array_key_exists('actions', $layout_def)) {
-            return null;
-        }
-
-        $actions = $this->getActions($layout_def['actions']);
-        if (0 === count($actions)) {
-            $this->writeln("\t- No actions defined on layout");
-            return array();
-        }
-
-        foreach ($sites as $site) {
-            if (true === is_array($layout_def['resources'])) {
-                foreach ($layout_def['resources'] as $layout_label) {
-                    if (null === $layout = $this->em->getRepository('BackBee\Site\Layout')->findOneBy(array('_site' => $site, '_label' => $layout_label))) {
-                        $this->writeln(sprintf("\t- Unknown layout with label %s for site %s, skip", $layout_label, $site->getLabel()));
-                        continue;
-                    }
-
-                    $this->addObjectAcl($layout, $aclProvider, $securityIdentity, $actions);
-                }
-            } elseif ('all' === $layout_def['resources']) {
-                $this->addClassAcl('BackBee\Site\Layout', $aclProvider, $securityIdentity, $actions);
+            if (null === $object) {
+                $this->writeln(sprintf('    - Unknown %s `%s`', $classname, $resource), OutputInterface::VERBOSITY_DEBUG);
+                continue;
             }
+
+            $this->addObjectAcl($object, $securityIdentity, $actions);
+            $this->writeln(sprintf('    - Setting [%s] on all %s `%s`', implode(', ', $actions), $classname, $resource), OutputInterface::VERBOSITY_DEBUG);
         }
     }
 
     /**
-     * Update de la table page
+     * Adding rights on Site objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
      */
-    private function addPageRights($page_def, $aclProvider, $securityIdentity)
+    private function addSitesRights(array $config, UserSecurityIdentity $securityIdentity)
     {
-        if (false === array_key_exists('resources', $page_def) || false === array_key_exists('actions', $page_def)) {
-            return null;
-        }
+        $this->addObjectRights(Site::class, $config, $securityIdentity);
+    }
 
-        $actions = $this->getActions($page_def['actions']);
-        if (0 === count($actions)) {
-            $this->writeln("\t- No actions defined on page");
-            return array();
-        }
+    /**
+     * Adding rights on Layout objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addLayoutsRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $this->addObjectRights(Layout::class, $config, $securityIdentity);
+    }
 
-        if (true === is_array($page_def['resources'])) {
-            foreach ($page_def['resources'] as $page_url) {
-                $pages = $this->em->getRepository('BackBee\NestedNode\Page')->findBy(array('_url' => $page_url));
-                foreach ($pages as $page) {
-                    $this->addObjectAcl($page, $aclProvider, $securityIdentity, $actions);
+    /**
+     * Adding rights on Page objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addPagesRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $this->addObjectRights(Page::class, $config, $securityIdentity, '_url');
+    }
+
+    /**
+     * Adding rights on MediaFolder objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addMediafoldersRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $this->addObjectRights(MediaFolder::class, $config, $securityIdentity, '_url');
+    }
+
+    /**
+     * Adding rights on Group objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addGroupsRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $this->addObjectRights(Group::class, $config, $securityIdentity, '_name');
+    }
+
+    /**
+     * Adding rights on User objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addUsersRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $this->addObjectRights(User::class, $config, $securityIdentity, '_username');
+    }
+
+    /**
+     * Adding rights on AbstractBundle objects.
+     *
+     * @param  array $config
+     * @param  UserSecurityIdentity $securityIdentity
+     */
+    private function addBundlesRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $rights = $this->getActionsOnResources($config);
+        foreach ((array) $rights as $resource => $actions) {
+            if ('all' === $resource) {
+                foreach ($this->bbapp->getBundles() as $bundle) {
+                    $this->addObjectAcl($bundle, $securityIdentity, $actions);
                 }
+                $this->writeln(sprintf('    - Setting [%s] on all bundles', implode(', ', $actions)), OutputInterface::VERBOSITY_DEBUG);
+                continue;
             }
-        } elseif ('all' === $page_def['resources']) {
-            $this->addClassAcl('BackBee\NestedNode\Page', $aclProvider, $securityIdentity, $actions);
+
+            if (null === $bundle = $this->bbapp->getBundle($resource)) {
+                $this->writeln(sprintf('    - Unknown bundle `%s`', $resource), OutputInterface::VERBOSITY_DEBUG);
+                continue;
+            }
+
+            $this->addObjectAcl($bundle, $securityIdentity, $actions);
+            $this->writeln(sprintf('    - Setting [%s] on all bundle `%s`', implode(', ', $actions), $resource), OutputInterface::VERBOSITY_DEBUG);
         }
     }
 
     /**
-     * Update de la table page
+     * Adding rights on AbstractClassContent objects.
+     *
+     * @param  array $config
+     * @param  UserSecurityIdentity $securityIdentity
      */
-    private function addFolderRights($folder_def, $aclProvider, $securityIdentity)
+    private function addContentsRights(array $config, UserSecurityIdentity $securityIdentity)
     {
-        if (false === array_key_exists('resources', $folder_def) || false === array_key_exists('actions', $folder_def)) {
-            return null;
-        }
-
-        $actions = $this->getActions($folder_def['actions']);
-        if (0 === count($actions)) {
-            $this->writeln("\t- No actions defined on folder");
-            return array();
-        }
-
-        if ('all' === $folder_def['resources']) {
-            $this->addClassAcl('BackBee\NestedNode\MediaFolder', $aclProvider, $securityIdentity, $actions);
-        }
-    }
-
-    private function addContentRights($content_def, $aclProvider, $securityIdentity)
-    {
-        if (false === array_key_exists('resources', $content_def) || false === array_key_exists('actions', $content_def)) {
-            return null;
-        }
-
-        if ('all' === $content_def['resources']) {
-            $actions = $this->getActions($content_def['actions']);
-            if (0 === count($actions)) {
-                $this->writeln("\t- No actions defined on content");
-                return array();
+        $rights = $this->getActionsOnResources($config);
+        foreach ((array) $rights as $resource => $actions) {
+            if ('all' === $resource) {
+                $this->addClassAcl(AbstractClassContent::class, $securityIdentity, $actions);
+                $this->writeln(sprintf('    - Setting [%s] on all content', implode(', ', $actions)), OutputInterface::VERBOSITY_DEBUG);
+                continue;
             }
 
-            $this->addClassAcl('BackBee\ClassContent\AbstractClassContent', $aclProvider, $securityIdentity, $actions);
-        } elseif (true === is_array($content_def['resources']) && 0 < count($content_def['resources'])) {
-            if (true === is_array($content_def['resources'][0])) {
-                $used_classes = array();
-                foreach($content_def['resources'] as $index => $resources_def) {
-                    if (false === isset($content_def['actions'][$index])) {
-                        continue;
-                    }
-
-                    $actions = $this->getActions($content_def['actions'][$index]);
-
-                    if ('remains' === $resources_def) {
-                        foreach ($this->classContentManager->getAllClassContentClassnames() as $class) {
-                            if (false === in_array($class, $used_classes)) {
-                                $used_classes[] = $class;
-                                if (0 < count($actions)) {
-                                    $this->addClassAcl($class, $aclProvider, $securityIdentity, $actions);
-                                }
-                            }
-                        }
-                    } elseif (true === is_array($resources_def)) {
-                        foreach ($resources_def as $content) {
-                            $classname = '\BackBee\ClassContent\\' . $content;
-                            if (substr($classname, -1) === '*') {
-                                $classname = substr($classname, 0 - 1);
-                                foreach ($this->classContentManager->getAllClassContentClassnames() as $class) {
-                                    if (0 === strpos($class, $classname)) {
-                                        $used_classes[] = $class;
-                                        if (0 < count($actions)) {
-                                            $this->addClassAcl($class, $aclProvider, $securityIdentity, $actions);
-                                        }
-                                    }
-                                }
-                            } elseif (true === class_exists($classname)) {
-                                $used_classes[] = $classname;
-                                if (0 < count($actions)) {
-                                    $this->addClassAcl($classname, $aclProvider, $securityIdentity, $actions);
-                                }
-                            } else {
-                                $this->writeln(sprintf("\t- Unknown class content %s, skip", $classname));
-                            }
-                        }
-                    }
+            try {
+                $classname = AbstractClassContent::getFullClassname($resource);
+                if (class_exists($classname)) {
+                    $this->addClassAcl($classname, $securityIdentity, $actions);
+                    $this->writeln(sprintf('    - Setting [%s] on %s', implode(', ', $actions), $cclassname), OutputInterface::VERBOSITY_DEBUG);
                 }
-            } else {
-                $actions = $this->getActions($content_def['actions']);
-                if (0 === count($actions)) {
-                    $this->writeln("\t- No actions defined on content");
-                    return array();
-                }
-
-                foreach ($content_def['resources'] as $content) {
-                    $classname = '\BackBee\ClassContent\\' . $content;
-                    if (substr($classname, -1) === '*') {
-                        $classname = substr($classname, 0 -1);
-                        foreach ($this->classContentManager->getAllClassContentClassnames() as $class) {
-                            if (0 === strpos($class, $classname)) {
-                                $this->addClassAcl($class, $aclProvider, $securityIdentity, $actions);
-                            }
-                        }
-                    } elseif (true === class_exists($classname)) {
-                        $this->addClassAcl($classname, $aclProvider, $securityIdentity, $actions);
-                    } else {
-                        $this->writeln(sprintf("\t- Unknown class content %s, skip", $classname));
-                    }
-                }
+            } catch (\Exception $ex) {
+                $this->writeln(sprintf('    - Unknown content `%s`', $classname), OutputInterface::VERBOSITY_DEBUG);
             }
         }
     }
 
-    private function addBundleRights($bundle_def, $aclProvider, $securityIdentity)
+    /**
+     * Format actions on resources.
+     *
+     * @param  array $config
+     *
+     * @return array
+     */
+    private function getActionsOnResources($config)
     {
-        if (false === array_key_exists('resources', $bundle_def) || false === array_key_exists('actions', $bundle_def)) {
-            return null;
+        $result = [];
+
+        $resources = (array) Collection::get($config, 'resources', []);
+        $actions = (array) Collection::get($config, 'actions', []);
+        if (!isset($actions[0]) || !is_array($actions[0])) {
+            $actions = [$actions];
         }
 
-        $actions = $this->getActions($bundle_def['actions']);
-        if (0 === count($actions)) {
-            $this->writeln('Notice: none actions defined on bundle' . PHP_EOL);
-            return array();
+        $index = 0;
+        foreach ($resources as $resource) {
+            if ('!' === substr($resource, 0, 1)) {
+                $resource = substr($resource, 1);
+                $result[$resource] = [];
+                continue;
+            }
+
+            $action = isset($actions[$index]) ? $actions[$index] : $actions[0];
+            $result[$resource] = $this->getActions($action);
         }
 
-        if (true === is_array($bundle_def['resources'])) {
-            foreach ($bundle_def['resources'] as $bundle_name) {
-                if (null !== $bundle = $this->bbapp->getBundle($bundle_name)) {
-                    $this->addObjectAcl($bundle, $aclProvider, $securityIdentity, $actions);
-                }
-            }
-        } elseif ('all' === $bundle_def['resources']) {
-            foreach ($this->bbapp->getBundles() as $bundle) {
-                $this->addObjectAcl($bundle, $aclProvider, $securityIdentity, $actions);
-            }
-        }
+        return $result;
     }
 
-    private function addGroupRights($group_ref, $aclProvider, $securityIdentity)
-    {
-        if (false === array_key_exists('resources', $group_ref) || false === array_key_exists('actions', $group_ref)) {
-            return null;
-        }
-
-        $actions = $this->getActions($group_ref['actions']);
-        if (0 === count($actions)) {
-            $this->writeln('Notice: none actions defined on group' . PHP_EOL);
-            return array();
-        }
-
-        if (true === is_array($group_ref['resources'])) {
-            foreach ($group_ref['resources'] as $group_name) {
-                try {
-                    $group = $this->em->getRepository('BackBee\Security\Group')->findOneBy(['_name' => $group_name]);
-                } catch (\Exception $e) {
-                    $group = $this->em->getRepository('BackBee\Security\Group')->find($group_name);
-                }
-
-                if (null !== $group) {
-                    $this->addObjectAcl($group, $aclProvider, $securityIdentity, $actions);
-                }
-            }
-        } elseif ('all' === $group_ref['resources']) {
-            $this->addClassAcl('BackBee\Security\Group', $aclProvider, $securityIdentity, $actions);
-        }
-    }
-
-    private function addUserRights($user_ref, $aclProvider, $securityIdentity)
-    {
-        if (false === array_key_exists('resources', $user_ref) || false === array_key_exists('actions', $user_ref)) {
-            return null;
-        }
-
-        $actions = $this->getActions($user_ref['actions']);
-        if (0 === count($actions)) {
-            $this->writeln('Notice: none actions defined on user' . PHP_EOL);
-            return array();
-        }
-
-        if (true === is_array($user_ref['resources'])) {
-            foreach ($user_ref['resources'] as $username) {
-                try {
-                    $user = $this->em->getRepository('BackBee\Security\User')->findOneBy(['_login' => $username]);
-                } catch (\Exception $e) {
-                    $user = $this->em->getRepository('BackBee\Security\User')->find($username);
-                }
-
-                if (null !== $user) {
-                    $this->addObjectAcl($user, $aclProvider, $securityIdentity, $actions);
-                }
-            }
-        } elseif ('all' === $user_ref['resources']) {
-            $this->addClassAcl('BackBee\Security\User', $aclProvider, $securityIdentity, $actions);
-        }
-    }
-
+    /**
+     * Filters the actions.
+     *
+     * @param  mixed $def
+     *
+     * @return array
+     */
     private function getActions($def)
     {
-        $actions = array();
-        if (true === is_array($def)) {
-            $actions = array_intersect(array('view', 'create', 'edit', 'delete', 'publish'), $def);
-        } elseif ('all' === $def) {
-            $actions = array('view', 'create', 'edit', 'delete', 'publish');
+        $all = ['view', 'create', 'edit', 'delete', 'publish'];
+        if (['all'] === $def) {
+            return $all;
         }
 
-        return $actions;
+        return array_intersect($all, $def);
     }
 
-    private function addClassAcl($className, $aclProvider, $securityIdentity, $rights)
+    /**
+     * Add rights to security group on whole instances of class.
+     *
+     * @param string               $className
+     * @param UserSecurityIdentity $securityIdentity
+     * @param array                $rights
+     */
+    private function addClassAcl($className, UserSecurityIdentity $securityIdentity, array $rights)
     {
         $objectIdentity = new ObjectIdentity('all', $className);
-        $this->addAcl($objectIdentity, $aclProvider, $securityIdentity, $rights);
+        $this->addAcl($objectIdentity, $securityIdentity, $rights);
     }
 
-    private function addObjectAcl($object, $aclProvider, $securityIdentity, $rights)
+    /**
+     * Add rights to security group on one instance of object.
+     *
+     * @param object               $object
+     * @param UserSecurityIdentity $securityIdentity
+     * @param array                $rights
+     */
+    private function addObjectAcl($object, UserSecurityIdentity $securityIdentity, array $rights)
     {
         $objectIdentity = ObjectIdentity::fromDomainObject($object);
-        $this->addAcl($objectIdentity, $aclProvider, $securityIdentity, $rights);
+        $this->addAcl($objectIdentity, $securityIdentity, $rights);
     }
 
-    private function addAcl(ObjectIdentity $objectIdentity, $aclProvider, $securityIdentity, $rights)
+    /**
+     * Add rights to security group on object.
+     *
+     * @param ObjectIdentity       $objectIdentity
+     * @param UserSecurityIdentity $securityIdentity
+     * @param array                $rights
+     */
+    private function addAcl(ObjectIdentity $objectIdentity, UserSecurityIdentity $securityIdentity, array $rights)
     {
+        // Getting ACL for this object identity
         try {
-            // Getting ACL for this object identity
-            try {
-                $acl = $aclProvider->createAcl($objectIdentity);
-            } catch (\Exception $e) {
-                $acl = $aclProvider->findAcl($objectIdentity);
-            }
-
-            // Calculating mask
-            $builder = new MaskBuilder();
-            foreach ($rights as $right) {
-                $builder->add($right);
-            }
-            $mask = $builder->get();
-
-            // first revoke existing access for this security identity
-            foreach($acl->getObjectAces() as $i => $ace) {
-                if($securityIdentity->equals($ace->getSecurityIdentity())) {
-                    $acl->updateObjectAce($i, $ace->getMask() & ~$mask);
-                }
-            }
-
-            // then grant
-            if ('all' === $objectIdentity->getIdentifier()) {
-                $acl->insertClassAce($securityIdentity, $mask);
-            } else {
-                $acl->insertObjectAce($securityIdentity, $mask);
-            }
-            $aclProvider->updateAcl($acl);
-        } catch(\Exception $e) {
-            throw new \Exception($e->getMessage(), 0, $e);
+            $acl = $this->aclProvider->createAcl($objectIdentity);
+        } catch (\Exception $e) {
+            $acl = $this->aclProvider->findAcl($objectIdentity);
         }
+
+        // Calculating mask
+        $builder = new MaskBuilder();
+        foreach ($rights as $right) {
+            $builder->add($right);
+        }
+        $mask = $builder->get();
+
+        // first revoke existing access for this security identity
+        foreach($acl->getObjectAces() as $i => $ace) {
+            if($securityIdentity->equals($ace->getSecurityIdentity())) {
+                $acl->updateObjectAce($i, $ace->getMask() & ~$mask);
+            }
+        }
+
+        // then grant
+        if ('all' === $objectIdentity->getIdentifier()) {
+            $acl->insertClassAce($securityIdentity, $mask);
+        } else {
+            $acl->insertObjectAce($securityIdentity, $mask);
+        }
+        $this->aclProvider->updateAcl($acl);
     }
 
     /**
      * Writes a message to the output and adds a newline at the end.
      *
-     * @param string|array $messages The message as an array of lines or a single string
-     * @param int          $verbose     The verbosity of output (one of the VERBOSITY constants)
-     *
-     * @throws \InvalidArgumentException When unknown output type is given
+     * @param string|array $messages  The message as an array of lines or a single string
+     * @param int          $verbosity The verbosity of output (one of the VERBOSITY constants)
      */
-    protected function writeln($messages, $verbose = OutputInterface::VERBOSITY_NORMAL)
+    protected function writeln($messages, $verbosity = OutputInterface::VERBOSITY_NORMAL)
     {
-        $this->write($messages, true, $verbose);
-    }    
+        $this->write($messages, true, $verbosity);
+    }
 
     /**
      * Writes a message to the output
      *
-     * @param string|array $messages The message as an array of lines or a single string
-     * @param bool         $newline  Whether to add a newline
-     * @param int          $verbose     The verbosity of output (one of the VERBOSITY constants)
-     *
-     * @throws \InvalidArgumentException When unknown output type is given
+     * @param string|array $messages  The message as an array of lines or a single string
+     * @param bool         $newLine   Whether to add a newline
+     * @param int          $verbosity The verbosity of output (one of the VERBOSITY constants)
      */
-    protected function write($affichage, $newLine = false, $verbose = OutputInterface::VERBOSITY_VERBOSE)
+    protected function write($messages, $newLine = false, $verbosity = OutputInterface::VERBOSITY_NORMAL)
     {
-        switch ($verbose) {
-            case OutputInterface::VERBOSITY_NORMAL:
-                if ($newLine)
-                    $this->output->writeln($affichage);
-                else
-                    $this->output->write($affichage);
-                break;
+        if ($verbosity <= $this->output->getVerbosity()) {
+            $this->output->write($messages);
 
-            case OutputInterface::VERBOSITY_VERBOSE:
-                if ($this->output->isVerbose()) {
-                    if ($newLine)
-                        $this->output->writeln($affichage);
-                    else
-                        $this->output->write($affichage);
-                }
-                break;
-
-            case OutputInterface::VERBOSITY_VERY_VERBOSE :
-                if ($this->output->isVeryVerbose()) {
-                    if ($newLine)
-                        $this->output->writeln($affichage);
-                    else
-                        $this->output->write($affichage);
-                }
-                break;
-
-            case OutputInterface::VERBOSITY_DEBUG :
-                if ($this->output->isDebug()) {
-                    if ($newLine)
-                        $this->output->writeln($affichage);
-                    else
-                        $this->output->write($affichage);
-                }
-                break;
+            if (true === $newLine) {
+                $this->output->writeln('');
+            }
         }
     }
 }
