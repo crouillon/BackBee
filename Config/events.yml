@@ -124,7 +124,7 @@ service.tagged.config_per_site:
 
 bbapplication.init:
     listeners:
-        - [BackBee\DependencyInjection\Listener\ContainerListener, onApplicationInit]
+        - [BackBee\DependencyInjection\Listener\ContainerListener, onApplicationInit, -8000]
         - [BackBee\ClassContent\Listener\ClassContentListener, onApplicationInit]
         - [BackBee\Renderer\Listener\TwigListener, onApplicationReady]
 
