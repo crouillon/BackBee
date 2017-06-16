@@ -640,7 +640,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
         $classcontentdir = $this->getClassContentDir();
         array_push($classcontentdir, $dir);
 
-        $this->classcontentDir = $classcontentdir;
+        $this->classcontentDir = array_unique($classcontentdir);
 
         return $this;
     }
@@ -659,7 +659,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
         $classcontentdir = $this->getClassContentDir();
         array_unshift($classcontentdir, $dir);
 
-        $this->classcontentDir = $classcontentdir;
+        $this->classcontentDir = array_unique($classcontentdir);
 
         return $this;
     }
