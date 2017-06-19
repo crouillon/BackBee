@@ -23,6 +23,7 @@
 
 namespace BackBee\Util\Doctrine;
 
+use BackBee\Doctrine\RepositoryFactory;
 use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Logging\SQLLogger;
@@ -122,6 +123,9 @@ class EntityManagerCreator
         $driverImpl = $config->newDefaultAnnotationDriver([], false);
 
         $config->setMetadataDriverImpl($driverImpl);
+        $config->setRepositoryFactory(new RepositoryFactory(
+            isset($options['orm']) ? (array) $options['orm'] : []
+        ));
 
         if (isset($options['proxy_dir'])) {
             $config->setProxyDir($options['proxy_dir']);
