@@ -10,47 +10,47 @@ services:
 
     cache.bootstrap:
         class:      %bbapp.cachebootstrap.class%
-        arguments:  [{cachedir: "%bbapp.cache.dir%", cacheautogenerate: "%bbapp.cache.autogenerate%"}, "%bbapp.context%"]
+        arguments:  [{cachedir: %bbapp.cache.dir%, cacheautogenerate: %bbapp.cache.autogenerate%}, %bbapp.context%]
 
     cache.control:
         class:      %bbapp.cachecontrol.class%
-        arguments:  [{em: @em}, %bbapp.context%, @logging]
+        arguments:  [{em: "@em"}, %bbapp.context%, "@logging"]
 
     cache.listener:
         class:      %bbapp.cache_listener.class%
-        arguments:  [@bbapp, @cache.validator, @cache.identifier_generator]
+        arguments:  ["@bbapp", "@cache.validator", "@cache.identifier_generator"]
 
     # Cache identifier generator
     cache.identifier_generator:
-        class: %bbapp.cache.identifier_generator.class%
-        arguments: [@service_container]
+        class:     %bbapp.cache.identifier_generator.class%
+        arguments: ["@service_container"]
 
     cache.query_parameter.appender:
         class: BackBee\Cache\IdentifierAppender\QueryParameterAppender
-        arguments: [@request, @em, 2, [content]]
+        arguments: ["@request", "@em", 2, [content]]
         tags:
             - {name: cache.identifier.appender}
 
     cache.node_parameter.appender:
         class: BackBee\Cache\IdentifierAppender\NodeAppender
-        arguments: [@em, [content]]
+        arguments: ["@em", [content]]
         tags:
             - {name: cache.identifier.appender}
 
     # Cache validator
     cache.validator:
-        class: %bbapp.cache.validator.class%
-        arguments: [@service_container]
+        class:     %bbapp.cache.validator.class%
+        arguments: ["@service_container"]
 
     cache.request_method.validator:
-        class: BackBee\Cache\Validator\RequestMethodValidator
-        arguments: [@request, ['get'], cache_status]
+        class:      BackBee\Cache\Validator\RequestMethodValidator
+        arguments: ["@request", ['get'], cache_status]
         tags:
             - {name: cache.validator}
 
     cache.application_core.validator:
         class: BackBee\Cache\Validator\ApplicationCoreValidator
-        arguments: [@bbapp, cache_status]
+        arguments: ["@bbapp", cache_status]
         tags:
             - {name: cache.validator}
 

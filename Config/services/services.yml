@@ -74,17 +74,17 @@ services:
 
     config:
         class:      %bbapp.config.class%
-        arguments:  [%bbapp.base.dir%/Config, @cache.bootstrap, null, %debug%, %config.yml_files_to_ignore%]
+        arguments:  [%bbapp.base.dir%/Config, "@cache.bootstrap", null, %debug%, %config.yml_files_to_ignore%]
         tags:
             - { name: "dumpable", dispatch_event: false }
         calls:
-            - [setContainer, [@service_container]]
+            - [setContainer, ["@service_container"]]
             - [setEnvironment, [%bbapp.environment%]]
-        configurator: [@config.configurator, configureApplicationConfig]
+        configurator: ["@config.configurator", configureApplicationConfig]
 
     event.dispatcher:
         class:      %bbapp.event.dispatcher.class%
-        arguments:  [@bbapp, @config]
+        arguments:  ["@bbapp", "@config"]
         tags:
             - { name: "dumpable", dispatch_event: false }
     ed:
@@ -96,61 +96,61 @@ services:
 
     controller:
         class:      %bbapp.controller.class%
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
 
     media.controller:
         class:      %bbapp.media.controller.class%
-        arguments: [@bbapp]
+        arguments: ["@bbapp"]
 
     resource.controller:
         class:      %bbapp.resource.controller.class%
-        arguments: [@bbapp]
+        arguments: ["@bbapp"]
 
     renderer:
         class:      %bbapp.renderer.class%
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
         tags:
             - { name: "dumpable", dispatch_event: false }
 
     rewriting.urlgenerator:
         class:      %bbapp.urlgenerator.class%
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
 
     translator:
         class:      %bbapp.translator.class%
-        arguments:  [@bbapp, %bbapp.locale%]
+        arguments:  ["@bbapp", %bbapp.locale%]
         calls:
             - [setLocale, [%bbapp.locale%]]
 
     pagebuilder:
         class:      %bbapp.pagebuilder.class%
-        arguments:  [@em]
+        arguments:  ["@em"]
 
     registry:
         class:      %bbapp.registry.class%
 
     autoloader:
         class:      %bbapp.autoloader.class%
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
         calls:
-            - [setEventDispatcher, [@event.dispatcher]]
+            - [setEventDispatcher, ["@event.dispatcher"]]
         tags:
             - { name: "dumpable", dispatch_event: false }
 
     keywordbuilder:
         class:      %bbapp.keywordbuilder.class%
-        arguments:  [@em]
+        arguments:  ["@em"]
 
 
     bundle.loader:
         class:      %bbapp.bundle.loader.class%
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
         tags:
             - { name: "dumpable", dispatch_event: false }
 
     config.configurator:
         class:      %bbapp.config.configurator.class%
-        arguments:  [@bbapp, @bundle.loader]
+        arguments:  ["@bbapp", "@bundle.loader"]
         public:     false
 
     config.persistor:
@@ -159,11 +159,11 @@ services:
 
     classcontent.iconizer.thumbnail:
         class:      BackBee\ClassContent\Iconizer\ThumbnailIconizer
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
 
     classcontent.iconizer.property:
         class:      BackBee\ClassContent\Iconizer\PropertyIconizer
-        arguments:  [@routing]
+        arguments:  ["@routing"]
 
     classcontent.iconizer.chained:
         class:      BackBee\ClassContent\Iconizer\ChainIconizer
@@ -171,34 +171,34 @@ services:
         
     classcontent.category_manager:
         class:      %bbapp.classcontent.category_manager.class%
-        arguments: [@bbapp]
+        arguments: ["@bbapp"]
 
     classcontent.manager:
         class:      %bbapp.classcontent.manager.class%
-        arguments: [@bbapp, "@classcontent.iconizer.chained"]
+        arguments: ["@bbapp", "@classcontent.iconizer.chained"]
 
     doctrine.listener:
         class: BackBee\Event\Listener\DoctrineListener
-        arguments: [@bbapp]
+        arguments: ["@bbapp"]
 
     exception.listener:
         class: BackBee\Event\Listener\ExceptionListener
-        arguments: [@bbapp]
+        arguments: ["@bbapp"]
 
     controller_resolver:
         class:      %bbapp.controller_resolver.class%
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
 
     annotation_reader.cache:
         class: Doctrine\Common\Cache\ArrayCache
 
     annotation_reader:
         class: Doctrine\Common\Annotations\CachedReader
-        arguments: [@annotation_reader_chained, @annotation_reader.cache]
+        arguments: ["@annotation_reader_chained", "@annotation_reader.cache"]
 
     annotation_reader_chained:
         class: BackBee\Annotations\ChainAnnotationReader
-        arguments: [[@annotation_reader.full, @annotation_reader.simple]]
+        arguments: [["@annotation_reader.full", "@annotation_reader.simple"]]
 
     annotation_reader.simple:
         class: Doctrine\Common\Annotations\SimpleAnnotationReader
@@ -212,7 +212,7 @@ services:
     data_collector.config:
         class: %bbapp.collector.config.class%
         calls:
-            - [setKernel, [@?controller]]
+            - [setKernel, ["@?controller"]]
 
     data_collector.request:
         class: %bbapp.collector.request.class%
@@ -229,13 +229,13 @@ services:
 
     data_collector.logger:
         class: %bbapp.collector.logger.class%
-        arguments:  [@logging]
+        arguments:  ["@logging"]
         tags:
             - { name: monolog.logger,  channel: profiler }
 
     data_collector.time:
         class: %bbapp.collector.time.class%
-        arguments:  [@?controller]
+        arguments:  ["@?controller"]
         tags:
             - { name: monolog.logger,  channel: profiler }
 
@@ -245,27 +245,27 @@ services:
     data_collector.routing:
         class: %bbapp.collector.routing.class%
         calls:
-            - [setContainer, [@service_container]]
+            - [setContainer, ["@service_container"]]
 
 
     data_collector.doctrine:
         class: %bbapp.collector.doctrine.class%
         calls:
-            - [setContainer, [@service_container]]
+            - [setContainer, ["@service_container"]]
 
     doctrine.dbal.logger.profiling:
         class: %bbapp.dbal.logger.profiling.class%
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
 
     doctrine.connection.default:
         class: Doctrine\DBAL\Connection
-        factory: [@em, getConnection]
+        factory: ["@em", getConnection]
 
     doctrine:
         class: BackBee\Doctrine\Registry
         arguments:
-            - @service_container
-            - {default: @doctrine.connection.default}
+            - "@service_container"
+            - {default: "@doctrine.connection.default"}
             - {default: em}
             - default
             - default
@@ -273,23 +273,23 @@ services:
     # session
     bb_session.factory:
         class:      %bbapp.session.factory.class%
-        arguments:  [@config, @session.storage]
+        arguments:  ["@config", "@session.storage"]
         public:     false
 
     bb_session:
         class: Symfony\Component\HttpFoundation\Session\Session
-        factory: [@bb_session.factory, createSession]
+        factory: ["@bb_session.factory", createSession]
 
     session.storage:
         class: Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage
 
     session.handler.pdo.factory:
         class: %bbapp.handler.pdo.factory.class%
-        arguments: [@em, %session.handler.pdo.config%]
+        arguments: ["@em", %session.handler.pdo.config%]
 
     session.handler.pdo:
         class:     Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler
-        factory: [@session.handler.pdo.factory, createPdoHandler]
+        factory: ["@session.handler.pdo.factory", createPdoHandler]
 
     # validator
     validator:
@@ -306,7 +306,7 @@ services:
 
     validator.annotation_reader:
         class: Doctrine\Common\Annotations\CachedReader
-        arguments: [@validator.annotation_reader.main, @validator.annotation_reader_cache]
+        arguments: ["@validator.annotation_reader.main", "@validator.annotation_reader_cache"]
 
     validator.annotation_reader.main:
         class: Doctrine\Common\Annotations\AnnotationReader
@@ -319,11 +319,11 @@ services:
         class: Symfony\Component\Validator\ConstraintValidatorFactory
 
     nestednode.page_listener:
-        arguments:  [@bbapp]
+        arguments:  ["@bbapp"]
         class: BackBee\Event\Listener\PageListener
 
     nestednode.metadata.resolver:
         class: BackBee\MetaData\MetaDataResolver
         calls:
-            - [setDefinitionsFromConfig, [@config]]
-            - [setEntityManager, [@em]]
+            - [setDefinitionsFromConfig, ["@config"]]
+            - [setEntityManager, ["@em"]]

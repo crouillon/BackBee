@@ -48,7 +48,7 @@ services:
         class: \FooBar\DateTimeFactory
     service_factory_service:
         class: \DateTime
-        factory: [@fake_service_datetime_factory, get]
+        factory: ["@fake_service_datetime_factory", get]
     datetime_manager:
         abstract: true
         calls:

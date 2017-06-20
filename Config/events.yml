@@ -15,7 +15,7 @@ classcontent.onflush:
         - [BackBee\ClassContent\Listener\ClassContentListener, onFlushContent]
         - [BackBee\ClassContent\Listener\RevisionListener, onFlushContent]
         - [BackBee\ClassContent\Listener\IndexationListener, onFlushContent]
-        - [@cache.listener, onFlushContent]
+        - ["@cache.listener", onFlushContent]
         - [BackBee\Event\Listener\RewritingListener, onFlushContent]
         - [BackBee\MetaData\Listener\MetaDataListener, onFlushContent, -100]
 
@@ -26,11 +26,11 @@ classcontent.preremove:
 classcontent.prerender:
     listeners:
         - [BackBee\ClassContent\Listener\RevisionListener, onPrerenderContent]
-        - [@cache.listener, onPreRenderContent]
+        - ["@cache.listener", onPreRenderContent]
 
 classcontent.postrender:
     listeners:
-        - [@cache.listener, onPostRenderContent]
+        - ["@cache.listener", onPostRenderContent]
 
 rest.controller.classcontentcontroller.getaction.postcall:
   listeners:
@@ -42,7 +42,7 @@ element.file.postremove:
 
 nestednode.page.prerender:
     listeners:
-        - [@cache.listener, onPreRenderPage]
+        - ["@cache.listener", onPreRenderPage]
 
 nestednode.section.preupdate:
      listeners:
@@ -55,13 +55,13 @@ nestednode.page.preupdate:
 
 nestednode.page.postrender:
     listeners:
-        - [@cache.listener, onPostRenderPage]
+        - ["@cache.listener", onPostRenderPage]
 
 nestednode.page.onflush:
     listeners:
         - [BackBee\Event\Listener\PageListener, onFlushPage]
         - [BackBee\ClassContent\Listener\IndexationListener, onFlushPage]
-        - [@cache.listener, onFlushPage]
+        - ["@cache.listener", onFlushPage]
         - [BackBee\Event\Listener\RewritingListener, onFlushPage]
         - [BackBee\MetaData\Listener\MetaDataListener, onFlushPage, -100]
 
@@ -91,36 +91,36 @@ element.keyword.render:
 
 frontcontroller.request:
     listeners:
-        - [@rest.listener.body, onRequest]
+        - ["@rest.listener.body", onRequest]
 
 kernel.request:
     listeners:
-        - [@profiler.listener, onKernelRequest]
+        - ["@profiler.listener", onKernelRequest]
 
 kernel.exception:
     listeners:
-        - [@rest.listener.exception, onKernelException]
-        - [@exception.listener, onKernelException]
+        - ["@rest.listener.exception", onKernelException]
+        - ["@exception.listener", onKernelException]
 
 kernel.controller:
     listeners:
-        - [@rest.listener.param_converter, onKernelController]
-        - [@rest.listener.security, onKernelController]
-        - [@rest.listener.validation, onKernelController]
-        - [@rest.listener.pagination, onKernelController]
+        - ["@rest.listener.param_converter", onKernelController]
+        - ["@rest.listener.security", onKernelController]
+        - ["@rest.listener.validation", onKernelController]
+        - ["@rest.listener.pagination", onKernelController]
 
 kernel.response:
     listeners:
-        - [@profiler.toolbar.listener, onKernelResponse]
-        - [@profiler.listener, onKernelResponse]
+        - ["@profiler.toolbar.listener", onKernelResponse]
+        - ["@profiler.listener", onKernelResponse]
 
 nestednode.page.postload:
     listeners:
-        - [@nestednode.page_listener, onPostLoad]
+        - ["@nestednode.page_listener", onPostLoad]
 
 service.tagged.config_per_site:
     listeners:
-        - [@config.configurator, onGetServiceConfig]
+        - ["@config.configurator", onGetServiceConfig]
 
 bbapplication.init:
     listeners:

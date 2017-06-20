@@ -29,7 +29,7 @@ services:
     rest.encoder_provider:
         class:      %bbapp.rest.encoder_provider.class%
         calls:
-            - [setContainer, [@service_container]]
+            - [setContainer, ["@service_container"]]
         arguments:  [{json: "rest.encoder.json", xml: "rest.encoder.xml"}]
 
     rest.encoder.json:
@@ -40,7 +40,7 @@ services:
 
     rest.listener.body:
         class:      %bbapp.rest.listener_body.class%
-        arguments:  [@rest.encoder_provider, true]
+        arguments:  ["@rest.encoder_provider", true]
         calls:
             - [setPath, [%bbapp.rest_api.path%]]
 
@@ -52,39 +52,39 @@ services:
 
     rest.listener.validation:
         class:      %bbapp.rest.listener_validation.class%
-        arguments:  [@service_container]
+        arguments:  ["@service_container"]
 
     rest.listener.pagination:
         class:      %bbapp.rest.listener_pagination.class%
-        arguments:  [@rest.metadata.factory, @validator]
+        arguments:  ["@rest.metadata.factory", "@validator"]
         calls:
             - [setPath, [%bbapp.rest_api.path%]]
 
     rest.listener.param_converter:
         class:      %bbapp.rest.listener_param_converter.class%
-        arguments:  [@rest.metadata.factory, @validator]
+        arguments:  ["@rest.metadata.factory", "@validator"]
         calls:
             - [setPath, [%bbapp.rest_api.path%]]
 
     rest.listener.security:
         class: BackBee\Rest\EventListener\SecurityListener
-        arguments: [@security.context, @bb.expression_language, @security.trust_resolver, @security.role_hierarchy]
+        arguments: ["@security.context", "@bb.expression_language", "@security.trust_resolver", "@security.role_hierarchy"]
         calls:
-            - [setMetadataFactory, [@rest.metadata.factory]]
+            - [setMetadataFactory, ["@rest.metadata.factory"]]
 
     rest.metadata.annotation_reader:
         class: Doctrine\Common\Annotations\AnnotationReader
 
     rest.metadata.annotation_driver:
         class: BackBee\Rest\Mapping\Driver\AnnotationDriver
-        arguments:  [@rest.metadata.annotation_reader]
+        arguments:  ["@rest.metadata.annotation_reader"]
 
     rest.metadata.factory:
         class: Metadata\MetadataFactory
-        arguments:  [@rest.metadata.annotation_driver]
+        arguments:  ["@rest.metadata.annotation_driver"]
         calls:
-            - [setCache, [@rest.metadata.cache]]
+            - [setCache, ["@rest.metadata.cache"]]
 
     rest.metadata.cache:
         class:     BackBee\Rest\Metadata\Cache\BackBeeCache
-        arguments: [@cache.bootstrap, %debug%]
+        arguments: ["@cache.bootstrap", %debug%]
