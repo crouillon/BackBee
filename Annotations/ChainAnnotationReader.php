@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Annotations;
@@ -29,22 +27,20 @@ use Doctrine\Common\Annotations\Reader;
 /**
  * Chain annotation reader.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      k.golovin
+ * @author Kenneth Golovin
  */
 final class ChainAnnotationReader implements Reader
 {
+
     /**
-     * @var array<Reader>
+     * @var Reader[]
      */
-    private $delegates = array();
+    private $delegates = [];
 
     /**
      * Constructor.
      *
-     * @param array<Reader> $readers
+     * @param Reader[] $readers
      */
     public function __construct(array $readers)
     {
@@ -56,7 +52,7 @@ final class ChainAnnotationReader implements Reader
      */
     public function getClassAnnotations(\ReflectionClass $class)
     {
-        $annotations = array();
+        $annotations = [];
 
         foreach ($this->delegates as $delegateReader) {
             try {
@@ -89,7 +85,7 @@ final class ChainAnnotationReader implements Reader
      */
     public function getPropertyAnnotations(\ReflectionProperty $property)
     {
-        $annotations = array();
+        $annotations = [];
 
         foreach ($this->delegates as $delegateReader) {
             try {
@@ -122,7 +118,7 @@ final class ChainAnnotationReader implements Reader
      */
     public function getMethodAnnotations(\ReflectionMethod $method)
     {
-        $annotations = array();
+        $annotations = [];
 
         foreach ($this->delegates as $delegateReader) {
             try {
