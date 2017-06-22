@@ -19,21 +19,13 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\AutoLoader\Exception;
+namespace BackBee\Event\Listener;
 
 /**
- * Exception thrown if the included file or wrapper contains invalid code.
+ * A Fake listener to test Autoloader
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class SyntaxErrorException extends AutoloaderException
+class FakeListener
 {
-
-    /**
-     * The default error code.
-     *
-     * @var int
-     */
-    protected $_code = self::INVALID_OPCODE;
-
 }

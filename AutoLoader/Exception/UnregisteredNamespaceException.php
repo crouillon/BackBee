@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\AutoLoader\Exception;
@@ -26,17 +24,16 @@ namespace BackBee\AutoLoader\Exception;
 /**
  * Exception thrown if the namespace is not registered.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class UnregisteredNamespaceException extends AutoloaderException
 {
+
     /**
      * The default error code.
      *
      * @var int
      */
     protected $_code = self::UNREGISTERED_NAMESPACE;
+
 }
