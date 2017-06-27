@@ -21,13 +21,16 @@
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
-namespace BackBee\Bundle;
-
-@trigger_error('The '.__NAMESPACE__.'\Registry class is deprecated since version 1.4 and will be removed in 1.5. Use BackBee\Util\Registry\Registry instead.', E_USER_DEPRECATED);
+namespace BackBee\Util\Registry;
 
 use Doctrine\ORM\Mapping as ORM;
 
 /**
+ * @category    BackBee
+ *
+ * @copyright   Lp digital system
+ * @author e.chau <eric.chau@lp-digital.fr>
+ *
  * @ORM\Table(
  *   name="registry",
  *   indexes={
@@ -36,10 +39,7 @@ use Doctrine\ORM\Mapping as ORM;
  *     @ORM\Index(name="IDX_KEY", columns={"key"}),
  *   }
  * )
- * @ORM\Entity(repositoryClass="BackBee\Bundle\Registry\Repository")
- *
- * @deprecated since version 1.4, to be removed in 1.5.
- * @codeCoverageIgnore
+ * @ORM\Entity(repositoryClass="BackBee\Util\Registry\Repository")
  */
 class Registry
 {

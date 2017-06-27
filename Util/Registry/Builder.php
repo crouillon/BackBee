@@ -21,16 +21,16 @@
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
-namespace BackBee\Bundle\Registry;
-
-@trigger_error('The '.__NAMESPACE__.'\Builder class is deprecated since version 1.4 and will be removed in 1.5. Use BackBee\Util\Registry\Builder instead.', E_USER_DEPRECATED);
+namespace BackBee\Util\Registry;
 
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
-use BackBee\Bundle\Registry;
+use BackBee\Util\Registry\Registry;
 
 /**
- * @deprecated since version 1.4, to be removed in 1.5.
- * @codeCoverageIgnore
+ * @category    BackBee
+ *
+ * @copyright   Lp digital system
+ * @author n.dufreche <nicolas.dufreche@lp-digital.fr>
  */
 class Builder
 {
@@ -160,7 +160,7 @@ class Builder
         } else {
             throw new \InvalidArgumentException(sprintf(
                 'Cannot build registries: current entity must be an instance of %s, current `%s`.',
-                'BackBee\Bundle\Registry\RegistryEntityInterface',
+                'BackBee\Util\Registry\RegistryEntityInterface',
                 gettype($this->entity)
             ));
         }

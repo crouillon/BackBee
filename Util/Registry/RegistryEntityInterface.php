@@ -21,13 +21,13 @@
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
-namespace BackBee\Bundle\Registry;
-
-@trigger_error('The '.__NAMESPACE__.'\RegistryEntityInterface class is deprecated since version 1.4 and will be removed in 1.5. Use BackBee\Util\Registry\RegistryEntityInterface instead.', E_USER_DEPRECATED);
+namespace BackBee\Util\Registry;
 
 /**
- * @deprecated since version 1.4, to be removed in 1.5.
- * @codeCoverageIgnore
+ * @category    BackBee
+ *
+ * @copyright   Lp digital system
+ * @author n.dufreche <nicolas.dufreche@lp-digital.fr>
  */
 interface RegistryEntityInterface
 {

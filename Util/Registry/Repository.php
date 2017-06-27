@@ -21,17 +21,17 @@
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
-namespace BackBee\Bundle\Registry;
+namespace BackBee\Util\Registry;
 
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query\ResultSetMapping;
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
 
-@trigger_error('The '.__NAMESPACE__.'\Repository class is deprecated since version 1.4 and will be removed in 1.5. Use BackBee\Util\Registry\Repository instead.', E_USER_DEPRECATED);
-
 /**
- * @deprecated since version 1.4, to be removed in 1.5.
- * @codeCoverageIgnore
+ * @category    BackBee
+ *
+ * @copyright   Lp digital system
+ * @author n.dufreche <nicolas.dufreche@lp-digital.fr>
  */
 class Repository extends EntityRepository
 {
@@ -40,11 +40,11 @@ class Repository extends EntityRepository
     /**
      * Saves the registry entry in DB, persist it if need.
      *
-     * @param \BackBee\Bundle\Registry $registry
+     * @param  Registry $registry
      *
-     * @return \BackBee\Bundle\Registry
+     * @return Registry
      */
-    public function save(\BackBee\Bundle\Registry $registry)
+    public function save(Registry $registry)
     {
         if (false === $this->getEntityManager()->contains($registry)) {
             $this->getEntityManager()->persist($registry);
@@ -58,11 +58,11 @@ class Repository extends EntityRepository
     /**
      * Removes the registry entry from DB.
      *
-     * @param \BackBee\Bundle\Registry $registry
+     * @param  Registry $registry
      *
-     * @return \BackBee\Bundle\Registry
+     * @return Registry
      */
-    public function remove(\BackBee\Bundle\Registry $registry)
+    public function remove(Registry $registry)
     {
         if (\Doctrine\ORM\UnitOfWork::STATE_NEW !== $this->getEntityManager()->getUnitOfWork()->getEntityState($registry)) {
             $this->getEntityManager()->remove($registry);
@@ -75,9 +75,9 @@ class Repository extends EntityRepository
     /**
      * Removes the registry entry from DB.
      *
-     * @param \BackBee\Bundle\Registry $registry
+     * @param  Registry $registry
      *
-     * @return \BackBee\Bundle\Registry
+     * @return Registry
      */
     public function removeEntity($entity)
     {
@@ -98,7 +98,7 @@ class Repository extends EntityRepository
 
         $registry = null;
         if (false !== $result) {
-            $registry = new \BackBee\Bundle\Registry();
+            $registry = new Registry();
             $registry->setKey($result['key']);
             $registry->setValue($result['value']);
             $registry->setScope($result['scope']);
@@ -181,7 +181,7 @@ class Repository extends EntityRepository
     private function getResultSetMapping()
     {
         $rsm = new ResultSetMapping();
-        $rsm->addEntityResult('BackBee\Bundle\Registry', 'br');
+        $rsm->addEntityResult('BackBee\Util\Registry', 'br');
         $rsm->addFieldResult('br', 'id', 'id');
         $rsm->addFieldResult('br', 'type', 'type');
         $rsm->addMetaResult('br', 'key', 'key');
