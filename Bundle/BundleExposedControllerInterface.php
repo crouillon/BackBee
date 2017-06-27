@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,27 +17,24 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle;
+
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * This interface ensure that an exposed controller has an entry point (indexAction),
  * a label getter and a description getter.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author e.chau <eric.chau@lp-digital.fr>
  */
 interface BundleExposedControllerInterface
 {
     /**
      * This exposed controller entry point.
      *
-     * @return Symfony\Component\HttpFoundation\Response the response object to send
+     * @return Response The response object to send.
      */
     public function indexAction();
 

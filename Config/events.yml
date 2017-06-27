@@ -130,4 +130,4 @@ bbapplication.init:
 
 bbapplication.stop:
     listeners:
-        - [BackBee\Bundle\Listener\BundleListener, onApplicationStop]
+        - ["@listener.bundlelistener", onApplicationStop]

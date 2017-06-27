@@ -19,23 +19,29 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Bundle\Exception;
+namespace BackBee\Bundle\Tests\Exception;
 
-use BackBee\Exception\BBException;
+use BackBee\Bundle\Exception\RequestErrorException;
+use BackBee\Tests\BackBeeTestCase;
 
 /**
- * Exception thrown if a bundle can not be loaded, init, started or ran.
+ * Tests suite for class RequestErrorException.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class BundleException extends BBException
+class RequestErrorExceptionTest extends BackBeeTestCase
 {
 
-    const UNKNOWN_ERROR = 20000;
-    const INIT_ERROR = 20001;
-    const START_ERROR = 20002;
-    const RUN_ERROR = 20003;
+    /**
+     * @covers BackBee\Bundle\Exception\RequestErrorException::__construct()
+     * @covers BackBee\Bundle\Exception\RequestErrorException::getStatusCode()
+     */
+    public function testException()
+    {
+        $exception = new RequestErrorException('message', 500);
+        $this->assertEquals(500, $exception->getStatusCode());
 
-    protected $_code = self::UNKNOWN_ERROR;
-
+        $stringCodeException = new RequestErrorException('message', '500');
+        $this->assertEquals(500, $stringCodeException->getStatusCode());
+    }
 }

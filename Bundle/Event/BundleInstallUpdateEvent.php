@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,53 +17,50 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle\Event;
 
 use BackBee\Bundle\BundleInterface;
-use BackBee\Event\Event;
 
 /**
+ * Event dispatch on bundle install or update.
+ *
  * @author Eric Chau <eric.chau@lp-digital.fr>
  */
-class BundleInstallUpdateEvent extends Event
+class BundleInstallUpdateEvent extends AbstractBundleEvent
 {
-    private $bundle;
+
+    /**
+     * Is the force attribute activated?
+     *
+     * @var boolean
+     */
     private $forced;
+
+    /**
+     * Log stack;
+     *
+     * @var string[]
+     */
     private $logs;
 
     /**
-     * Creates an instance of BundleInstallUpdateEvent.
+     * BundleInstallUpdateEvent creator.
      *
-     * @param  BundleInterface $target
-     * @param  mixed           $eventArgs
-     * @throws \InvalidArgumentException if the provided target does not implement BackBee\Bundle\BundleInterface
+     * @param BundleInterface $target    The bundle being installed or updated.
+     * @param mixed|null      $eventArgs Optional, event arguments.
      */
     public function __construct($target, $eventArgs = null)
     {
-        if (!($target instanceof BundleInterface)) {
-            throw new \InvalidArgumentException(
-                'Target of bundle update or action event must be instance of BackBee\Bundle\BundleInterface'
-            );
+        parent::__construct($target, $eventArgs);
+
+        if (!is_array($eventArgs)) {
+            $eventArgs = [$eventArgs];
         }
 
-        parent::__construct($target, $eventArgs);
-        $this->bundle = $target;
         $this->forced = isset($eventArgs['force']) ? (boolean) $eventArgs['force'] : false;
         $this->logs = isset($eventArgs['logs']) ? (array) $eventArgs['logs'] : [];
-    }
-
-    /**
-     * Returns the bundle which is updating.
-     *
-     * @return
-     */
-    public function getBundle()
-    {
-        return $this->bundle;
     }
 
     /**
@@ -79,9 +76,11 @@ class BundleInstallUpdateEvent extends Event
     /**
      * Adds new message to logs.
      *
-     * @param string $key
-     * @param string $message
-     * @return self
+     * @param  string $key               The key log.
+     * @param  string $message           The message log.
+     *
+     * @return BundleInstallUpdateEvent  The current event instance.
+     *
      * @throws \InvalidArgumentException if message argument is not type of string
      */
     public function addLog($key, $message)
@@ -106,7 +105,7 @@ class BundleInstallUpdateEvent extends Event
     /**
      * Returns bundle update logs.
      *
-     * @return array
+     * @return string[]
      */
     public function getLogs()
     {

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,11 +17,13 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle\Listener;
+
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 use BackBee\Bundle\Event\BundleStopEvent;
 use BackBee\Event\Event;
@@ -29,38 +31,90 @@ use BackBee\Event\Event;
 /**
  * BackBee core bundle listener.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
-class BundleListener
+class BundleListener implements ContainerAwareInterface
 {
+
+    /**
+     * @var ContainerInterface
+     */
+    private $container;
+
+    /**
+     * @var EventDispatcherInterface
+     */
+    private $eventDispatcher;
+
+    /**
+     * Listener constructor
+     *
+     * @param ContainerInterface|null       $container
+     * @param EventDispatcherInterface|null $eventDispatcher
+     */
+    public function __construct(ContainerInterface $container = null, EventDispatcherInterface $eventDispatcher = null)
+    {
+        $this
+            ->setContainer($container)
+            ->setEventDispatcher($eventDispatcher)
+        ;
+    }
 
     /**
      * Occurs on `bbapplication.stop` event to stop every started bundles.
      *
      * @param Event $event
      */
-    public static function onApplicationStop(Event $event)
+    public function onApplicationStop(Event $event)
     {
-        $container = $event->getTarget()->getContainer();
-        $eventDispatcher = $container->has('event.dispatcher') ? $container->get('event.dispatcher') : null;
+        if (null === $this->container) {
+            return;
+        }
 
-        foreach (array_keys($container->findTaggedServiceIds('bundle')) as $bundleId) {
-            if (!$container->hasInstanceOf($bundleId)) {
+        $bundlesId = array_keys($this->container->findTaggedServiceIds('bundle'));
+        foreach ($bundlesId as $bundleId) {
+            if (!$this->container->has($bundleId)) {
                 continue;
             }
 
-            $bundle = $container->get($bundleId);
+            $bundle = $this->container->get($bundleId);
             $bundle->stop();
 
-            if (null !== $eventDispatcher) {
-                $eventDispatcher->dispatch(
+            if (null !== $this->eventDispatcher) {
+                $stopEvent = new BundleStopEvent($this->container->get($bundleId));
+                $this->eventDispatcher->dispatch(
                     sprintf('bundle.%s.stopped', $bundleId),
-                    new BundleStopEvent($container->get($bundleId))
+                    $stopEvent
                 );
             }
         }
+    }
+
+    /**
+     * Sets the container.
+     *
+     * @param  ContainerInterface|null $container A ContainerInterface instance or null.
+     *
+     * @return BundleListenr                      Current listener instance.
+     */
+    public function setContainer(ContainerInterface $container = null)
+    {
+        $this->container = $container;
+
+        return $this;
+    }
+
+    /**
+     * Sets the event dispatcher.
+     *
+     * @param EventDispatcherInterface|null $eventDispatcher A EventDispatcherInterface instance or null
+     *
+     * @return BundleListenr                                 Current listener instance.
+     */
+    public function setEventDispatcher(EventDispatcherInterface $eventDispatcher = null)
+    {
+        $this->eventDispatcher = $eventDispatcher;
+
+        return $this;
     }
 }

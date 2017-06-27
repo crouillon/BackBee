@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,24 +17,24 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle;
 
+use Doctrine\ORM\EntityManager;
+
+use BackBee\ApplicationInterface;
 use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 
 /**
- * BundleInterface which define somes methods to implements for BackBee bundles; it also define some constants.
+ * BundleInterface which define somes methods to implements for BackBee bundles,
+ * it also define some constants.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 interface BundleInterface extends ObjectIdentifiableInterface, \JsonSerializable
 {
+
     /**
      * service id pattern (for bundle and bundle's config).
      */
@@ -47,30 +47,30 @@ interface BundleInterface extends ObjectIdentifiableInterface, \JsonSerializable
      */
     const CONFIG_DIRECTORY_NAME = 'Config';
     const OLD_CONFIG_DIRECTORY_NAME = 'Ressources';
-
     const DEFAULT_CONFIG_PER_SITE_VALUE = true;
 
     /**
      * Returns the bundle id.
      *
-     * @return string bundle id
+     * @return string The bundle id.
      */
     public function getId();
 
     /**
      * Returns bundle base directory.
      *
-     * @return string bundle base directory
+     * @return string The bundle base directory.
      */
     public function getBaseDirectory();
 
     /**
-     * Returns bundle property if you provide key, else every properties; a bundle
-     * property is any key/value defined in 'bundle'section in config.yml.
+     * Returns bundle property if you provide key, else every properties;
+     * a bundle property is any key/value defined in 'bundle' section of config.yml.
      *
-     * @param string $key name of the property
+     * @param  string|null       $key The name of the property.
      *
-     * @return string|array value of the property if key is not null, else an array which contains every properties
+     * @return string|array|null      Value of the property if key is not null,
+     *                                else an array which contains every properties.
      */
     public function getProperty($key = null);
 
@@ -87,21 +87,21 @@ interface BundleInterface extends ObjectIdentifiableInterface, \JsonSerializable
     /**
      * Returns the application current bundle is registered into.
      *
-     * @return BackBee\BBApplication application that own current bundle
+     * @return ApplicationInterface Application that own current bundle.
      */
     public function getApplication();
 
     /**
      * Current bundle entity manager.
      *
-     * @return Doctrine\ORM\EntityManager
+     * @return EntityManager
      */
     public function getEntityManager();
 
     /**
      * Defines if current bundle is started or not.
      *
-     * @return boolean true if the bundle is started, else false
+     * @return boolean True if the bundle is started, else false.
      */
     public function isStarted();
 
@@ -113,7 +113,7 @@ interface BundleInterface extends ObjectIdentifiableInterface, \JsonSerializable
     /**
      * Defines if current bundle require different config per site or not.
      *
-     * @return boolean true if current bundle require a different config per site, else false
+     * @return boolean True if current bundle require a different config per site, else false
      */
     public function isConfigPerSite();
 
@@ -121,7 +121,7 @@ interface BundleInterface extends ObjectIdentifiableInterface, \JsonSerializable
      * Checks if current bundle is enabled or not (it also defines if it is
      * loaded by BundleLoader into application).
      *
-     * @return boolean true if the bundle is enabled, else false
+     * @return boolean true If the bundle is enabled, else false.
      */
     public function isEnabled();
 }

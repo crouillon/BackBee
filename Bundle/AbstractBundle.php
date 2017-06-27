@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,32 +17,32 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle;
 
-use Symfony\Component\Security\Core\Util\ClassUtils;
+use Doctrine\ORM\EntityManager;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
+
 use BackBee\ApplicationInterface;
 use BackBee\Bundle\Event\BundleStartEvent;
+use BackBee\Config\Config;
+use BackBee\DependencyInjection\ContainerInterface;
 use BackBee\Routing\RouteCollection;
 use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 
 /**
  * Abstract class for BackBee's bundle.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 abstract class AbstractBundle implements BundleInterface
 {
+
     /**
      * Application this bundle belongs to.
      *
-     * @var BackBee\ApplicationInterface
+     * @var ApplicationInterface
      */
     private $application;
 
@@ -75,86 +75,102 @@ abstract class AbstractBundle implements BundleInterface
     private $exposedActions;
 
     /**
-     * Indexed by a unique name (controller name + action name), it contains every (controller; action)
-     * callbacks.
+     * Indexed by a unique name (controller name + action name), it contains every
+     * (controller; action) callbacks.
      *
      * @var array
      */
     private $exposedActionsCallbacks;
 
     /**
-     * AbstractBaseBundle's constructor.
+     * AbstractBaseBundle constructor.
      *
-     * @param ApplicationInterface $application application to link current bundle with
+     * @param ApplicationInterface $application Application to link current bundle with.
+     * @param string|null          $id          Optional, the bundle identifier.
+     * @param string|null          $baseDir     Optional, the base directory of the bundle.
      */
     public function __construct(ApplicationInterface $application, $id = null, $baseDir = null)
     {
+        $this->id = $id;
+        $this->baseDir = $baseDir;
         $this->application = $application;
-        $bundleLoader = $this->application->getContainer()->get('bundle.loader');
 
-        $this->baseDir = $baseDir ?: $bundleLoader->buildBundleBaseDirectoryFromClassname(get_class($this));
-        $this->id = $id ?: basename($this->baseDir);
-
-        $bundleLoader->loadConfigDefinition($this->getConfigServiceId(), $this->baseDir);
-
-        $this->exposedActions = array();
-        $this->exposedActionsCallbacks = array();
-        $this->initBundleExposedActions();
         $this->started = false;
+        $this->exposedActions = [];
+        $this->exposedActionsCallbacks = [];
+
+        $bundleLoader = $this->getContainer()->get('bundle.loader');
+        $bundleLoader->loadConfigDefinition($this->getConfigServiceId(), $this->getBaseDirectory());
+
+        $this->initBundleExposedActions();
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::getId
+     * Returns the bundle id.
+     *
+     * @return string The bundle id.
      */
     public function getId()
     {
+        if (null === $this->id) {
+            $this->id = basename($this->getBaseDirectory());
+        }
+
         return $this->id;
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::getBaseDirectory
+     * Returns bundle base directory.
+     *
+     * @return string The bundle base directory.
      */
     public function getBaseDirectory()
     {
+        if (null === $this->baseDir) {
+            $bundleLoader = $this->getContainer()->get('bundle.loader');
+            $this->baseDir = $bundleLoader->buildBundleBaseDirectoryFromClassname(ClassUtils::getRealClass($this));
+        }
+
         return $this->baseDir;
     }
 
     /**
-     * @return the path to the Resources folder
+     * Returns the default path to the resources folder.
+     *
+     * @return string The bundle default resources directory.
      */
     public function getResourcesDirectory()
     {
-        return $this->baseDir.DIRECTORY_SEPARATOR.'Resources';
+        return $this->getBaseDirectory() . DIRECTORY_SEPARATOR . 'Resources';
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::getProperty
+     * Returns bundle property if you provide key, else every properties;
+     * a bundle property is any key/value defined in 'bundle' section of config.yml.
+     *
+     * @param  string|null       $key The name of the property.
+     *
+     * @return string|array|null      Value of the property if key is not null,
+     *                                else an array which contains every properties.
      */
     public function getProperty($key = null)
     {
-        $properties = null;
-        if (null !== $this->getConfig()) {
-            $properties = $this->getConfig()->getSection('bundle') ?: array();
-        }
-
+        $properties = $this->getConfig()->getSection('bundle') ?: [];
         if (null === $key) {
             return $properties;
         }
 
-        $property = null;
-        if (true === array_key_exists($key, $properties)) {
-            $property = $properties[$key];
-        }
-
-        return $property;
+        return isset($properties[$key]) ? $properties[$key] : null;
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::getConfig
+     * Returns the config object of the bundle.
+     *
+     * @return Config The Config of the bundle.
      */
     public function getConfig()
     {
-        return $this->application->getContainer()->get($this->getConfigServiceId());
+        return $this->getContainer()->get($this->getConfigServiceId());
     }
 
     /**
@@ -164,11 +180,17 @@ abstract class AbstractBundle implements BundleInterface
      */
     public function getConfigServiceId()
     {
-        return strtolower(str_replace(
-            '%bundle_service_id%',
-            str_replace('%bundle_name%', $this->id, BundleInterface::BUNDLE_SERVICE_ID_PATTERN),
-            BundleInterface::CONFIG_SERVICE_ID_PATTERN
-        ));
+        return strtolower(
+            str_replace(
+                '%bundle_service_id%',
+                str_replace(
+                    '%bundle_name%',
+                    $this->getId(),
+                    BundleInterface::BUNDLE_SERVICE_ID_PATTERN
+                ),
+                BundleInterface::CONFIG_SERVICE_ID_PATTERN
+            )
+        );
     }
 
     /**
@@ -178,27 +200,30 @@ abstract class AbstractBundle implements BundleInterface
      */
     public function getConfigDirectory()
     {
-        $directory = $this->baseDir.DIRECTORY_SEPARATOR.BundleInterface::CONFIG_DIRECTORY_NAME;
+        $directory = $this->getBaseDirectory() . DIRECTORY_SEPARATOR . BundleInterface::CONFIG_DIRECTORY_NAME;
         if (false === is_dir($directory)) {
-            $directory = $this->baseDir.DIRECTORY_SEPARATOR.BundleInterface::OLD_CONFIG_DIRECTORY_NAME;
+            $directory = $this->getBaseDirectory() . DIRECTORY_SEPARATOR . BundleInterface::OLD_CONFIG_DIRECTORY_NAME;
         }
 
         return $directory;
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::isConfigPerSite
+     * Defines if current bundle require different config per site or not.
+     *
+     * @return boolean True if current bundle require a different config per site, else false
      */
     public function isConfigPerSite()
     {
-        return null !== $this->getProperty('config_per_site')
-            ? $this->getProperty('config_per_site')
-            : BundleInterface::DEFAULT_CONFIG_PER_SITE_VALUE
-        ;
+        return (null !== $this->getProperty('config_per_site'))
+            ? (bool) $this->getProperty('config_per_site')
+            : BundleInterface::DEFAULT_CONFIG_PER_SITE_VALUE;
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::getApplication
+     * Returns the application current bundle is registered into.
+     *
+     * @return ApplicationInterface Application that own current bundle.
      */
     public function getApplication()
     {
@@ -206,15 +231,33 @@ abstract class AbstractBundle implements BundleInterface
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::getEntityManager
+     * Current DI container.
+     *
+     * @return ContainerInterface
+     *
+     * @codeCoverageIgnore
      */
-    public function getEntityManager()
+    public function getContainer()
     {
-        return $this->application->getEntityManager();
+        return $this->getApplication()->getContainer();
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::isStarted
+     * Current bundle entity manager.
+     *
+     * @return EntityManager
+     *
+     * @codeCoverageIgnore
+     */
+    public function getEntityManager()
+    {
+        return $this->getApplication()->getEntityManager();
+    }
+
+    /**
+     * Defines if current bundle is started or not.
+     *
+     * @return boolean True if the bundle is started, else false.
      */
     public function isStarted()
     {
@@ -222,22 +265,24 @@ abstract class AbstractBundle implements BundleInterface
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::started
+     * Switch current bundle as started (so self::isStarted() will return true).
      */
     public function started()
     {
         $this->started = true;
 
-        if ($this->application->getContainer()->has('event.dispatcher')) {
-            $this->application
-                ->getContainer()
+        if ($this->getContainer()->has('event.dispatcher')) {
+            $this->getContainer()
                 ->get('event.dispatcher')
                 ->dispatch(sprintf('bundle.%s.started', $this->getId()), new BundleStartEvent($this));
         }
     }
 
     /**
-     * @see BackBee\Bundle\BundleInterface::isEnabled
+     * Checks if current bundle is enabled or not (it also defines if it is
+     * loaded by BundleLoader into application).
+     *
+     * @return boolean true If the bundle is enabled, else false.
      */
     public function isEnabled()
     {
@@ -245,11 +290,11 @@ abstract class AbstractBundle implements BundleInterface
     }
 
     /**
-     * enable property setter.
+     * Enable property setter.
      *
-     * @param boolean $enable
+     * @param  boolean $enable
      *
-     * @return self
+     * @return AbstractBundle
      */
     public function setEnable($enable)
     {
@@ -261,11 +306,21 @@ abstract class AbstractBundle implements BundleInterface
     }
 
     /**
+     * Category property getter.
+     *
+     * @return array
+     */
+    public function getCategory()
+    {
+        return (array) $this->getProperty('category');
+    }
+
+    /**
      * category property setter.
      *
-     * @param string|array $category
+     * @param  string|array $category
      *
-     * @return self
+     * @return AbstractBundle
      */
     public function setCategory($category)
     {
@@ -277,28 +332,35 @@ abstract class AbstractBundle implements BundleInterface
     }
 
     /**
-     * config_per_site property setter.
+     * Config_per_site property setter.
      *
-     * @param boolean $v
+     * @param  boolean $perSite
      *
-     * @return self
+     * @return AbstractBundle
      */
-    public function setConfigPerSite($v)
+    public function setConfigPerSite($perSite)
     {
         $properties = $this->getProperty();
-        $properties['config_per_site'] = (boolean) $v;
+        $properties['config_per_site'] = (boolean) $perSite;
         $this->getConfig()->setSection('bundle', $properties, true);
 
         return $this;
     }
 
     /**
-     * @see JsonSerializable::jsonSerialize
+     * @see \JsonSerializable::jsonSerialize()
      */
     public function jsonSerialize()
     {
         $obj = new \stdClass();
         $obj->id = $this->getId();
+        $obj->enable = true;
+        $obj->config_per_site = false;
+        $obj->category = [];
+        $obj->exposed_actions = $this->getExposedActionsMapping();
+        $obj->thumbnail = $this->getContainer()
+            ->get('routing')
+            ->getUri('img/extnd-x/picto-extnd.png', null, null, RouteCollection::RESOURCE_URL);
 
         foreach ($this->getProperty() as $key => $value) {
             if ('bundle_loader_recipes' !== $key) {
@@ -306,50 +368,33 @@ abstract class AbstractBundle implements BundleInterface
             }
         }
 
-        if (false === property_exists($obj, 'enable')) {
-            $obj->enable = true;
-        }
-
-        if (false === property_exists($obj, 'config_per_site')) {
-            $obj->config_per_site = false;
-        }
-
-        if (false === property_exists($obj, 'category')) {
-            $obj->category = array();
-        }
-
-        if (false === property_exists($obj, 'thumbnail')) {
-            $obj->thumbnail = $this->getApplication()->getContainer()->get('routing')
-                ->getUri('img/extnd-x/picto-extnd.png', null, null, RouteCollection::RESOURCE_URL)
-            ;
-        }
-
-        if (false !== property_exists($obj, 'admin_entry_point')) {
+        if (property_exists($obj, 'admin_entry_point')) {
             $entrieDefinition = explode('.', $obj->admin_entry_point);
-            $controller = $entrieDefinition[0];
-            $action = isset($entrieDefinition[1]) ? $entrieDefinition[1] : 'index';
-            $obj->admin_entry_point = (new BundleControllerResolver($this->application))->resolveBaseAdminUrl($obj->id, $controller, $action);
+            $obj->admin_entry_point = (new BundleControllerResolver($this->getApplication()))
+                ->resolveBaseAdminUrl(
+                    $obj->id,
+                    $entrieDefinition[0],
+                    isset($entrieDefinition[1]) ? $entrieDefinition[1] : 'index'
+                );
         }
-
-        $obj->exposed_actions = $this->getExposedActionsMapping();
 
         return $obj;
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns a unique identifier for this domain object.
      *
-     * @see Symfony\Component\Security\Acl\Model\DomainObjectInterface::getObjectIdentifier
+     * @return string
      */
     public function getObjectIdentifier()
     {
-        return $this->getType().'('.$this->getIdentifier().')';
+        return $this->getType() . '(' . $this->getIdentifier() . ')';
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns the unique identifier for this object.
      *
-     * @see BackBee\Security\Acl\Domain\IObjectIdentifiable::getIdentifier
+     * @return string
      */
     public function getIdentifier()
     {
@@ -357,9 +402,9 @@ abstract class AbstractBundle implements BundleInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns a type for the domain object. Typically, this is the PHP class name.
      *
-     * @see BackBee\Security\Acl\Domain\IObjectIdentifiable::getType
+     * @return string cannot return null
      */
     public function getType()
     {
@@ -367,13 +412,16 @@ abstract class AbstractBundle implements BundleInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Checks for an explicit objects equality.
      *
-     * @see BackBee\Security\Acl\Domain\IObjectIdentifiable::equals
+     * @param  ObjectIdentifiableInterface $identity
+     *
+     * @return Boolean
      */
     public function equals(ObjectIdentifiableInterface $identity)
     {
-        return ($this->getType() === $identity->getType() && $this->getIdentifier() === $identity->getIdentifier());
+        return $this->getType() === $identity->getType()
+                && $this->getIdentifier() === $identity->getIdentifier();
     }
 
     /**
@@ -389,19 +437,17 @@ abstract class AbstractBundle implements BundleInterface
     /**
      * Returns the associated callback if "controller name/action name" couple is valid.
      *
-     * @param string $controllerName the controller name (ex.: BackBee\Controller\FrontController => front)
-     * @param string $actionName     the action name (ex.: FrontController::defaultAction => default)
+     * @param  string $controllerName the controller name (ex.: BackBee\Controller\FrontController => front)
+     * @param  string $actionName     the action name (ex.: FrontController::defaultAction => default)
      *
-     * @return callable|null the callback if there is one associated to "controller name/action name" couple, else null
+     * @return callable|null          the callback if there is one associated to
+     *                                "controller name/action name" couple, else null.
      */
     public function getExposedActionCallback($controllerName, $actionName)
     {
-        $uniqueName = $controllerName.'_'.$actionName;
+        $uniqueName = $controllerName . '_' . $actionName;
 
-        return array_key_exists($uniqueName, $this->exposedActionsCallbacks)
-            ? $this->exposedActionsCallbacks[$uniqueName]
-            : null
-        ;
+        return isset($this->exposedActionsCallbacks[$uniqueName]) ? $this->exposedActionsCallbacks[$uniqueName] : null;
     }
 
     /**
@@ -409,16 +455,15 @@ abstract class AbstractBundle implements BundleInterface
      */
     private function initBundleExposedActions()
     {
-        if (true === $this->isEnabled()) {
-            $container = $this->getApplication()->getContainer();
+        if ($this->isEnabled()) {
             foreach ((array) $this->getProperty('exposed_actions') as $controllerId => $actions) {
-                if (false === $container->has($controllerId)) {
+                if (!$this->getContainer()->has($controllerId)) {
                     throw new \InvalidArgumentException(
-                        "Exposed controller with id `$controllerId` not found for ".$this->getId()
+                        "Exposed controller with id `$controllerId` not found for " . $this->getId()
                     );
                 }
 
-                $controller = $container->get($controllerId);
+                $controller = $this->getContainer()->get($controllerId);
                 $this->formatAndInjectExposedAction($controller, $actions);
             }
         }
@@ -432,9 +477,9 @@ abstract class AbstractBundle implements BundleInterface
      */
     private function formatAndInjectExposedAction($controller, $actions)
     {
-        $controllerId = explode('\\', get_class($controller));
-        $controllerId = str_replace('controller', '', strtolower(array_pop(($controllerId))));
-        $this->exposedActions[$controllerId] = array('actions' => array());
+        $controllerNs = explode('\\', get_class($controller));
+        $controllerId = str_replace('controller', '', strtolower(array_pop(($controllerNs))));
+        $this->exposedActions[$controllerId] = ['actions' => []];
 
         if ($controller instanceof BundleExposedControllerInterface) {
             $this->exposedActions[$controllerId]['label'] = $controller->getLabel();
@@ -446,9 +491,9 @@ abstract class AbstractBundle implements BundleInterface
         foreach ($actions as $action) {
             if (method_exists($controller, $action)) {
                 $actionId = str_replace('action', '', strtolower($action));
-                $uniqueName = $controllerId.'_'.$actionId;
+                $uniqueName = $controllerId . '_' . $actionId;
 
-                $this->exposedActionsCallbacks[$uniqueName] = array($controller, $action);
+                $this->exposedActionsCallbacks[$uniqueName] = [$controller, $action];
                 $this->exposedActions[$controllerId]['actions'][] = $actionId;
             }
         }

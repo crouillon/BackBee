@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle\Event;
@@ -26,7 +24,7 @@ namespace BackBee\Bundle\Event;
 /**
  * Event dispatch on bundle stop.
  *
- * @author    Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class BundleStopEvent extends AbstractBundleEvent
 {

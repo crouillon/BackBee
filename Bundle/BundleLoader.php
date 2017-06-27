@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,37 +17,33 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle;
 
+use Doctrine\ORM\Tools\SchemaTool;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
+
 use BackBee\ApplicationInterface;
+use BackBee\Bundle\Event\BundleInstallUpdateEvent;
 use BackBee\Config\Config;
 use BackBee\DependencyInjection\ContainerInterface;
 use BackBee\DependencyInjection\Dumper\DumpableServiceInterface;
 use BackBee\DependencyInjection\Dumper\DumpableServiceProxyInterface;
 use BackBee\DependencyInjection\Util\ServiceLoader;
-use BackBee\Bundle\Event\BundleInstallUpdateEvent;
 use BackBee\Exception\InvalidArgumentException;
 use BackBee\Util\Resolver\BundleConfigDirectory;
 
-use Doctrine\ORM\Tools\SchemaTool;
-
-use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\Reference;
-
 /**
- * BundleLoader loads and injects bundles into application and its dependency injection container.
+ * BundleLoader loads and injects bundles into application and its dependency
+ * injection container.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      eric.chau <eric.chau@lp-digital.fr>
+ * @author eric.chau <eric.chau@lp-digital.fr>
  */
 class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInterface
 {
+
     const CLASSCONTENT_RECIPE_KEY = 'classcontent';
     const CUSTOM_RECIPE_KEY = 'custom';
     const EVENT_RECIPE_KEY = 'event';
@@ -59,12 +55,12 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
     const TEMPLATE_RECIPE_KEY = 'template';
 
     /**
-     * @var BackBee\ApplicationInterface
+     * @var ApplicationInterface
      */
     private $application;
 
     /**
-     * @var BackBee\DependencyInjection\ContainerInterface
+     * @var ContainerInterface
      */
     private $container;
 
@@ -84,7 +80,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
     private $bundleInfos = [];
 
     /**
-     * define if renderer has been restored by container or not.
+     * Define if bundle lodaer has been restored by container or not.
      *
      * @var boolean
      */
@@ -110,7 +106,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
         foreach ($config as $id => $classname) {
             $serviceId = $this->generateBundleServiceId($id);
 
-            if (false === $this->container->hasDefinition($serviceId)) {
+            if (!$this->container->hasDefinition($serviceId)) {
                 $baseDir = $this->buildBundleBaseDirectoryFromClassname($classname);
                 $this->bundlesBaseDir[$serviceId] = $baseDir;
                 $this->container->setDefinition(
@@ -153,21 +149,17 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
     /**
      * Computes and returns bundle base directory.
      *
-     * @param string $classname
+     * @param  string $classname
      *
      * @return string
      */
     public function buildBundleBaseDirectoryFromClassname($classname)
     {
-        if (false === array_key_exists($classname, $this->reflectionClasses)) {
+        if (!isset($this->reflectionClasses[$classname])) {
             $this->reflectionClasses[$classname] = new \ReflectionClass($classname);
         }
 
         $baseDir = dirname($this->reflectionClasses[$classname]->getFileName());
-
-        if (!is_dir($baseDir)) {
-            throw new \RuntimeException("Invalid bundle `$bundle` base directory, expected `$baseDir` to exist.");
-        }
 
         return $baseDir;
     }
@@ -180,13 +172,18 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     public function loadConfigDefinition($configId, $baseDir)
     {
-        if (false === $this->container->hasDefinition($configId)) {
-            $this->container->setDefinition($configId, $this->buildConfigDefinition($baseDir));
+        if (!$this->container->hasDefinition($configId)) {
+            $this->container->setDefinition(
+                $configId,
+                $this->buildConfigDefinition($baseDir)
+            );
         }
     }
 
     /**
      * Loads bundles routes into application's router.
+     *
+     * @codeCoverageIgnore
      */
     public function loadBundlesRoutes()
     {
@@ -207,6 +204,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      *
      * @param  BundleInterface $bundle The bundle to install
      * @param  boolean         $force  If true it will execute SQL query, default: false
+     *
      * @return array
      */
     public function installBundle(BundleInterface $bundle, $force = false)
@@ -237,6 +235,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      *
      * @param  BundleInterface $bundle The bundle to update
      * @param  boolean         $force  If true it will execute SQL query, default: false
+     *
      * @return array
      */
     public function updateBundle(BundleInterface $bundle, $force = false)
@@ -265,6 +264,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      *
      * @param  BundleInterface $bundle
      * @param  boolean         $force
+     *
      * @return array
      */
     private function createEntitiesSchema(BundleInterface $bundle, $force = false)
@@ -298,6 +298,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      *
      * @param  BundleInterface $bundle
      * @param  boolean         $force
+     *
      * @return array
      */
     private function updateEntitiesSchema(BundleInterface $bundle, $force = false)
@@ -329,11 +330,12 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      * Returns bundle entity directory path.
      *
      * @param  BundleInterface $bundle
+     *
      * @return string
      */
     protected function getBundleEntityDir(BundleInterface $bundle)
     {
-        return $bundle->getBaseDirectory().DIRECTORY_SEPARATOR.'Entity';
+        return $bundle->getBaseDirectory() . '/Entity';
     }
 
     /**
@@ -351,24 +353,24 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
     /**
      * Builds and return bundle definition.
      *
-     * @param string $classname The bundle entry point classname
-     * @param string $bundleId  The bundle id/name
-     * @param string $baseDir   The bundle base directory
+     * @param  string $classname The bundle entry point classname
+     * @param  string $bundleId  The bundle id/name
+     * @param  string $baseDir   The bundle base directory
      *
-     * @return \Symfony\Component\DependencyInjection\Definition
+     * @return Definition
      *
-     * @throws InvalidArgumentException if provided classname does not implements BackBee\Bundle\BundleInterface
+     * @throws InvalidArgumentException if provided classname does not implements BundleInterface
      */
     private function buildBundleDefinition($classname, $bundleId, $baseDir)
     {
-        if (false === is_subclass_of($classname, 'BackBee\Bundle\BundleInterface')) {
+        if (!is_subclass_of($classname, BundleInterface::class)) {
             throw new InvalidArgumentException(
                 "Bundles must implement `BackBee\Bundle\BundleInterface`, `$classname` does not."
             );
         }
 
-        $definition = new Definition($classname, array(new Reference('bbapp'), $bundleId, $baseDir));
-        $definition->addTag('bundle', array('dispatch_event' => false));
+        $definition = new Definition($classname, [new Reference('bbapp'), $bundleId, $baseDir]);
+        $definition->addTag('bundle', ['dispatch_event' => false]);
         $definition->addMethodCall('start');
         $definition->addMethodCall('started');
 
@@ -434,28 +436,28 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
     /**
      * Builds bundle Config definition.
      *
-     * @param string $baseDir The bundle base directory
+     * @param  string $baseDir The bundle base directory
      *
-     * @return \Symfony\Component\DependencyInjection\Definition
+     * @return Definition
      */
     private function buildConfigDefinition($baseDir)
     {
-        $definition = new Definition('BackBee\Config\Config', array(
+        $definition = new Definition(Config::class, [
             $this->getConfigDirByBundleBaseDir($baseDir),
             new Reference('cache.bootstrap'),
             null,
             '%debug%',
             '%config.yml_files_to_ignore%',
-        ));
+        ]);
 
         if (true === $this->application->getContainer()->getParameter('container.autogenerate')) {
-            $definition->addTag('dumpable', array('dispatch_event' => false));
+            $definition->addTag('dumpable', ['dispatch_event' => false]);
         }
 
-        $definition->addMethodCall('setContainer', array(new Reference('service_container')));
-        $definition->addMethodCall('setEnvironment', array('%bbapp.environment%'));
-        $definition->setConfigurator(array(new Reference('config.configurator'), 'configureBundleConfig'));
-        $definition->addTag('bundle.config', array('dispatch_event' => false));
+        $definition->addMethodCall('setContainer', [new Reference('service_container')]);
+        $definition->addMethodCall('setEnvironment', ['%bbapp.environment%']);
+        $definition->setConfigurator([new Reference('config.configurator'), 'configureBundleConfig']);
+        $definition->addTag('bundle.config', ['dispatch_event' => false]);
 
         return $definition;
     }
@@ -469,9 +471,9 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function getConfigDirByBundleBaseDir($baseDir)
     {
-        $directory = $baseDir.DIRECTORY_SEPARATOR.BundleInterface::CONFIG_DIRECTORY_NAME;
+        $directory = $baseDir . DIRECTORY_SEPARATOR . BundleInterface::CONFIG_DIRECTORY_NAME;
         if (!is_dir($directory)) {
-            $directory = $baseDir.DIRECTORY_SEPARATOR.BundleInterface::OLD_CONFIG_DIRECTORY_NAME;
+            $directory = $baseDir . DIRECTORY_SEPARATOR . BundleInterface::OLD_CONFIG_DIRECTORY_NAME;
         }
 
         return $directory;
@@ -522,19 +524,21 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function loadServices(Config $config, $serviceId, callable $recipe = null)
     {
-        if (false === $this->runRecipe($config, $recipe)) {
+        if (!$this->runRecipe($config, $recipe)) {
             $directories = array_unique(array_merge(
-                            BundleConfigDirectory::getDirectories(
-                                    $this->application->getBaseRepository(),
-                                    $this->application->getContext(),
-                                    $this->application->getEnvironment(),
-                                    str_replace('bundle.', '', $serviceId)
-                            ), BundleConfigDirectory::getDirectories(
-                                    $this->application->getBaseRepository(),
-                                    $this->application->getContext(),
-                                    $this->application->getEnvironment(),
-                                    basename(dirname($config->getBaseDir()))
-            )));
+                BundleConfigDirectory::getDirectories(
+                    $this->application->getBaseRepository(),
+                    $this->application->getContext(),
+                    $this->application->getEnvironment(),
+                    str_replace('bundle.', '', $serviceId)
+                ),
+                BundleConfigDirectory::getDirectories(
+                    $this->application->getBaseRepository(),
+                    $this->application->getContext(),
+                    $this->application->getEnvironment(),
+                    basename(dirname($config->getBaseDir()))
+                )
+            ));
             array_unshift($directories, $this->getConfigDirByBundleBaseDir(dirname($config->getBaseDir())));
 
             foreach ($directories as $directory) {
@@ -567,7 +571,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function loadEvents(Config $config, callable $recipe = null)
     {
-        if (false === $this->runRecipe($config, $recipe)) {
+        if (!$this->runRecipe($config, $recipe)) {
             $events = $config->getRawSection('events');
             if (true === is_array($events) && 0 < count($events)) {
                 $this->application->getEventDispatcher()->addListeners($events);
@@ -583,11 +587,9 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function addClassContentDir(Config $config, callable $recipe = null)
     {
-        if (null !== $recipe) {
-            $this->runRecipe($config, $recipe);
-        } else {
-            $directory = realpath(dirname($config->getBaseDir()).DIRECTORY_SEPARATOR.'ClassContent');
-            if (false !== $directory) {
+        if (!$this->runRecipe($config, $recipe)) {
+            $directory = dirname($config->getBaseDir()) . '/ClassContent';
+            if (is_dir($directory)) {
                 $this->application->unshiftClassContentDir($directory);
             }
         }
@@ -601,12 +603,9 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function addTemplatesDir(Config $config, callable $recipe = null)
     {
-        if (false === $this->runRecipe($config, $recipe)) {
-            $directory = realpath(
-                dirname($config->getBaseDir()).DIRECTORY_SEPARATOR
-                .'Templates'.DIRECTORY_SEPARATOR.'scripts'
-            );
-            if (false !== $directory) {
+        if (!$this->runRecipe($config, $recipe)) {
+            $directory = dirname($config->getBaseDir()) . '/Templates/scripts';
+            if (is_dir($directory)) {
                 $this->application->getRenderer()->addScriptDir($directory);
             }
         }
@@ -620,13 +619,10 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function addHelpersDir(Config $config, callable $recipe = null)
     {
-        if (false === $this->runRecipe($config, $recipe)) {
-            $directory = realpath(
-                dirname($config->getBaseDir()).DIRECTORY_SEPARATOR
-                .'Templates'.DIRECTORY_SEPARATOR.'helpers'
-            );
+        if (!$this->runRecipe($config, $recipe)) {
+            $directory = dirname($config->getBaseDir()) . '/Templates/helpers';
 
-            if (false !== $directory) {
+            if (is_dir($directory)) {
                 $this->application->getRenderer()->addHelperDir($directory);
             }
         }
@@ -640,7 +636,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function loadRoutes(Config $config, callable $recipe = null)
     {
-        if (false === $this->runRecipe($config, $recipe)) {
+        if (!$this->runRecipe($config, $recipe)) {
             $route = $config->getRouteConfig();
             if (true === is_array($route) && 0 < count($route)) {
                 $this->application->getController()->registerRoutes(
@@ -659,15 +655,15 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      */
     private function addResourcesDir(Config $config, callable $recipe = null)
     {
-        if (false === $this->runRecipe($config, $recipe)) {
-            $baseDir = dirname($config->getBaseDir()).DIRECTORY_SEPARATOR;
-            $directory = realpath($baseDir.DIRECTORY_SEPARATOR.'Resources');
+        if (!$this->runRecipe($config, $recipe)) {
+            $baseDir = dirname($config->getBaseDir());
+            $directory = $baseDir . '/Resources';
 
-            if (false === $directory) {
-                $directory = realpath($baseDir.DIRECTORY_SEPARATOR.'Ressources');
+            if (!is_dir($directory)) {
+                $directory = $baseDir . '/Ressources';
             }
 
-            if (false !== $directory) {
+            if (is_dir($directory)) {
                 $this->application->pushResourceDir($directory);
             }
         }
@@ -678,6 +674,8 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
      *
      * @param Config        $config
      * @param callable|null $recipe
+     *
+     * @codeCoverageIgnore
      */
     private function addNamespaces(Config $config, callable $recipe = null)
     {
@@ -735,7 +733,6 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
     public function restore(ContainerInterface $container, array $dump)
     {
         $this->bundleInfos = $dump['bundleInfos'];
-
         $this->isRestored = true;
     }
 

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle;
@@ -27,11 +25,14 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
+ * Abstract class providing some decorating methods to administrative controller of bundles.
+ *
  * @author Eric Chau <eric.chau@lp-digital.fr>
  * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  */
 abstract class AbstractAdminBundleController extends AbstractBundleController
 {
+
     const NOTIFY_SUCCESS = 'success';
     const NOTIFY_WARNING = 'warning';
     const NOTIFY_ERROR = 'error';
@@ -40,12 +41,12 @@ abstract class AbstractAdminBundleController extends AbstractBundleController
      * @var array
      */
     protected $notifications = [];
-
     protected $error;
 
     /**
-     * @param $method
-     * @param $arguments
+     * @param  $method
+     * @param  $arguments
+     *
      * @return mixed|Response
      */
     public function __call($method, $arguments)
@@ -76,19 +77,29 @@ abstract class AbstractAdminBundleController extends AbstractBundleController
     /**
      * Renders provided template with parameters and returns the generated string.
      *
-     * @param  string     $template   the template relative path
+     * @param  string     $template   the template relative path.
      * @param  array|null $parameters
+     *
      * @return string
+     *
+     * @codeCoverageIgnore
      */
     public function render($template, array $parameters = null, Response $response = null)
     {
-        return parent::render($this->bundle->getBaseDirectory().DIRECTORY_SEPARATOR.'Templates'.DIRECTORY_SEPARATOR.'scripts'.DIRECTORY_SEPARATOR.$template, $parameters, $response);
+        $bundleTemplate = $this->bundle->getBaseDirectory()
+                . DIRECTORY_SEPARATOR . 'Templates'
+                . DIRECTORY_SEPARATOR . 'scripts'
+                . DIRECTORY_SEPARATOR . $template;
+
+        return parent::render($bundleTemplate, $parameters, $response);
     }
 
     /**
-     * Notify the user with a message
-     * @param  String $type    values availble self::NOTIFY_SUCCESS, self::NOTIFY_WARNING and self::NOTIFY_ERROR
-     * @param  String $message Message to the user
+     * Notify the user with a message.
+     *
+     * @param  String $type    values availble self::NOTIFY_SUCCESS, self::NOTIFY_WARNING
+     *                         and self::NOTIFY_ERROR.
+     * @param  String $message Message to the user.
      */
     public function notifyUser($type, $message)
     {
@@ -106,17 +117,18 @@ abstract class AbstractAdminBundleController extends AbstractBundleController
                 'notification' => $this->notifications,
                 'error' => '',
             ];
-            $response =  new JsonResponse($completeResponse, 200);
+            $response = new JsonResponse($completeResponse, 200);
         }
 
         if (!($response instanceof Response)) {
             throw new \InvalidArgumentException(sprintf(
                 '%s must returns a string or an object instance of %s, %s given.',
-                get_class($this).'::'.$method,
-                'Symfony\Component\HttpFoundation\Response',
+                get_class($this) . '::' . $method,
+                Response::class,
                 gettype($response)
             ));
         }
+
         return $response;
     }
 }

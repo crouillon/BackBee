@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle\Exception;
@@ -28,17 +26,16 @@ use BackBee\Exception\BBException;
 /**
  * Exception thrown if a bundle can not be loaded, init, started or ran.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche
  */
 class BundleConfigurationException extends BBException
 {
+
     const BUNDLE_UNDECLARED = 21000;
     const CONTROLLER_SECTION_MISSING = 21001;
     const CONTROLLER_UNDECLARED = 21002;
     const ADMIN_ROUTE_BADLY_INVOKED = 21003;
 
     protected $_code = self::UNKNOWN_ERROR;
+
 }

@@ -1,0 +1,5 @@
+<container xmlns="http://symfony.com/schema/dic/services">
+    <services>
+        <service id="listener.xml" class="BackBee\\Bundle\\Tests\\Mock\\BundleControllerMock" />
+    </services>
+</container>

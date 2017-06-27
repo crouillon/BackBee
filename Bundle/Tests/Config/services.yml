@@ -1,0 +1,3 @@
+services:
+    listener.yml:
+        class: BackBee\Bundle\Tests\Mock\BundleControllerMock

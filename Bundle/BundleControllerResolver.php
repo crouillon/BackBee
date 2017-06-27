@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,31 +17,40 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle;
 
-use BackBee\Bundle\Exception\BundleConfigurationException;
 use BackBee\ApplicationInterface;
+use BackBee\Bundle\Exception\BundleConfigurationException;
+use BackBee\DependencyInjection\ContainerInterface;
 
 /**
- * @category    BackBee
+ * A controller resolver for bundles.
  *
  * @author      Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  */
 class BundleControllerResolver
 {
     /**
+     * The current BackBee application.
+     *
      * @var ApplicationInterface
      */
     private $application;
+
     /**
-     * @var \BackBee\DependencyInjection\ContainerInterface
+     * The current DI container.
+     *
+     * @var ContainerInterface
      */
     private $container;
 
+    /**
+     * Resolver constructor.
+     *
+     * @param ApplicationInterface $application
+     */
     public function __construct(ApplicationInterface $application)
     {
         $this->application = $application;
@@ -49,54 +58,69 @@ class BundleControllerResolver
     }
 
     /**
-     * Compute the service identifier bundle name
+     * Compute the service identifier bundle name.
      *
      * @param  String $name
      * @return String
      */
     private function computeBundleName($name)
     {
-        return str_replace('%bundle_name%', strtolower($name), BundleInterface::BUNDLE_SERVICE_ID_PATTERN);
+        return str_replace(
+            '%bundle_name%',
+            strtolower($name),
+            BundleInterface::BUNDLE_SERVICE_ID_PATTERN
+        );
     }
 
     /**
      * Resolve the bundle controller by passing two identifier (bundle and controller) and return it.
      *
-     * @param  String $bundle       Bundle identifier used to declare it into bundle.yml
-     * @param  String $controller   Controller identifier used to declare it inte your bundle configuration
-     * @return \BackBee\Bundle\AbstractBundleController
+     * @param  String $bundle               Bundle identifier used to declare it into bundle.yml
+     * @param  String $controller           Controller identifier used to declare it inte your bundle configuration.
      *
-     * @throws Exception            Bad configuration
+     * @return AbstractBundleController
+     *
+     * @throws BundleConfigurationException Bad configuration
      */
     public function resolve($bundle, $controller)
     {
         if (!$this->container->has($this->computeBundleName($bundle))) {
-            throw new BundleConfigurationException(sprintf("%s doesn't exist.", $bundle), BundleConfigurationException::BUNDLE_UNDECLARED);
+            throw new BundleConfigurationException(
+                sprintf("%s doesn't exist.", $bundle),
+                BundleConfigurationException::BUNDLE_UNDECLARED
+            );
         }
 
         $config = $this->container->get($this->computeBundleName($bundle))->getProperty();
 
         if (!isset($config['admin_controller'])) {
-            throw new BundleConfigurationException(sprintf('No controller definition in %s bundle configuration.', $bundle),
+            throw new BundleConfigurationException(
+                sprintf('No controller definition in %s bundle configuration.', $bundle),
                 BundleConfigurationException::CONTROLLER_SECTION_MISSING
             );
         }
 
         if (!isset($config['admin_controller'][$controller])) {
-            throw new BundleConfigurationException(sprintf('%s controller is undefined in %s bundle configuration.', $controller, $bundle),
-                BundleConfigurationException::CONTROLLER_UNDECLARED);
+            throw new BundleConfigurationException(
+                sprintf('%s controller is undefined in %s bundle configuration.', $controller, $bundle),
+                BundleConfigurationException::CONTROLLER_UNDECLARED
+            );
         }
-        $namespace = '\\'.$config['admin_controller'][$controller];
+
+        $namespace = NAMESPACE_SEPARATOR . trim($config['admin_controller'][$controller], NAMESPACE_SEPARATOR);
+
         return new $namespace($this->application);
     }
 
     /**
      * Compute the minimal Admin Base Url
      *
-     * @param  String $bundleId     Bundle identifier used to declare it into bundle.yml
-     * @param  String $controllerId Controller identifier used to declare it inte your bundle configuration
-     * @param  String $actionId     Action identifier refere to a method name like "indexAction" into the controller without the Action keyword
-     * @return String               Base URL to contact an bundle admin action
+     * @param  String $bundleId     Bundle identifier used to declare it into bundle.yml.
+     * @param  String $controllerId Controller identifier used to declare it inte your bundle configuration.
+     * @param  String $actionId     Action identifier refere to a method name like "indexAction" into the
+     *                              controller without the Action keyword.
+     *
+     * @return String               Base URL to contact an bundle admin action.
      */
     public function resolveBaseAdminUrl($bundleId, $controllerId, $actionId)
     {

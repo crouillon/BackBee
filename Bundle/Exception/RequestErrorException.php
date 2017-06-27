@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle\Exception;
@@ -26,29 +24,20 @@ namespace BackBee\Bundle\Exception;
 use BackBee\Exception\BBException;
 
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 class RequestErrorException extends BBException
 {
-    /**
-     * @var integer
-     */
-    private $statusCode;
 
     /**
-     * RequestErrorException's constructor.
+     * RequestErrorException constructor.
      *
      * @param string  $message
      * @param integer $statusCode
      */
     public function __construct($message, $statusCode)
     {
-        parent::__construct($message);
-
-        $this->statusCode = intval($statusCode);
+        parent::__construct($message, intval($statusCode));
     }
 
     /**
@@ -58,6 +47,6 @@ class RequestErrorException extends BBException
      */
     public function getStatusCode()
     {
-        return $this->statusCode;
+        return $this->getCode();
     }
 }

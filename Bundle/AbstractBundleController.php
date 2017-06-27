@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,37 +17,42 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Bundle;
 
-use BackBee\BBApplication;
-use BackBee\Controller\Controller;
-
+use Doctrine\ORM\EntityRepository;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\Flash\FlashBag;
 use Symfony\Component\Translation\Translator;
 
+use BackBee\BBApplication;
+use BackBee\Controller\Controller;
+use BackBee\Routing\RouteCollection;
+
 /**
+ * Abstract class for Bundle controller.
+ *
  * @author Eric Chau <eric.chau@lp-digital.fr>
  * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  */
 abstract class AbstractBundleController extends Controller
 {
+
     /**
-     * @var \Symfony\Component\Translation\Translator
+     * @var Translator
      */
     protected $translator;
 
     /**
-     * @var \Psr\Log\LoggerInterface
+     * @var LoggerInterface
      */
     protected $logger;
 
     /**
-     * @var \BackBee\Routing\RouteCollection
+     * @var RouteCollection
      */
     protected $routing;
 
@@ -56,6 +61,11 @@ abstract class AbstractBundleController extends Controller
      */
     protected $bundle;
 
+    /**
+     * Bundle controller constructor.
+     *
+     * @param BBApplication $app
+     */
     public function __construct(BBApplication $app)
     {
         $this->logger = $app->getLogging();
@@ -82,11 +92,16 @@ abstract class AbstractBundleController extends Controller
     public function setBundle(BundleInterface $bundle)
     {
         $this->bundle = $bundle;
+
+        return $this;
     }
 
     /**
-     * @param $method
-     * @param $arguments
+     * Magic method to call action methods.
+     *
+     * @param  string $method
+     * @param  mixed  $arguments
+     *
      * @return Response
      */
     public function __call($method, $arguments)
@@ -107,17 +122,18 @@ abstract class AbstractBundleController extends Controller
      *
      * @param  string     $template   the template relative path
      * @param  array|null $parameters
+     *
      * @return string
      */
     public function render($template, array $parameters = null, Response $response = null)
     {
-        $parameters = array_merge([
+        $params = array_merge([
             'request'              => $this->getRequest(),
             'routing'              => $this->routing,
             'flash_bag'            => $this->application->getSession()->getFlashBag(),
         ], $parameters ?: []);
 
-        return $this->application->getRenderer()->partial($template, $parameters);
+        return $this->application->getRenderer()->partial($template, $params);
     }
 
     /**
@@ -125,7 +141,9 @@ abstract class AbstractBundleController extends Controller
      *
      * @param  String|Response  $response
      * @param  String           $method   method called
+     *
      * @return Response
+     *
      * @throws \InvalidArgumentException
      */
     protected function decorateResponse($response, $method)
@@ -138,7 +156,7 @@ abstract class AbstractBundleController extends Controller
             throw new \InvalidArgumentException(sprintf(
                 '%s must returns a string or an object instance of %s, %s given.',
                 get_class($this).'::'.$method,
-                'Symfony\Component\HttpFoundation\Response',
+                Response::class,
                 gettype($response)
             ));
         }
@@ -147,11 +165,12 @@ abstract class AbstractBundleController extends Controller
     }
 
     /**
-     * Execute the controller method and return his response
+     * Execute the controller method and return his response.
      *
-     * @param String    $method    method to call
-     * @param Array     $arguments method arguments
-     * @return String|Response
+     * @param  String $method    method to call
+     * @param  Array  $arguments method arguments
+     *
+     * @return mixed
      */
     protected function invockeAction($method, $arguments)
     {
@@ -167,10 +186,12 @@ abstract class AbstractBundleController extends Controller
     }
 
     /**
-     * check if the method exist
+     * Check if the method exist.
      *
      * @param  String   $method     method name
+     *
      * @return true|Response
+     *
      * @throws \LogicException
      */
     protected function checkMethodExist($method)
@@ -194,6 +215,7 @@ abstract class AbstractBundleController extends Controller
      *
      * @param  string  $content    the response body content (must be string)
      * @param  integer $statusCode the response status code (default: 200)
+     *
      * @return Response
      */
     protected function createResponse($content, $statusCode = 200, $contentType = 'text/html')
@@ -206,6 +228,7 @@ abstract class AbstractBundleController extends Controller
      *
      * @param  string $url The url to redirect the user to
      * @param  int $statusCode The HTTP status code to return
+     *
      * @return RedirectResponse
      */
     protected function redirect($url, $statusCode = 302)
@@ -216,7 +239,7 @@ abstract class AbstractBundleController extends Controller
     /**
      * Returns the current session flash bag.
      *
-     * @return \Symfony\Component\HttpFoundation\Session\Flash\FlashBag
+     * @return FlashBag
      */
     protected function getFlashBag()
     {
@@ -255,6 +278,8 @@ abstract class AbstractBundleController extends Controller
      * Returns translator.
      *
      * @return Translator
+     *
+     * @codeCoverageIgnore
      */
     protected function getTranslator()
     {
@@ -264,7 +289,7 @@ abstract class AbstractBundleController extends Controller
     /**
      * Returns an entity repository
      *
-     * @return \Doctrine\ORM\EntityRepository
+     * @return EntityRepository
      */
     public function getRepository($entity)
     {
@@ -276,10 +301,12 @@ abstract class AbstractBundleController extends Controller
      *
      * Note that you should not provide namespace prefix (=BackBee\Bundle\AdminBundle\Entity).
      *
-     * @param  string $entityName The entity namespace
-     * @param  string $id         The identifier to find
+     * @param  string $entityName The entity namespace.
+     * @param  string $id         The identifier to find.
+     *
      * @return object
-     * @throws \InvalidArgumentException if cannot find entity with provided identifier
+     *
+     * @throws \InvalidArgumentException if cannot find entity with provided identifier.
      */
     protected function throwsExceptionIfEntityNotFound($entityName, $id)
     {

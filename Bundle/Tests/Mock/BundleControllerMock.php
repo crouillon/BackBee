@@ -19,23 +19,13 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Bundle\Exception;
-
-use BackBee\Exception\BBException;
+namespace BackBee\Bundle\Tests\Mock;
 
 /**
- * Exception thrown if a bundle can not be loaded, init, started or ran.
+ * Mock bundle controller
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class BundleException extends BBException
+class BundleControllerMock
 {
-
-    const UNKNOWN_ERROR = 20000;
-    const INIT_ERROR = 20001;
-    const START_ERROR = 20002;
-    const RUN_ERROR = 20003;
-
-    protected $_code = self::UNKNOWN_ERROR;
-
 }

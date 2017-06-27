@@ -1,0 +1,4 @@
+services:
+    listener.bundlelistener:
+        class: BackBee\Bundle\Listener\BundleListener
+        arguments: ["@service_container", "@event.dispatcher"]
