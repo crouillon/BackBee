@@ -122,18 +122,32 @@ class AuthenticationManager implements AuthenticationManagerInterface
             }
 
             if (null !== $this->_eventDispatcher) {
-                $this->_eventDispatcher->dispatch(AuthenticationEvents::AUTHENTICATION_SUCCESS, new AuthenticationEvent($result));
+                $this->_eventDispatcher->dispatch(
+                    AuthenticationEvents::AUTHENTICATION_SUCCESS,
+                    new AuthenticationEvent($result)
+                );
             }
 
             return $result;
         }
 
         if (null === $lastException) {
-            $lastException = new ProviderNotFoundException(sprintf('No Authentication Provider found for token of class "%s".', get_class($token)));
+            $lastException = new ProviderNotFoundException(sprintf(
+                'No Authentication Provider found for token of class "%s".',
+                get_class($token)
+            ));
         }
 
         if (null !== $this->_eventDispatcher) {
-            $this->_eventDispatcher->dispatch(AuthenticationEvents::AUTHENTICATION_FAILURE, new AuthenticationFailureEvent($token, $lastException));
+            $exception = $lastException;
+            if ($exception instanceof SecurityException) {
+                $exception = new AuthenticationException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+
+            $this->_eventDispatcher->dispatch(
+                AuthenticationEvents::AUTHENTICATION_FAILURE,
+                new AuthenticationFailureEvent($token, $exception)
+            );
         }
 
         throw $lastException;
