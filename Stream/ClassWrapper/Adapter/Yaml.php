@@ -25,6 +25,7 @@ namespace BackBee\Stream\ClassWrapper\Adapter;
 
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml as parserYaml;
+use BackBee\Event\Event;
 use BackBee\Exception\BBException;
 use BackBee\Stream\ClassWrapper\AbstractClassWrapper;
 use BackBee\Stream\ClassWrapper\Exception\ClassWrapperException;
@@ -357,6 +358,32 @@ class Yaml extends AbstractClassWrapper
 
             try {
                 $yamlDatas = parserYaml::parse(file_get_contents($this->_path));
+                if (null !== $this->_application) {
+                    $event = new Event(
+                        $this->namespace . NAMESPACE_SEPARATOR . $this->classname,
+                        ['data' => $yamlDatas]
+                    );
+
+                    $this->_application
+                        ->getEventDispatcher()
+                        ->triggerEvent(
+                            'streamparsing',
+                            $this->namespace . NAMESPACE_SEPARATOR . $this->classname,
+                            null,
+                            $event
+                        );
+
+                    $this->_application
+                        ->getEventDispatcher()
+                        ->dispatch(
+                            'classcontent.streamparsing',
+                            $event
+                    );
+
+                    if ($event->hasArgument('data')) {
+                        $yamlDatas = $event->getArgument('data');
+                    }
+                }
             } catch (ParseException $e) {
                 throw new ClassWrapperException($e->getMessage());
             }
