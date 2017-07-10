@@ -19,37 +19,37 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Cache;
+namespace BackBee\Cache\Tests\Mock;
 
 /**
- * Abstract class for cache adapters with extended features
- * as tag and expire date time.
+ * Mock Repository
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-abstract class AbstractExtendedCache extends AbstractCache implements CacheExtendedInterface
+class MockRepository
 {
 
     /**
-     * @{inheritdoc}
+     * @var array
      */
-    abstract public function removeByTag($tag);
+    private $classnames;
 
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function updateExpireByTag($tag, $lifetime = null);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function getMinExpireByTag($tag, $lifetime = 0);
-
-    /**
-     * @{inheritdoc}
-     */
-    public function saveTag($id, $tag)
+    public function __construct($mockClass = 'BackBee\Cache\Tests\Mock\MockObjectSelf')
     {
-        return null;
+        $this->classnames = [
+            'Unknown\ClassName',
+            'BackBee\ClassContent\Element\Text',
+            $mockClass
+        ];
+    }
+
+    public function getDescendantsContentUids($contents)
+    {
+        return ['uid1', 'uid2'];
+    }
+
+    public function getClassnames($contentUids)
+    {
+        return $this->classnames;
     }
 }

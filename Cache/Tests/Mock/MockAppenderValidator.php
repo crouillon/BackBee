@@ -19,37 +19,41 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Cache;
+namespace BackBee\Cache\Tests\Mock;
+
+use BackBee\Cache\IdentifierAppender\IdentifierAppenderInterface;
+use BackBee\Cache\Validator\ValidatorInterface;
+use BackBee\Renderer\RendererInterface;
 
 /**
- * Abstract class for cache adapters with extended features
- * as tag and expire date time.
+ * Mock object for IdentifierAppenderInterface
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-abstract class AbstractExtendedCache extends AbstractCache implements CacheExtendedInterface
+class MockAppenderValidator implements IdentifierAppenderInterface, ValidatorInterface
 {
 
     /**
      * @{inheritdoc}
      */
-    abstract public function removeByTag($tag);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function updateExpireByTag($tag, $lifetime = null);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function getMinExpireByTag($tag, $lifetime = 0);
-
-    /**
-     * @{inheritdoc}
-     */
-    public function saveTag($id, $tag)
+    public function computeIdentifier($identifier, RendererInterface $renderer = null)
     {
-        return null;
+        return 'computed-' . $identifier;
+    }
+
+    /**
+     * @{inheritdoc}
+     */
+    public function getGroups()
+    {
+        return ['group1', 'group2'];
+    }
+
+    /**
+     * @{inheritdoc}
+     */
+    public function isValid($object = null)
+    {
+        return true === $object;
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,26 +17,18 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\MemCache;
-
-use Psr\Log\LoggerInterface;
 
 use BackBee\Cache\AbstractExtendedCache;
 use BackBee\Cache\Exception\CacheException;
 
 /**
- * Memcache cache adapter.
- *
+ * Abstract class for common methods between memcache and memcached handler.
  * It supports tag and expire features
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 abstract class AbstractMemcache extends AbstractExtendedCache
 {
@@ -80,13 +72,13 @@ abstract class AbstractMemcache extends AbstractExtendedCache
      *
      * @var array
      */
-    protected $_instance_options = array(
+    protected $instanceOptions = [
         'type' => 'memcache',
         'persistent_id' => null,
         'compression' => false,
-        'servers' => array(),
-        'options' => array(),
-    );
+        'servers' => [],
+        'options' => [],
+    ];
 
     /**
      * The Memcache object.
@@ -95,7 +87,7 @@ abstract class AbstractMemcache extends AbstractExtendedCache
      */
     protected $_cache;
     protected $compression = 0;
-    protected $serverList = array();
+    protected $serverList = [];
     protected $result = null;
 
     /**
@@ -103,27 +95,23 @@ abstract class AbstractMemcache extends AbstractExtendedCache
      *
      * @var array
      */
-    protected $_default_server = array(
+    protected $_default_server = [
         'host' => self::DEFAULT_HOST,
         'port' => self::DEFAULT_PORT,
         'weight' => self::DEFAULT_WEIGHT,
-    );
+    ];
 
     /**
      * Override some default Memcache instance options.
      *
      * @var array
      */
-    protected $_cache_options = array(
+    protected $_cache_options = [
         2 => 1, // OPT_HASH = HASH_MD5
         9 => 1, // OPT_DISTRIBUTION = DISTRIBUTION_CONSISTENT
         16 => true, // OPT_LIBKETAMA_COMPATIBLE = true
-    );
+    ];
 
-    public function __construct(array $options = array(), $context = null, LoggerInterface $logger = null)
-    {
-        parent::__construct($options, $context, $logger);
-    }
     /**
      * Adds a set of servers to the memcache instance pool.
      *
@@ -131,16 +119,14 @@ abstract class AbstractMemcache extends AbstractExtendedCache
      *
      * @return boolean
      *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if one of the server configurations is not an array
-     *
-     * @link http://php.net/manual/en/Memcache.addservers.php
+     * @throws CacheException if one of the server configurations is not an array
      */
-    public function addServers(array $servers = array())
+    public function addServers(array $servers = [])
     {
         $result = true;
 
         foreach ($servers as $server) {
-            if (false === is_array($server)) {
+            if (!is_array($server)) {
                 throw new CacheException('Memcache adapter: server configuration is not an array.');
             }
 
@@ -158,16 +144,19 @@ abstract class AbstractMemcache extends AbstractExtendedCache
         $this->serverList[] = $server;
     }
 
+    public function getServerList()
+    {
+        return $this->serverList;
+    }
+
     /**
      * Adds a server to the server pool.
      *
-     * @param string $host   The hostname of the memcache server
-     * @param int    $port   The port on which memcache is running, 11211 by default
-     * @param int    $weight The weight of the server
+     * @param  string $host   The hostname of the memcache server
+     * @param  int    $port   The port on which memcache is running, 11211 by default
+     * @param  int    $weight The weight of the server
      *
-     * @return boolean TRUE on success or FALSE on failure.
-     *
-     * @link http://php.net/manual/en/memcached.addserver.php
+     * @return boolean True on success or false on failure.
      */
     public function addServer($host, $port, $weight = 0)
     {
@@ -274,8 +263,8 @@ abstract class AbstractMemcache extends AbstractExtendedCache
             $lifetime = 0;
         }
 
-        $min_lifetime = $this->_instance_options['min_lifetime'];
-        $max_lifetime = $this->_instance_options['max_lifetime'];
+        $min_lifetime = $this->getOption('min_lifetime');
+        $max_lifetime = $this->getOption('max_lifetime');
 
         if ($lifetime == 0 && false === empty($max_lifetime)) {
             $lifetime = $max_lifetime;
@@ -382,8 +371,7 @@ abstract class AbstractMemcache extends AbstractExtendedCache
      *
      * @return boolean
      *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if none memcached object is not initialized
-     * @codeCoverageIgnore
+     * @throws CacheException if none memcached object is not initialized
      */
     protected function _hasServer($host, $port)
     {
@@ -403,11 +391,18 @@ abstract class AbstractMemcache extends AbstractExtendedCache
      * @param string $method
      *
      * @return boolean
-     * @codeCoverageIgnore
      */
     protected function _onError($method)
     {
-        $this->log('notice', sprintf('Error occured on Memcached::%s(): [%s] %s.', $method, $this->getResultCode(), $this->getResultMessage()));
+        $this->log(
+            'notice',
+            sprintf(
+                'Error occured on Memcached::%s(): [%s] %s.',
+                $method,
+                $this->getResultCode(),
+                $this->getResultMessage()
+            )
+        );
 
         return false;
     }

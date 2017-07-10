@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\Validator;
@@ -32,15 +30,13 @@ use BackBee\BBApplication;
  *   - AND current user must be not BBUser
  *   - AND application must be started.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 class ApplicationCoreValidator implements ValidatorInterface
 {
+
     /**
-     * @var BackBee\BBApplication
+     * @var BBApplication
      */
     private $application;
 
@@ -60,23 +56,23 @@ class ApplicationCoreValidator implements ValidatorInterface
     public function __construct(BBApplication $application, $groups = null)
     {
         $this->application = $application;
-        $this->groups = array_merge(array('default'), (array) $groups);
+        $this->groups = array_merge(['default'], (array) $groups);
     }
 
     /**
-     * @see BackBee\Cache\Validator\ValidatorInterface::isValid
+     * @see ValidatorInterface::isValid
      */
     public function isValid($object = null)
     {
         return false === $this->application->isDebugMode()
-            && null === $this->application->getBBUserToken()
-            && true === $this->application->isStarted()
-            && false === $this->application->isClientSAPI()
+                && null === $this->application->getBBUserToken()
+                && true === $this->application->isStarted()
+                && false === $this->application->isClientSAPI()
         ;
     }
 
     /**
-     * @see BackBee\Cache\Validator\ValidatorInterface::getGroups
+     * @see ValidatorInterface::getGroups
      */
     public function getGroups()
     {

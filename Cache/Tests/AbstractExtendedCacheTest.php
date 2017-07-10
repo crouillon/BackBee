@@ -19,37 +19,27 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Cache;
+namespace BackBee\Cache\Tests;
+
+use BackBee\Cache\AbstractExtendedCache;
 
 /**
- * Abstract class for cache adapters with extended features
- * as tag and expire date time.
+ * Tests suite for class AbstractExtendedCache
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-abstract class AbstractExtendedCache extends AbstractCache implements CacheExtendedInterface
+class AbstractExtendedCacheTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * @{inheritdoc}
+     * @covers BackBee\Cache\AbstractExtendedCache::saveTag()
      */
-    abstract public function removeByTag($tag);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function updateExpireByTag($tag, $lifetime = null);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function getMinExpireByTag($tag, $lifetime = 0);
-
-    /**
-     * @{inheritdoc}
-     */
-    public function saveTag($id, $tag)
+    public function testSaveTag()
     {
-        return null;
+        $cache = $this->getMockForAbstractClass(
+            AbstractExtendedCache::class
+        );
+
+        $this->assertNull($cache->saveTag('id', 'tag'));
     }
 }

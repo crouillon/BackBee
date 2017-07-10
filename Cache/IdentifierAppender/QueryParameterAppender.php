@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,17 +17,16 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\IdentifierAppender;
 
 use Doctrine\ORM\EntityManager;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Security\Core\Util\ClassUtils;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
 
 use BackBee\ClassContent\AbstractClassContent;
+use BackBee\ClassContent\Indexes\IdxContentContent;
 use BackBee\Renderer\RendererInterface;
 
 /**
@@ -38,13 +37,11 @@ use BackBee\Renderer\RendererInterface;
  *     - CLASSCONTENT_PARAMS_STRATEGY (=2): every request query parameters declared in classcontent yaml file will
  *     be append to cache identifier.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 class QueryParameterAppender implements IdentifierAppenderInterface
 {
+
     /**
      * Constants which define cache query params strategy.
      */
@@ -55,14 +52,14 @@ class QueryParameterAppender implements IdentifierAppenderInterface
     /**
      * Request we will use to find query parameters.
      *
-     * @var Symfony\Component\HttpFoundation\Request
+     * @var Request
      */
     private $request;
 
     /**
      * Application main entity manager.
      *
-     * @var Doctrine\ORM\EntityManager
+     * @var EntityManager
      */
     private $em;
 
@@ -86,9 +83,9 @@ class QueryParameterAppender implements IdentifierAppenderInterface
      * @param Request       $request  request in which we will looking for query parameter
      * @param EntityManager $em       application main entity manager
      * @param integer       $strategy the strategy to apply when we need to compute identifier
-     * @param array         $group    list of groups this appender belongs to
+     * @param array         $groups   list of groups this appender belongs to
      */
-    public function __construct(Request $request, EntityManager $em, $strategy = self::NO_PARAMS_STRATEGY, $groups = array())
+    public function __construct(Request $request, EntityManager $em, $strategy = self::NO_PARAMS_STRATEGY, $groups = [])
     {
         $this->request = $request;
         $this->em = $em;
@@ -97,7 +94,7 @@ class QueryParameterAppender implements IdentifierAppenderInterface
     }
 
     /**
-     * @see BackBee\Cache\IdentifierAppender\IdentifierAppenderInterface::computeIdentifier
+     * @see IdentifierAppenderInterface::computeIdentifier
      */
     public function computeIdentifier($identifier, RendererInterface $renderer = null)
     {
@@ -112,7 +109,6 @@ class QueryParameterAppender implements IdentifierAppenderInterface
                         $identifier .= "-$name=$value";
                     }
                 }
-
                 break;
             case self::CLASSCONTENT_PARAMS_STRATEGY:
                 if (null !== $renderer && true === ($renderer->getObject() instanceof AbstractClassContent)) {
@@ -124,7 +120,7 @@ class QueryParameterAppender implements IdentifierAppenderInterface
                         }
                     }
                 }
-
+                break;
             default:
                 break;
         }
@@ -133,7 +129,7 @@ class QueryParameterAppender implements IdentifierAppenderInterface
     }
 
     /**
-     * @see BackBee\Cache\IdentifierAppender\IdentifierAppenderInterface::getGroups
+     * @see IdentifierAppenderInterface::getGroups
      */
     public function getGroups()
     {
@@ -143,39 +139,41 @@ class QueryParameterAppender implements IdentifierAppenderInterface
     /**
      * Returns content cache query parameters by exploring class content yaml files.
      *
-     * @param AbstractClassContent $content the content we want to get its cache query parameters
+     * @param  AbstractClassContent $content the content we want to get its cache query parameters
      *
-     * @return array contains every query parameters, can be empty if there is no cache query parameter found
+     * @return array                         Contains every query parameters, can be empty if there
+     *                                       is no cache query parameter found
      */
     private function getClassContentCacheQueryParameters(AbstractClassContent $content)
     {
-        $classnames = array(ClassUtils::getRealClass($content));
+        $classnames = [ClassUtils::getRealClass($content)];
 
-        $content_uids = $this->em->getRepository('\BackBee\ClassContent\Indexes\IdxContentContent')
-            ->getDescendantsContentUids($content)
-        ;
+        $content_uids = $this->em
+            ->getRepository(IdxContentContent::class)
+            ->getDescendantsContentUids($content);
 
         if (0 < count($content_uids)) {
             $classnames = array_merge(
                 $classnames,
-                $this->em->getRepository('\BackBee\ClassContent\AbstractClassContent')->getClassnames($content_uids)
+                $this->em->getRepository(AbstractClassContent::class)->getClassnames($content_uids)
             );
         }
 
-        $query_parameters = array();
+        $query_parameters = [];
         foreach ($classnames as $classname) {
-            if (false === class_exists($classname)) {
+            if (!class_exists($classname)) {
                 continue;
             }
 
             $object = new $classname();
-            if (null !== $parameters = $object->getProperty('cache-param')) {
-                if (true === isset($parameters['query'])) {
-                    $query_parameters = array_merge($query_parameters, $parameters['query']);
-                }
+            if ((null !== $parameters = $object->getProperty('cache-param'))
+                && is_array($parameters)
+                && isset($parameters['query'])
+            ) {
+                $query_parameters = array_merge($query_parameters, (array) $parameters['query']);
             }
         }
 
-        return $query_parameters;
+        return array_unique($query_parameters);
     }
 }

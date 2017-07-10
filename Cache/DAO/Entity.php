@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\DAO;
@@ -28,14 +26,13 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Entity for DAO stored cache data.
  *
- * @category    BackBee
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
  * @ORM\Entity
  * @ORM\Table(name="cache",indexes={
  *     @ORM\Index(name="IDX_EXPIRE", columns={"expire"}),
- *     @ORM\Index(name="IDX_TAG", columns={"tag"})})
+ *     @ORM\Index(name="IDX_TAG", columns={"tag"})
+ * })
  */
 class Entity
 {
@@ -46,7 +43,7 @@ class Entity
      * @ORM\Id
      * @ORM\Column(type="string", name="uid")
      */
-    protected $_uid;
+    protected $uid;
 
     /**
      * A tag associated to the cache.
@@ -54,7 +51,7 @@ class Entity
      * @var string
      * @ORM\Column(type="string", name="tag", nullable=true)
      */
-    protected $_tag;
+    protected $tag;
 
     /**
      * The data stored.
@@ -62,7 +59,7 @@ class Entity
      * @var string
      * @ORM\Column(type="text", name="data")
      */
-    protected $_data;
+    protected $data;
 
     /**
      * The expire date time for the stored data.
@@ -70,7 +67,7 @@ class Entity
      * @var \DateTime
      * @ORM\Column(type="datetime", name="expire", nullable=true)
      */
-    protected $_expire;
+    protected $expire;
 
     /**
      * The creation date time.
@@ -78,31 +75,29 @@ class Entity
      * @var \DateTime
      * @ORM\Column(type="datetime", name="created")
      */
-    protected $_created;
+    protected $created;
 
     /**
      * Class constructor.
      *
-     * @param string $uid Optional, the cache id
-     * @codeCoverageIgnore
+     * @param string|null $uid Optional, the cache id
      */
     public function __construct($uid = null)
     {
-        $this->_uid = $uid;
-        $this->_created = new \DateTime();
+        $this->uid = $uid;
+        $this->created = new \DateTime();
     }
 
     /**
      * Sets the cache id.
      *
-     * @param string $uid
+     * @param  string $uid
      *
-     * @return \BackBee\Cache\DAO\Entity
-     * @codeCoverageIgnore
+     * @return Entity
      */
     public function setUid($uid)
     {
-        $this->_uid = $uid;
+        $this->uid = $uid;
 
         return $this;
     }
@@ -110,14 +105,13 @@ class Entity
     /**
      * Sets the data to store.
      *
-     * @param string $data
+     * @param  string $data
      *
-     * @return \BackBee\Cache\DAO\Entity
-     * @codeCoverageIgnore
+     * @return Entity
      */
     public function setData($data)
     {
-        $this->_data = $data;
+        $this->data = $data;
 
         return $this;
     }
@@ -125,14 +119,13 @@ class Entity
     /**
      * Sets the expire date time.
      *
-     * @param \DateTime $expire
+     * @param  \DateTime|null $expire
      *
-     * @return \BackBee\Cache\DAO\Entity
-     * @codeCoverageIgnore
+     * @return Entity
      */
     public function setExpire(\DateTime $expire = null)
     {
-        $this->_expire = ($expire) ? $expire : null;
+        $this->expire = $expire;
 
         return $this;
     }
@@ -140,14 +133,13 @@ class Entity
     /**
      * Set the associated tag.
      *
-     * @param string $tag
+     * @param  string|null $tag
      *
-     * @return \BackBee\Cache\DAO\Entity
-     * @codeCoverageIgnore
+     * @return Entity
      */
     public function setTag($tag = null)
     {
-        $this->_tag = $tag;
+        $this->tag = $tag;
 
         return $this;
     }
@@ -155,33 +147,40 @@ class Entity
     /**
      * Returns the cache id.
      *
-     * @return string
-     * @codeCoverageIgnore
+     * @return string|null
      */
     public function getId()
     {
-        return $this->_uid;
+        return $this->uid;
     }
 
     /**
      * Returns the stored data.
      *
-     * @return string
-     * @codeCoverageIgnore
+     * @return string|null
      */
     public function getData()
     {
-        return $this->_data;
+        return $this->data;
     }
 
     /**
      * Returns the data time expiration.
      *
-     * @return \DateTime
-     * @codeCoverageIgnore
+     * @return \DateTime|null
      */
     public function getExpire()
     {
-        return $this->_expire;
+        return $this->expire;
+    }
+
+    /**
+     * Returns the associated tag.
+     *
+     * @return string|null
+     */
+    public function getTag()
+    {
+        return $this->tag;
     }
 }

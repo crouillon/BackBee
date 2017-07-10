@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache;
@@ -28,13 +26,11 @@ use Psr\Log\LoggerInterface;
 /**
  * Interface for BackBee Cache
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      Mickaël Andrieu <mickael.andrieu@lp-digital.fr>
+ * @author Mickaël Andrieu
  */
 interface CacheInterface
 {
+
     /**
      * Returns the available cache for the given id if found returns false else.
      *
@@ -51,7 +47,8 @@ interface CacheInterface
      *
      * @param string $id Cache id
      *
-     * @return int|false the last modified timestamp of the available cache record (0 infinite expiration date)
+     * @return int|false The last modified timestamp of the available cache record
+     *                   (0 infinite expiration date)
      */
     public function test($id);
 
@@ -64,7 +61,7 @@ interface CacheInterface
      *                         (by default null, infinite lifetime)
      * @param string $tag      Optional, an associated tag to the data stored
      *
-     * @return boolean true if cache is stored false otherwise
+     * @return boolean         True if cache is stored false otherwise
      */
     public function save($id, $data, $lifetime, $tag);
 
@@ -73,35 +70,35 @@ interface CacheInterface
      *
      * @param string $id Cache id
      *
-     * @return boolean true if cache is removed false otherwise
+     * @return boolean   True if cache is removed false otherwise
      */
     public function remove($id);
 
     /**
      * Clears all cache records.
      *
-     * @return boolean true if cache is cleared false otherwise
+     * @return boolean True if cache is cleared false otherwise
      */
     public function clear();
 
     /**
      * Sets the cache logger.
      *
-     * @param \Psr\Log\LoggerInterface $logger
+     * @param  LoggerInterface $logger
      *
-     * @return \BackBee\Cache\CacheAdapterInterface
+     * @return CacheInterface
      */
     public function setLogger(LoggerInterface $logger);
 
     /**
-     * Gets the cache logger.
+     * Gets the cache logger if exists.
      *
-     * @return \Psr\Log\LoggerInterface $logger
+     * @return LoggerInterface|null
      */
     public function getLogger();
 
     /**
-     * Returns the cache context.
+     * Returns the cache context if exists.
      *
      * @return string|null
      */
@@ -110,9 +107,9 @@ interface CacheInterface
     /**
      * Sets the cache context.
      *
-     * @param string $context
+     * @param  string $context
      *
-     * @return \BackBee\Cache\CacheAdapterInterface
+     * @return CacheInterface
      */
     public function setContext($context);
 }

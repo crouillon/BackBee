@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\IdentifierAppender;
@@ -28,20 +26,17 @@ use BackBee\Renderer\RendererInterface;
 /**
  * Every cache identifier appender must implements this interface to be usable.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 interface IdentifierAppenderInterface
 {
     /**
      * This method allows every identifier appender to customize cache identifier with its own logic.
      *
-     * @param string    $identifier the identifier to update if needed
-     * @param RendererInterface $renderer   the current renderer, can be null
+     * @param  string            $identifier the identifier to update if needed
+     * @param  RendererInterface $renderer   the current renderer, can be null
      *
-     * @return string return the new identifier
+     * @return string                        return the new identifier
      */
     public function computeIdentifier($identifier, RendererInterface $renderer = null);
 

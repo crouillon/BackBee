@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\File;
@@ -31,13 +29,9 @@ use BackBee\Utils\StringUtils;
 
 /**
  * Filesystem cache adapter.
- *
  * A simple cache system storing data in files, it does not provide tag or expire features
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class Cache extends AbstractCache
 {
@@ -46,59 +40,64 @@ class Cache extends AbstractCache
      *
      * @var string
      */
-    private $cachedir;
+    private $cacheDir;
 
     /**
-     * Memcached adapter options.
+     * File adapter options.
      *
      * @var array
      */
-    protected $_instance_options = array(
+    protected $instanceOptions = [
         'cachedir'          => null,
         'cacheautogenerate' => true,
-    );
+    ];
 
     /**
      * Class constructor.
      *
-     * @param array                    $options Initial options for the cache adapter:
-     *                                          - cachedir string The cache directory
-     * @param string                   $context An optional cache context
-     * @param \Psr\Log\LoggerInterface $logger  An optional logger
+     * @param  array                $options Initial options for the cache adapter:
+     *                                          - cachedir          string  The cache directory
+     *                                          - cacheautogenerate boolean
+     * @param  string|null          $context An optional cache context
+     * @param  LoggerInterface|null $logger  An optional logger
      *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if the cache directory doesn't exist, can not
-     *                                                 be created or is not writable.
+     * @throws CacheException                if the cache directory doesn't exist, can not
+     *                                       be created or is not writable.
      */
-    public function __construct(array $options = array(), $context = null, LoggerInterface $logger = null)
+    public function __construct(array $options = [], $context = null, LoggerInterface $logger = null)
     {
         parent::__construct($options, $context, $logger);
 
-        $this->cachedir = $this->_instance_options['cachedir'];
-
+        $this->cacheDir = $this->getOption('cachedir');
         if (null !== $this->getContext()) {
-            $this->cachedir .= DIRECTORY_SEPARATOR.StringUtils::toPath($this->getContext());
+            $this->cacheDir .= DIRECTORY_SEPARATOR . StringUtils::toPath($this->getContext());
         }
 
-        if (true === $this->_instance_options['cacheautogenerate'] && false === is_dir($this->cachedir)
-                && false === @mkdir($this->cachedir, 0755, true)) {
-            throw new CacheException(sprintf('Unable to create the cache directory `%s`.', $this->cachedir));
+        if (true === $this->getOption('cacheautogenerate')
+            && false === is_dir($this->cacheDir)
+            && false === @mkdir($this->cacheDir, 0755, true)
+        ) {
+            throw new CacheException(sprintf('Unable to create the cache directory `%s`.', $this->cacheDir));
         }
 
-        if (true === $this->_instance_options['cacheautogenerate'] && false === is_writable($this->cachedir)) {
-            throw new CacheException(sprintf('Unable to write in the cache directory `%s`.', $this->cachedir));
+        if (true === $this->getOption('cacheautogenerate')
+            && false === is_writable($this->cacheDir)
+        ) {
+            throw new CacheException(sprintf('Unable to write in the cache directory `%s`.', $this->cacheDir));
         }
 
-        $this->log('info', sprintf('File cache system initialized with directory set to `%s`.', $this->cachedir));
+        $this->log('info', sprintf('File cache system initialized with directory set to `%s`.', $this->cacheDir));
     }
 
     /**
      * Returns the available cache for the given id if found returns false else.
      *
-     * @param string    $id          Cache id
-     * @param boolean   $bypassCheck Allow to find cache without test it before
-     * @param \DateTime $expire      Optionnal, the expiration time (now by default)
+     * @param  string         $id          Cache id
+     * @param  boolean        $bypassCheck Allow to find cache without test it before
+     *                                     (default: false)
+     * @param  \DateTime|null $expire      Optionnal, the expiration time (now by default)
      *
-     * @return string|FALSE
+     * @return string|false
      */
     public function load($id, $bypassCheck = false, \DateTime $expire = null)
     {
@@ -107,8 +106,7 @@ class Cache extends AbstractCache
         }
 
         $last_timestamp = $this->test($id);
-        if (
-            true === $bypassCheck
+        if (true === $bypassCheck
             || 0 === $last_timestamp
             || $expire->getTimestamp() <= $last_timestamp
         ) {
@@ -118,9 +116,13 @@ class Cache extends AbstractCache
                 return $data;
             }
 
-            $this->log('warning', sprintf('Enable to read data in file cache for id `%s`.', $id));
+            $this->log('warning', sprintf('Unable to read data in file cache for id `%s`.', $id));
         } else {
-            $this->log('debug', sprintf('None available file cache found for id `%s` newer than %s.', $id, $expire->format('d/m/Y H:i')));
+            $this->log('debug', sprintf(
+                'None available file cache found for id `%s` newer than %s.',
+                $id,
+                $expire->format('d/m/Y H:i')
+            ));
         }
 
         return false;
@@ -131,7 +133,7 @@ class Cache extends AbstractCache
      *
      * @param string $id Cache id
      *
-     * @return int|FALSE the last modified timestamp of the available cache record
+     * @return int|false The last modified timestamp of the available cache record
      */
     public function test($id)
     {
@@ -154,18 +156,27 @@ class Cache extends AbstractCache
      *                         (by default null, infinite lifetime)
      * @param string $tag      Optional, an associated tag to the data stored
      *
-     * @return boolean TRUE if cache is stored FALSE otherwise
+     * @return boolean         True if cache is stored false otherwise
      */
     public function save($id, $data, $lifetime = null, $tag = null)
     {
         if (null !== $lifetime || null !== $tag) {
-            $this->log('warning', sprintf('Lifetime and tag features are not available for cache adapter `%s`.', get_class($this)));
+            $this->log(
+                'warning',
+                sprintf('Lifetime and tag features are not available for cache adapter `%s`.', get_class($this))
+            );
         }
 
-        if (true === $result = @file_put_contents($this->getCacheFile($id), $data)) {
-            $this->log('debug', sprintf('Storing data in cache for id `%s`.', $id));
+        if (false !== $result = @file_put_contents($this->getCacheFile($id), $data)) {
+            $this->log(
+                'debug',
+                sprintf('Storing data in cache for id `%s`.', $id)
+            );
         } else {
-            $this->log('warning', sprintf('Unable to save data to file cache for id `%s` in directory `%s`.', $id, $this->cachedir));
+            $this->log(
+                'warning',
+                sprintf('Unable to save data to file cache for id `%s` in directory `%s`.', $id, $this->cacheDir)
+            );
         }
 
         return (false !== $result);
@@ -176,7 +187,7 @@ class Cache extends AbstractCache
      *
      * @param string $id Cache id
      *
-     * @return boolean TRUE if cache is removed FALSE otherwise
+     * @return boolean   True if cache is removed false otherwise
      */
     public function remove($id)
     {
@@ -190,26 +201,28 @@ class Cache extends AbstractCache
     /**
      * Clears all cache records.
      *
-     * @return boolean TRUE if cache is cleared FALSE otherwise
+     * @return boolean True if cache is cleared false otherwise
      */
     public function clear()
     {
         $result = false;
-        if (false !== $files = @scandir($this->cachedir)) {
+        if (false !== $files = @scandir($this->cacheDir)) {
             foreach ($files as $file) {
-                $file = $this->cachedir.DIRECTORY_SEPARATOR.$file;
-                if (false === is_dir($file)) {
-                    if (false === @unlink($file)) {
-                        $this->log('warning', sprintf('Enable to remove cache file `%s`.', $file));
-                    } else {
-                        $result = true;
-                    }
+                $file = $this->cacheDir.DIRECTORY_SEPARATOR.$file;
+                if (is_dir($file)) {
+                    continue;
+                }
+
+                if (false === @unlink($file)) {
+                    $this->log('warning', sprintf('Enable to remove cache file `%s`.', $file));
+                } else {
+                    $result = true;
                 }
             }
         }
 
         if (true === $result) {
-            $this->log('debug', sprintf('File system cache cleared in `%s`.', $this->cachedir));
+            $this->log('debug', sprintf('File system cache cleared in `%s`.', $this->cacheDir));
         }
 
         return $result;
@@ -220,12 +233,11 @@ class Cache extends AbstractCache
      *
      * @param string $id Cache id
      *
-     * @return string The file path of the available cache record
-     * @codeCoverageIgnore
+     * @return string    The file path of the available cache record
      */
     private function getCacheFile($id)
     {
-        $cachefile = $this->cachedir.DIRECTORY_SEPARATOR.$id;
+        $cachefile = $this->cacheDir . DIRECTORY_SEPARATOR . $id;
 
         return $cachefile;
     }

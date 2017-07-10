@@ -19,37 +19,43 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Cache;
+namespace BackBee\Cache\Tests\MemCache;
+
+use BackBee\Cache\MemCache\Memcached;
 
 /**
- * Abstract class for cache adapters with extended features
- * as tag and expire date time.
+ * Tests suite for class Memcached
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-abstract class AbstractExtendedCache extends AbstractCache implements CacheExtendedInterface
+class MemcachedTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * @{inheritdoc}
+     * @var Memcached
      */
-    abstract public function removeByTag($tag);
+    private $cache;
 
     /**
-     * @{inheritdoc}
+     * Sets up the fixture.
      */
-    abstract public function updateExpireByTag($tag, $lifetime = null);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function getMinExpireByTag($tag, $lifetime = 0);
-
-    /**
-     * @{inheritdoc}
-     */
-    public function saveTag($id, $tag)
+    protected function setUp()
     {
-        return null;
+        if (!(extension_loaded('memcached'))) {
+            $this->markTestSkipped('The memcached extension is not available.');
+        }
+
+        parent::setUp();
+
+        $this->cache = new Memcached();
+    }
+
+    /**
+     * @covers            BackBee\Cache\MemCache\Memcached::__construct()
+     * @expectedException \BackBee\Cache\Exception\CacheException
+     */
+    public function testConstructInvalidServer()
+    {
+        new Memcached(['servers' => 'not an array']);
     }
 }

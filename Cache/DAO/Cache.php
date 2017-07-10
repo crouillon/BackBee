@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,13 +17,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\DAO;
 
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\Query;
 use Psr\Log\LoggerInterface;
 
 use BackBee\Cache\AbstractExtendedCache;
@@ -33,77 +32,76 @@ use BackBee\Util\Doctrine\EntityManagerCreator;
 
 /**
  * Database cache adapter.
- *
  * It supports tag and expire features
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class Cache extends AbstractExtendedCache
 {
+
     /**
      * The cache entity class name.
      *
      * @var string
      */
-    const ENTITY_CLASSNAME = 'BackBee\Cache\DAO\Entity';
+    const ENTITY_CLASSNAME = Entity::class;
 
     /**
      * The Doctrine entity manager to use.
      *
      * @var \Doctrine\ORM\EntityManager
      */
-    private $_em;
+    private $entityMngr;
 
     /**
      * The entity repository.
      *
      * @var \Doctrine\ORM\EntityRepository
      */
-    private $_repository;
+    private $repository;
 
     /**
      * An entity for a store cache.
      *
      * @var \BackBee\Cache\DAO\Entity
      */
-    private $_entity;
+    private $entity;
 
     /**
      * The prefix key for cache items.
      *
      * @var type
      */
-    private $_prefix_key = '';
+    private $prefixKey = '';
 
     /**
      * Cache adapter options.
      *
      * @var array
      */
-    protected $_instance_options = array(
+    protected $instanceOptions = [
         'em' => null,
-        'dbal' => array(),
-    );
+        'dbal' => [],
+    ];
 
     /**
      * Class constructor.
      *
-     * @param array                    $options Initial options for the cache adapter:
-     *                                          - em \Doctrine\ORM\EntityManager  Optional, an already defined EntityManager (simply returns it)
-     *                                          - dbal array Optional, an array of Doctrine connection options among:
-     *                                          - connection  \Doctrine\DBAL\Connection  Optional, an already initialized database connection
-     *                                          - proxy_dir   string                     The proxy directory
-     *                                          - proxy_ns    string                     The namespace for Doctrine proxy
-     *                                          - charset     string                     Optional, the charset to use
-     *                                          - collation   string                     Optional, the collation to use
-     *                                          - ...         mixed                      All the required parameter to open a new connection
-     * @param string                   $context An optional cache context
-     * @param \Psr\Log\LoggerInterface $logger  An optional logger
-     *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if the entity manager for this cache adaptor cannot be created
+     * @param  array                $options Initial options for the cache adapter:
+     *                                          - em   EntityManager  Optional, an already defined EntityManager
+     *                                                               (simply returns it)
+     *                                          - dbal array         Optional, an array of Doctrine connection
+     *                                                               options among:
+     *                                             - connection  Connection  Optional, an already initialized
+     *                                                                       database connection
+     *                                             - proxy_dir   string      The proxy directory
+     *                                             - proxy_ns    string      The namespace for Doctrine proxy
+     *                                             - charset     string      Optional, the charset to use
+     *                                             - collation   string      Optional, the collation to use
+     *                                             - ...         mixed       All the required parameter to open a
+     *                                                                       new connection
+     * @param  string|null          $context An optional cache context
+     * @param  LoggerInterface|null $logger  An optional logger
      */
     public function __construct(array $options = array(), $context = null, LoggerInterface $logger = null)
     {
@@ -121,7 +119,7 @@ class Cache extends AbstractExtendedCache
      * @param boolean   $bypassCheck Allow to find cache without test it before
      * @param \DateTime $expire      Optionnal, the expiration time (now by default)
      *
-     * @return string|FALSE
+     * @return string|false
      */
     public function load($id, $bypassCheck = false, \DateTime $expire = null)
     {
@@ -133,8 +131,11 @@ class Cache extends AbstractExtendedCache
             $expire = new \DateTime();
         }
 
-        $last_timestamp = $this->test($id);
-        if (true === $bypassCheck || 0 === $last_timestamp || $expire->getTimestamp() <= $last_timestamp) {
+        $lastTimestamp = $this->test($id);
+        if (true === $bypassCheck
+            || 0 === $lastTimestamp
+            || $expire->getTimestamp() <= $lastTimestamp
+        ) {
             return $this->getCacheEntity($id)->getData();
         }
 
@@ -146,7 +147,7 @@ class Cache extends AbstractExtendedCache
      *
      * @param string $id Cache id
      *
-     * @return int|FALSE the last modified timestamp of the available cache record
+     * @return int|false the last modified timestamp of the available cache record
      */
     public function test($id)
     {
@@ -155,7 +156,9 @@ class Cache extends AbstractExtendedCache
         }
 
         if (null !== $this->getCacheEntity($id)->getExpire()) {
-            $t = $this->getCacheEntity($id)->getExpire()->getTimestamp();
+            $t = $this->getCacheEntity($id)
+                    ->getExpire()
+                    ->getTimestamp();
 
             return (time() > $t) ? false : $t;
         }
@@ -174,43 +177,59 @@ class Cache extends AbstractExtendedCache
      *
      * @return boolean TRUE if cache is stored FALSE otherwise
      */
-    public function save($id, $data, $lifetime = null, $tag = null, $bypass_control = false)
+    public function save($id, $data, $lifetime = null, $tag = null, $bypassControl = false)
     {
         try {
-            $params = array(
+            $params = [
                 'uid' => $this->getContextualId($id),
-                'tag' => $this->getContextualId($tag),
+                'tag' => $tag ? $this->getContextualId($tag) : null,
                 'data' => $data,
-                'expire' => $this->getExpireTime($lifetime, $bypass_control),
+                'expire' => $this->getExpireTime($lifetime, $bypassControl),
                 'created' => new \DateTime(),
-            );
+            ];
 
-            $types = array(
+            $types = [
                 'string',
                 'string',
                 'string',
                 'datetime',
                 'datetime',
-            );
+            ];
 
-            if (null === $this->getCacheEntity($id)) {
-                $this->_em->getConnection()
-                        ->insert('cache', $params, $types);
-            } else {
-                $identifier = array('uid' => array_shift($params));
-                $type = array_shift($types);
-                $types[] = $type;
-
-                $this->_em->getConnection()
-                        ->update('cache', $params, $identifier, $types);
-            }
-
-            $this->resetCacheEntity();
+            return $this->persistEntity($id, $params, $types);
         } catch (\Exception $e) {
-            $this->log('warning', sprintf('Enable to load cache for id %s : %s', $id, $e->getMessage()));
-
-            return false;
+            $this->log('warning', sprintf('Unable to load cache for id %s : %s', $id, $e->getMessage()));
         }
+
+        return false;
+    }
+
+    /**
+     * Persists or updates a stored cache row.
+     *
+     * @param  string $id
+     * @param  array  $params
+     * @param  array  $types
+     *
+     * @return boolean Always true
+     */
+    private function persistEntity($id, array $params, array $types)
+    {
+        if (null === $this->getCacheEntity($id)) {
+            $this->entityMngr
+                ->getConnection()
+                ->insert('cache', $params, $types);
+        } else {
+            $identifier = ['uid' => array_shift($params)];
+            $type = array_shift($types);
+            $types[] = $type;
+
+            $this->entityMngr
+                ->getConnection()
+                ->update('cache', $params, $identifier, $types);
+        }
+
+        $this->resetCacheEntity();
 
         return true;
     }
@@ -225,10 +244,10 @@ class Cache extends AbstractExtendedCache
     public function remove($id)
     {
         try {
-            $this->_repository
+            $this->repository
                     ->createQueryBuilder('c')
                     ->delete()
-                    ->where('c._uid = :uid')
+                    ->where('c.uid = :uid')
                     ->setParameters(array('uid' => $this->getContextualId($id)))
                     ->getQuery()
                     ->execute();
@@ -258,16 +277,23 @@ class Cache extends AbstractExtendedCache
         }
 
         try {
-            $this->_repository
+            $this->repository
                     ->createQueryBuilder('c')
                     ->delete()
-                    ->where('c._tag IN (:tags)')
+                    ->where('c.tag IN (:tags)')
                     ->setParameters(array('tags' => $this->getContextualTags($tags)))
                     ->getQuery()
                     ->execute();
             $this->resetCacheEntity();
         } catch (\Exception $e) {
-            $this->log('warning', sprintf('Enable to remove cache for tags (%s) : %s', implode(',', $tags), $e->getMessage()));
+            $this->log(
+                'warning',
+                sprintf(
+                    'Enable to remove cache for tags (%s) : %s',
+                    implode(',', $tags),
+                    $e->getMessage()
+                )
+            );
 
             return false;
         }
@@ -285,7 +311,7 @@ class Cache extends AbstractExtendedCache
      *
      * @return boolean TRUE if cache is removed FALSE otherwise
      */
-    public function updateExpireByTag($tag, $lifetime = null, $bypass_control = false)
+    public function updateExpireByTag($tag, $lifetime = null, $bypassControl = false)
     {
         $tags = (array) $tag;
 
@@ -293,22 +319,26 @@ class Cache extends AbstractExtendedCache
             return false;
         }
 
-        $expire = $this->getExpireTime($lifetime, $bypass_control);
+        $expire = $this->getExpireTime($lifetime, $bypassControl);
 
         try {
-            $this->_repository
+            $this->repository
                     ->createQueryBuilder('c')
                     ->update()
-                    ->set('c._expire', ':expire')
-                    ->where('c._tag IN (:tags)')
+                    ->set('c.expire', ':expire')
+                    ->where('c.tag IN (:tags)')
                     ->setParameters(array(
                         'expire' => $expire,
-                        'tags' => $this->getContextualTags($tags), ))
+                        'tags' => $this->getContextualTags($tags),))
                     ->getQuery()
                     ->execute();
             $this->resetCacheEntity();
         } catch (\Exception $e) {
-            $this->log('warning', sprintf('Enable to update cache for tags (%s) : %s', implode(',', $tags), $e->getMessage()));
+            $this->log('warning', sprintf(
+                'Enable to update cache for tags (%s) : %s',
+                implode(',', $tags),
+                $e->getMessage()
+            ));
 
             return false;
         }
@@ -338,22 +368,26 @@ class Cache extends AbstractExtendedCache
         $expire = $this->getExpireTime($lifetime);
 
         try {
-            $min = $this->_repository
+            $min = $this->repository
                     ->createQueryBuilder('c')
-                    ->select('MIN(c._expire)')
-                    ->where('c._tag IN (:tags)')
-                    ->andWhere('c._expire IS NOT NULL')
-                    ->setParameters(array(
-                        'tags' => $this->getContextualTags($tags), ))
+                    ->select('MIN(c.expire)')
+                    ->where('c.tag IN (:tags)')
+                    ->andWhere('c.expire IS NOT NULL')
+                    ->setParameters(['tags' => $this->getContextualTags($tags)])
                     ->getQuery()
-                    ->execute(null, \Doctrine\ORM\Query::HYDRATE_SINGLE_SCALAR);
+                    ->execute(null, Query::HYDRATE_SINGLE_SCALAR);
 
             if (null !== $min) {
                 $min = new \DateTime($min);
-                $lifetime = (null === $min) ? $lifetime : (null === $expire ? $min->getTimestamp() : min(array($expire->getTimestamp(), $min->getTimestamp()))) - $now->getTimestamp();
+                $lifetime = null === $expire ? $min->getTimestamp() : min([$expire->getTimestamp(), $min->getTimestamp()]);
+                $lifetime -= $now->getTimestamp();
             }
         } catch (\Exception $e) {
-            $this->log('warning', sprintf('Enable to get expire time for tags (%s) : %s', implode(',', $tags), $e->getMessage()));
+            $this->log('warning', sprintf(
+                'Enable to get expire time for tags (%s) : %s',
+                implode(',', $tags),
+                $e->getMessage()
+            ));
         }
 
         return $lifetime;
@@ -367,7 +401,7 @@ class Cache extends AbstractExtendedCache
     public function clear()
     {
         try {
-            $this->_repository
+            $this->repository
                     ->createQueryBuilder('c')
                     ->delete()
                     ->where('1 = 1')
@@ -386,23 +420,21 @@ class Cache extends AbstractExtendedCache
     /**
      * Return the contextual id, according to the defined prefix key.
      *
-     * @param string $id
+     * @param  string $id
      *
      * @return string
-     * @codeCoverageIgnore
      */
     private function getContextualId($id)
     {
-        return ($this->_prefix_key) ? md5($this->_prefix_key.$id) : $id;
+        return ($this->prefixKey) ? md5($this->prefixKey . $id) : $id;
     }
 
     /**
      * Return an array of contextual tags, according to the defined prefix key.
      *
-     * @param array $tags
+     * @param  string[] $tags
      *
-     * @return array
-     * @codeCoverageIgnore
+     * @return string[]
      */
     private function getContextualTags(array $tags)
     {
@@ -417,32 +449,29 @@ class Cache extends AbstractExtendedCache
     /**
      * Returns the store entity for provided cache id.
      *
-     * @param string $id Cache id
+     * @param  string      $id The cache id
      *
-     * @return \BackBee\Cache\DAO\Entity The cache entity or NULL
-     * @codeCoverageIgnore
+     * @return Entity|null     The cached entity if found.
      */
     private function getCacheEntity($id)
     {
-        $contextual_id = $this->getContextualId($id);
+        $contextualId = $this->getContextualId($id);
 
-        if (null === $this->_entity || $this->_entity->getId() !== $contextual_id) {
-            $this->_entity = $this->_repository->find($contextual_id);
+        if (null === $this->entity || $this->entity->getId() !== $contextualId) {
+            $this->entity = $this->repository->find($contextualId);
         }
 
-        return $this->_entity;
+        return $this->entity;
     }
 
     /**
      * Resets the last stored entity.
-     *
-     * @codeCoverageIgnore
      */
     private function resetCacheEntity()
     {
-        if (null !== $this->_entity) {
-            $this->_em->detach($this->_entity);
-            $this->_entity = null;
+        if (null !== $this->entity) {
+            $this->entityMngr->detach($this->entity);
+            $this->entity = null;
         }
     }
 
@@ -451,26 +480,24 @@ class Cache extends AbstractExtendedCache
      *
      * @param int $lifetime
      *
-     * @return int
-     * @codeCoverageIgnore
+     * @return \DateTime|null
      */
-    public function getExpireTime($lifetime = null, $bypass_control = false)
+    public function getExpireTime($lifetime = null, $bypassControl = false)
     {
-        $expire = parent::getExpireTime($lifetime, $bypass_control);
+        $expire = parent::getExpireTime($lifetime, $bypassControl);
 
-        return (0 === $expire) ? null : date_timestamp_set(new \DateTime(), $expire);
+        return (0 === $expire) ? null : \DateTime::createFromFormat('U', $expire);
     }
 
     /**
      * Sets the cache prefix key according to the context.
      *
-     * @return \BackBee\Cache\DAO\Cache
-     * @codeCoverageIgnore
+     * @return Cache
      */
     private function setPrefixKey()
     {
         if (null !== $this->getContext()) {
-            $this->_prefix_key = md5($this->getContext());
+            $this->prefixKey = md5($this->getContext());
         }
 
         return $this;
@@ -479,18 +506,11 @@ class Cache extends AbstractExtendedCache
     /**
      * Sets the entity repository.
      *
-     * @return \BackBee\Cache\DAO\Cache
-     *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if the entity repository cannot be found
-     * @codeCoverageIgnore
+     * @return Cache
      */
     private function setEntityRepository()
     {
-        try {
-            $this->_repository = $this->_em->getRepository(self::ENTITY_CLASSNAME);
-        } catch (\Exception $e) {
-            throw new CacheException('Enable to load the cache entity repository', null, $e);
-        }
+        $this->repository = $this->entityMngr->getRepository(self::ENTITY_CLASSNAME);
 
         return $this;
     }
@@ -498,20 +518,24 @@ class Cache extends AbstractExtendedCache
     /**
      * Sets the entity manager.
      *
-     * @return \BackBee\Cache\DAO\Cache
+     * @return Cache
      *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if if enable to create a database connection.
+     * @throws CacheException if if enable to create a database connection.
      */
     private function setEntityManager()
     {
         try {
-            if ($this->_instance_options['em'] instanceof EntityManager) {
-                $this->_em = $this->_instance_options['em'];
+            if ($this->getOption('em') instanceof EntityManager) {
+                $this->entityMngr = $this->getOption('em');
             } else {
-                $this->_em = EntityManagerCreator::create($this->_instance_options['dbal'], $this->getLogger());
+                $this->entityMngr = EntityManagerCreator::create($this->getOption('dbal'), $this->getLogger());
             }
         } catch (InvalidArgumentException $e) {
-            throw new CacheException('DAO cache: enable to create a database conneciton', CacheException::INVALID_DB_CONNECTION, $e);
+            throw new CacheException(
+                'DAO cache: unable to create a database connection',
+                CacheException::INVALID_DB_CONNECTION,
+                $e
+            );
         }
 
         return $this;

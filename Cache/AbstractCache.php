@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,22 +17,18 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache;
 
 use Psr\Log\LoggerInterface;
+
 use BackBee\Cache\Exception\CacheException;
 
 /**
  * Abstract class for cache adapters.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 abstract class AbstractCache implements CacheInterface
 {
@@ -41,111 +37,116 @@ abstract class AbstractCache implements CacheInterface
      *
      * @var array
      */
-    protected $_instance_options = array();
+    protected $instanceOptions = [];
 
     /**
      * Default cache apdater options.
      *
      * @var array
      */
-    private $_default_instance_options = array(
-        'min_lifetime'       => null,
-        'max_lifetime'       => null,
-    );
+    private $defaultInstanceOptions = [
+        'min_lifetime' => null,
+        'max_lifetime' => null,
+    ];
 
     /**
      * A logger.
      *
-     * @var \Psr\Log\LoggerInterface
+     * @var LoggerInterface
      */
-    protected $_logger = null;
+    protected $logger = null;
 
     /**
      * A cache context.
      *
      * @var string
      */
-    private $_context = null;
+    private $context = null;
 
     /**
      * Class constructor.
      *
-     * @param array                    $options An array of options allowing to construct the cache adapter
-     * @param string                   $context An optional cache context
-     * @param \Psr\Log\LoggerInterface $logger  An optional logger
-     *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if the cache adapter cannot be construct
-     * @codeCoverageIgnore
+     * @param array                $options Optional, an array of options required to construct the cache adapter.
+     * @param string|null          $context An optional cache context.
+     * @param LoggerInterface|null $logger  An optional logger.
      */
-    public function __construct(array $options = array(), $context = null, LoggerInterface $logger = null)
+    public function __construct(array $options = [], $context = null, LoggerInterface $logger = null)
     {
-        $this->_instance_options = array_merge($this->_default_instance_options, $this->_instance_options);
+        if (property_exists($this, '_instance_options')) {
+            @trigger_error('The protected property '.get_class($this).'::_instance_options is deprecated '
+                    . 'since 1.4 and will be removed in 1.5, use AbstractCache::instanceOptions instead', E_USER_DEPRECATED);
+            $this->instanceOptions = $this->_instance_options;
+        }
 
-        $this->setContext($context);
-        $this->setLogger($logger);
-        $this->setInstanceOptions($options);
+        $this->setContext($context)
+            ->setLogger($logger)
+            ->setOptions(array_merge($this->defaultInstanceOptions, $this->getOptions()));
+
+        foreach ($options as $name => $value) {
+            $this->setOption($name, $value);
+        }
     }
 
     /**
      * Returns the available cache for the given id if found returns FALSE else.
      *
-     * @param string    $id          Cache id
-     * @param boolean   $bypassCheck Allow to find cache without test it before
-     * @param \DateTime $expire      Optionnal, the expiration time (now by default)
+     * @param  string    $id          Cache id.
+     * @param  boolean   $bypassCheck Allow to find cache without test it before.
+     * @param  \DateTime $expire      Optionnal, the expiration time (now by default).
      *
-     * @return string|FALSE
+     * @return string|false
      */
     abstract public function load($id, $bypassCheck = false, \DateTime $expire = null);
 
     /**
      * Tests if a cache is available or not (for the given id).
      *
-     * @param string $id Cache id
+     * @param  string $id Cache id.
      *
-     * @return int|FALSE the last modified timestamp of the available cache record (0 infinite expiration date)
+     * @return int|false  The last modified timestamp of the available cache record
+     *                    (0 infinite expiration date).
      */
     abstract public function test($id);
 
     /**
      * Saves some string datas into a cache record.
      *
-     * @param string $id       Cache id
-     * @param string $data     Datas to cache
+     * @param string $id       Cache id.
+     * @param string $data     Datas to cache.
      * @param int    $lifetime Optional, the specific lifetime for this record
-     *                         (by default null, infinite lifetime)
-     * @param string $tag      Optional, an associated tag to the data stored
+     *                         (by default null, infinite lifetime).
+     * @param string $tag      Optional, an associated tag to the data stored.
      *
-     * @return boolean TRUE if cache is stored FALSE otherwise
+     * @return boolean         True if cache is stored false otherwise.
      */
     abstract public function save($id, $data, $lifetime = null, $tag = null);
 
     /**
      * Removes a cache record.
      *
-     * @param string $id Cache id
+     * @param string $id Cache id.
      *
-     * @return boolean TRUE if cache is removed FALSE otherwise
+     * @return boolean TRUE if cache is removed FALSE otherwise.
      */
     abstract public function remove($id);
 
     /**
      * Clears all cache records.
      *
-     * @return boolean TRUE if cache is cleared FALSE otherwise
+     * @return boolean True if cache is cleared false otherwise.
      */
     abstract public function clear();
 
     /**
      * Sets the cache logger.
      *
-     * @param \Psr\Log\LoggerInterface $logger
+     * @param  LoggerInterface|null $logger
      *
-     * @return \BackBee\Cache\CacheAdapterInterface
-     * @codeCoverageIgnore
+     * @return CacheInterface
      */
     public function setLogger(LoggerInterface $logger = null)
     {
-        $this->_logger = $logger;
+        $this->logger = $logger;
 
         return $this;
     }
@@ -153,57 +154,33 @@ abstract class AbstractCache implements CacheInterface
     /**
      * Gets the cache logger.
      *
-     * @return \Psr\Log\LoggerInterface $logger
-     * @codeCoverageIgnore
+     * @return LoggerInterface|null
      */
     public function getLogger()
     {
-        return $this->_logger;
+        return $this->logger;
     }
 
     /**
      * Returns the cache context.
      *
-     * @return string|NULL
-     * @codeCoverageIgnore
+     * @return string|null
      */
     public function getContext()
     {
-        return $this->_context;
+        return $this->context;
     }
 
     /**
      * Sets the cache context.
      *
-     * @param string $context
+     * @param string|null $context
      *
-     * @return \BackBee\Cache\CacheAdapterInterface
-     * @codeCoverageIgnore
+     * @return CacheInterface
      */
     public function setContext($context = null)
     {
-        $this->_context = $context;
-
-        return $this;
-    }
-
-    /**
-     * Sets the cache adapter instance options.
-     *
-     * @param array $options
-     *
-     * @return \BackBee\Cache\CacheAdapterInterface
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if a provided option is unknown for this adapter.
-     */
-    private function setInstanceOptions(array $options = array())
-    {
-        foreach ($options as $key => $value) {
-            if (true === array_key_exists($key, $this->_instance_options)) {
-                $this->_instance_options[$key] = $value;
-            } else {
-                throw new CacheException(sprintf('Unknown option %s for cache adapter %s.', $key, get_class($this)));
-            }
-        }
+        $this->context = $context;
 
         return $this;
     }
@@ -211,31 +188,29 @@ abstract class AbstractCache implements CacheInterface
     /**
      * Logs a message on provided level if a logger is defined.
      *
-     * @param string $level   The log level
-     * @param string $message The message to log
-     * @param array  $context The logging context
-     * @codeCoverageIgnore
+     * @param string $level   The log level.
+     * @param string $message The message to log.
+     * @param array  $context Optional, the logging context (default ['cache']).
      */
-    public function log($level, $message, array $context = array('cache'))
+    public function log($level, $message, array $context = ['cache'])
     {
-        if (null !== $this->_logger) {
-            $this->_logger->log($level, $message, $context);
+        if (null !== $this->logger) {
+            $this->logger->log($level, $message, $context);
         }
     }
 
     /**
      * Returns the expiration timestamp.
      *
-     * @param int $lifetime
+     * @param  int     $lifetime      A lifetime duration in seconds.
+     * @param  boolean $bypassControl Optional, if true bypass the limits control (default: false).
      *
-     * @return int
-     * @codeCoverageIgnore
+     * @return int                    The expire datetime or 0 if no expiration.
      */
-    public function getExpireTime($lifetime = null, $bypass_control = false)
+    public function getExpireTime($lifetime = null, $bypassControl = false)
     {
         $expire = 0;
-
-        if (null !== $lifetime && 0 !== $lifetime) {
+        if (!empty($lifetime)) {
             $now = new \DateTime();
 
             if (0 < $lifetime) {
@@ -247,7 +222,7 @@ abstract class AbstractCache implements CacheInterface
             $expire = $now->getTimestamp();
         }
 
-        if (true === $bypass_control) {
+        if (true === $bypassControl) {
             return $expire;
         }
 
@@ -255,37 +230,34 @@ abstract class AbstractCache implements CacheInterface
     }
 
     /**
-     * Control the lifetime against min and max lifetime if provided.
+     * Control the lifetime against min and max lifetime options if provided.
      *
-     * @param int $lifetime
+     * @param  int $lifetime
      *
      * @return int
      */
-    public function getControledLifetime($lifetime)
+    public function getControlledLifetime($lifetime)
     {
-        if (
-            null !== $this->_instance_options['min_lifetime']
-            && $this->_instance_options['min_lifetime'] > $lifetime
-        ) {
-            $lifetime = $this->_instance_options['min_lifetime'];
-        } elseif (
-            null !== $this->_instance_options['max_lifetime']
-            && $this->_instance_options['max_lifetime'] < $lifetime
-        ) {
-            $lifetime = $this->_instance_options['max_lifetime'];
+        $minLifetime = $this->getOption('min_lifetime');
+        $maxLifetime = $this->getOption('max_lifetime');
+
+        if (null !== $minLifetime && $minLifetime > $lifetime) {
+            $lifetime = $minLifetime;
+        } elseif (null !== $maxLifetime && $maxLifetime < $lifetime) {
+            $lifetime = $maxLifetime;
         }
 
         return $lifetime;
     }
 
     /**
-     * Control the expiration time against min and max lifetime if provided.
+     * Control the expiration time against min and max lifetime options if provided.
      *
-     * @param int $expire
+     * @param  int $expire
      *
      * @return int
      */
-    private function getControledExpireTime($expire)
+    private function getControlledExpireTime($expire)
     {
         $lifetime = $this->getControledLifetime($expire - time());
 
@@ -294,5 +266,89 @@ abstract class AbstractCache implements CacheInterface
         }
 
         return $expire;
+    }
+
+    /**
+     * Returns an option value or all options.
+     *
+     * @param  string $name An option name.
+     *
+     * @return mixed
+     *
+     * @throws CacheException if a provided option name is unknown for this adapter.
+     */
+    protected function getOption($name)
+    {
+        if (!array_key_exists($name, $this->getOptions())) {
+            throw new CacheException(
+                sprintf('Unknown option %s for cache adapter %s.', $name, get_class($this))
+            );
+        }
+
+        return $this->instanceOptions[$name];
+    }
+
+    /**
+     * Sets an option value for this adapter.
+     *
+     * @param  string $name
+     * @param  mixed  $value
+     *
+     * @return CacheInterface
+     *
+     * @throws CacheException if a provided option name is unknown for this adapter.
+     */
+    protected function setOption($name, $value = null)
+    {
+        $this->getOption($name);
+        $this->instanceOptions[$name] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Returns the options for this cache adapter.
+     *
+     * @return array
+     */
+    protected function getOptions()
+    {
+        return $this->instanceOptions;
+    }
+
+    /**
+     * Sets the options of this cache adapter.
+     *
+     * @param  array $options
+     *
+     * @return CacheInterface
+     */
+    protected function setOptions(array $options = [])
+    {
+        $this->instanceOptions = $options;
+
+        return $this;
+    }
+
+    /**
+     * Alias to AbstractCache::getControlledLifetime.
+     *
+     * @deprecated since version 1.4, to be removed in 1.5.
+     * @codeCoverageIgnore
+     */
+    public function getControledLifetime($lifetime)
+    {
+        return $this->getControlledLifetime($lifetime);
+    }
+
+    /**
+     * Alias to AbstractCache::getControlledExpireTime.
+     *
+     * @deprecated since version 1.4, to be removed in 1.5.
+     * @codeCoverageIgnore
+     */
+    private function getControledExpireTime($expire)
+    {
+        return $this->getControlledExpireTime($expire);
     }
 }

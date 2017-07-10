@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,13 +17,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\MemCache;
 
 use Psr\Log\LoggerInterface;
+
 use BackBee\Cache\Exception\CacheException;
 
 /**
@@ -68,24 +67,24 @@ class Memcached extends AbstractMemcache
             $this->setOption(\Memcached::OPT_PREFIX_KEY, md5($this->getContext()));
         }
 
-        if (false === is_array($this->_instance_options['options'])) {
+        if (false === is_array($this->getOption('options'))) {
             throw new CacheException('Memcached adapter: memcached options is not an array.');
         }
 
-        $this->_instance_options['options'] = array_merge($this->_cache_options, $this->_instance_options['options']);
-        foreach ($this->_instance_options['options'] as $option => $value) {
+        $this->setOption('options', array_merge($this->_cache_options, $this->getOption('options')));
+        foreach ($this->getOption('options') as $option => $value) {
             $this->setOption($option, $value);
         }
 
-        if (null !== $this->_instance_options['compression']) {
-            $this->setOption(\Memcached::OPT_COMPRESSION, $this->_instance_options['compression']);
+        if (null !== $this->getOption('compression')) {
+            $this->setOption(\Memcached::OPT_COMPRESSION, $this->getOption('compression'));
         }
 
-        if (false === is_array($this->_instance_options['servers'])) {
+        if (false === is_array($this->getOption('servers'))) {
             throw new CacheException('Memcached adapter: memcached servers is not an array.');
         }
 
-        $this->addServers($this->_instance_options['servers']);
+        $this->addServers($this->getOption('servers'));
     }
 
     /**
@@ -95,7 +94,7 @@ class Memcached extends AbstractMemcache
      */
     public function __destruct()
     {
-        if (null !== $this->_instance_options['persistent_id']) {
+        if (null !== $this->getOption('persistent_id')) {
             $this->_cache->quit();
         }
     }

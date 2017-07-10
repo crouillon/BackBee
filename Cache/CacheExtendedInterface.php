@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache;
@@ -26,19 +24,17 @@ namespace BackBee\Cache;
 /**
  * Interface for BackBee Cache Tag & Expire features
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      Mickaël Andrieu <mickael.andrieu@lp-digital.fr>
+ * @author Mickaël Andrieu
  */
 interface CacheExtendedInterface extends CacheInterface
 {
+
     /**
      * Removes all cache records associated to one of the tags.
      *
      * @param string|array $tag
      *
-     * @return boolean true if cache is removed FALSE otherwise
+     * @return boolean True if cache is removed FALSE otherwise
      */
     public function removeByTag($tag);
 
@@ -50,7 +46,7 @@ interface CacheExtendedInterface extends CacheInterface
      * @param int          $lifetime Optional, the specific lifetime for this record
      *                               (by default null, infinite lifetime)
      *
-     * @return boolean true if cache is removed FALSE otherwise
+     * @return boolean               True if cache is removed false otherwise
      */
     public function updateExpireByTag($tag, $lifetime);
 
@@ -71,8 +67,6 @@ interface CacheExtendedInterface extends CacheInterface
      *
      * @param string $id       Cache id
      * @param string $tag      Optional, an associated tag to the data stored
-     *
-     * @return void
      */
     public function saveTag($id, $tag);
 }

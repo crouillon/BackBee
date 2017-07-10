@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache;
@@ -29,15 +27,14 @@ use BackBee\Exception\InvalidArgumentException;
 use BackBee\Renderer\RendererInterface;
 
 /**
- * CacheIdentifierGenerator allows you to easily customize cache identifier by adding appenders.
+ * CacheIdentifierGenerator allows you to easily customize cache identifier
+ * by adding appenders.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 class CacheIdentifierGenerator
 {
+
     const APPENDER_SERVICE_TAG = 'cache.identifier.appender';
 
     /**
@@ -54,7 +51,7 @@ class CacheIdentifierGenerator
      */
     public function __construct(ContainerInterface $container)
     {
-        $this->appenders = array();
+        $this->appenders = [];
         foreach (array_keys($container->findTaggedServiceIds(self::APPENDER_SERVICE_TAG)) as $appender_id) {
             $this->addAppender($container->get($appender_id));
         }
@@ -67,31 +64,34 @@ class CacheIdentifierGenerator
      */
     public function addAppender(IdentifierAppenderInterface $appender)
     {
-        foreach ((array) $appender->getGroups() as $group_name) {
-            if (false === array_key_exists($group_name, $this->appenders)) {
-                $this->appenders[$group_name] = array();
+        foreach ((array) $appender->getGroups() as $groupName) {
+            if (!array_key_exists($groupName, $this->appenders)) {
+                $this->appenders[$groupName] = [];
             }
 
-            $this->appenders[$group_name][] = $appender;
+            $this->appenders[$groupName][] = $appender;
         }
     }
 
     /**
      * This method will compute cache identifier with every appenders that belong to group name.
      *
-     * @param string    $group_name the group name of appenders to apply
-     * @param string    $identifier identifier we want to update
+     * @param string            $groupName  the group name of appenders to apply
+     * @param string            $identifier identifier we want to update
      * @param RendererInterface $renderer   the current renderer, can be null
      *
      * @return string the identifier new computed with appenders of group name
      */
-    public function compute($group_name, $identifier, RendererInterface $renderer = null)
+    public function compute($groupName, $identifier, RendererInterface $renderer = null)
     {
-        if (false === $this->isValidGroup($group_name)) {
-            throw new InvalidArgumentException("$group_name is not a valid cache identifier appender group.");
+        if (!$this->isValidGroup($groupName)) {
+            throw new InvalidArgumentException(sprintf(
+                '%s is not a valid cache identifier appender group.',
+                $groupName
+            ));
         }
 
-        foreach ($this->appenders[$group_name] as $appender) {
+        foreach ($this->appenders[$groupName] as $appender) {
             $identifier = $appender->computeIdentifier($identifier, $renderer);
         }
 
@@ -103,8 +103,8 @@ class CacheIdentifierGenerator
      *
      * @return boolean true if the provided group name is associated to one appender atleast, else false
      */
-    public function isValidGroup($group_name)
+    public function isValidGroup($groupName)
     {
-        return array_key_exists($group_name, $this->appenders);
+        return array_key_exists($groupName, $this->appenders);
     }
 }

@@ -19,37 +19,33 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Cache;
+namespace BackBee\Cache\Tests\NoCache;
+
+use BackBee\Cache\NoCache\Cache;
 
 /**
- * Abstract class for cache adapters with extended features
- * as tag and expire date time.
+ * Tests suite for class NoCache\Cache
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-abstract class AbstractExtendedCache extends AbstractCache implements CacheExtendedInterface
+class CacheTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * @{inheritdoc}
+     * @covers BackBee\Cache\NoCache\Cache::save()
+     * @covers BackBee\Cache\NoCache\Cache::test()
+     * @covers BackBee\Cache\NoCache\Cache::load()
+     * @covers BackBee\Cache\NoCache\Cache::remove()
+     * @covers BackBee\Cache\NoCache\Cache::clear()
      */
-    abstract public function removeByTag($tag);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function updateExpireByTag($tag, $lifetime = null);
-
-    /**
-     * @{inheritdoc}
-     */
-    abstract public function getMinExpireByTag($tag, $lifetime = 0);
-
-    /**
-     * @{inheritdoc}
-     */
-    public function saveTag($id, $tag)
+    public function testCache()
     {
-        return null;
+        $cache = new Cache();
+
+        $this->assertTrue($cache->save('id', 'data'));
+        $this->assertFalse($cache->test('id'));
+        $this->assertFalse($cache->load('id'));
+        $this->assertTrue($cache->remove('id'));
+        $this->assertTrue($cache->clear());
     }
 }

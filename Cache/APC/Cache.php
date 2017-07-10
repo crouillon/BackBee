@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\APC;
@@ -32,13 +30,11 @@ use BackBee\Cache\Exception\CacheException;
  * APC cache adapter
  * It supports tag and expire features.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      Cédric Bouillot <cedric.bouillot@lp-digital.fr>
+ * @author Cédric Bouillot <cedric.bouillot@lp-digital.fr>
  */
 class Cache extends AbstractExtendedCache
 {
+
     /**
      * Hashmap id prefix.
      */
@@ -54,14 +50,14 @@ class Cache extends AbstractExtendedCache
      *
      * @var string
      */
-    private $_hashmapId = null;
+    private $hashmapId = null;
 
     /**
      * The hashmap for current site.
      *
      * @var mixed
      */
-    private $_hashmap = array();
+    private $hashmap = array();
 
     /**
      * hashmapId getter.
@@ -70,7 +66,7 @@ class Cache extends AbstractExtendedCache
      */
     public function getHashmapId()
     {
-        return $this->_hashmapId;
+        return $this->hashmapId;
     }
 
     /**
@@ -80,28 +76,26 @@ class Cache extends AbstractExtendedCache
      */
     public function getHashmap()
     {
-        return $this->_hashmap;
+        return $this->hashmap;
     }
 
     /**
      * Class constructor.
      *
-     * @param array                    $options Initial options for the cache adapter: none to be defined
-     * @param string                   $context An optional cache context
-     * @param \Psr\Log\LoggerInterface $logger  An optional logger
-     *
-     * @throws \BackBee\Cache\Exception\CacheException Occurs if the entity manager for this cache adaptor cannot be created
+     * @param  array                $options Initial options for the cache adapter: none to be defined
+     * @param  string|null          $context An optional cache context
+     * @param  LoggerInterface|null $logger  An optional logger
      */
     public function __construct(array $options = array(), $context = null, LoggerInterface $logger = null)
     {
-        if (false === extension_loaded('apc')) {
-            throw new CacheException('APC extension not loaded');
+        if (!(extension_loaded('apc') && ini_get('apc.enabled'))) {
+            throw new CacheException('APC extension not loaded or disabled.');
         }
 
         parent::__construct($options, $context, $logger);
 
-        $this->_hashmapId = self::HASHMAP_PREFIX.'_'.md5($this->getContext());
-        $this->_hashmap = $this->loadHashmap();
+        $this->hashmapId = self::HASHMAP_PREFIX . '_' . md5($this->getContext());
+        $this->hashmap = $this->loadHashmap();
     }
 
     /**
@@ -109,7 +103,7 @@ class Cache extends AbstractExtendedCache
      *
      * @param string    $id          Cache id
      * @param boolean   $bypassCheck Allow to find cache without test it before
-     * @param \DateTime $expire      Optionnal, the expiration time (now by default)
+     * @param \DateTime $expire      Optional, the expiration time (now by default)
      *
      * @return string|FALSE
      */
@@ -131,7 +125,7 @@ class Cache extends AbstractExtendedCache
      *
      * @param string $id Cache id
      *
-     * @return int|FALSE the last modified timestamp of the available cache record
+     * @return int|false the last modified timestamp of the available cache record
      */
     public function test($id)
     {
@@ -139,7 +133,8 @@ class Cache extends AbstractExtendedCache
             if (!\apc_fetch($id)) {
                 return false;
             }
-            foreach ($this->_hashmap as $tag) {
+
+            foreach ($this->hashmap as $tag) {
                 foreach ($tag as $key => $item) {
                     if ($id == $key) {
                         return $item['time'] + $item['ttl'];
@@ -158,18 +153,19 @@ class Cache extends AbstractExtendedCache
     /**
      * Store provided data into cache.
      *
-     * @param string $id       Cache id
-     * @param mixed  $data     Datas to cache
-     * @param int    $lifetime Optional, the specific lifetime for this record (by default null, infinite lifetime)
-     * @param string $tag      Optional, an associated tag to the stored data
+     * @param  string $id       Cache id
+     * @param  mixed  $data     Datas to cache
+     * @param  int    $lifetime Optional, the specific lifetime for this record
+     *                          (by default null, infinite lifetime)
+     * @param  string $tag      Optional, an associated tag to the stored data
      *
-     * @return boolean TRUE if cache is stored FALSE otherwise
+     * @return boolean          True if cache is stored, false otherwise
      */
     public function save($id, $data, $lifetime = null, $tag = null)
     {
         try {
             if (\apc_store($id, $data, $lifetime)) {
-                $this->_hashmap[$tag][$id] = array("time" => time(), "ttl" => $lifetime);
+                $this->hashmap[$tag][$id] = array('time' => time(), 'ttl' => $lifetime);
 
                 return $this->saveHashmap();
             } else {
@@ -187,9 +183,9 @@ class Cache extends AbstractExtendedCache
     /**
      * Removes a cache record.
      *
-     * @param string $id Cache id
+     * @param  string $id Cache id
      *
-     * @return boolean TRUE if cache is removed FALSE otherwise
+     * @return boolean    True if cache is removed false otherwise
      */
     public function remove($id)
     {
@@ -209,9 +205,9 @@ class Cache extends AbstractExtendedCache
     /**
      * Removes all cache records associated to provided tag(s).
      *
-     * @param mixed $tag
+     * @param  mixed $tag
      *
-     * @return boolean TRUE if cache is removed FALSE otherwise
+     * @return boolean True if cache is removed false otherwise
      */
     public function removeByTag($tag)
     {
@@ -221,7 +217,10 @@ class Cache extends AbstractExtendedCache
                 $this->removeTag($tag);
             }
         } catch (\Exception $e) {
-            $this->log('warning', \sprintf('Unable to delete cache for tag(s) %s : %s', \implode(',', $tags), $e->getMessage()));
+            $this->log(
+                'warning',
+                sprintf('Unable to delete cache for tag(s) %s : %s', \implode(',', $tags), $e->getMessage())
+            );
 
             return false;
         }
@@ -232,10 +231,10 @@ class Cache extends AbstractExtendedCache
     /**
      * @todo
      *
-     * @param type $tag
-     * @param type $lifetime
+     * @param  string $tag
+     * @param  int $lifetime
      *
-     * @return type
+     * @return int
      */
     public function getMinExpireByTag($tag, $lifetime = 0)
     {
@@ -245,10 +244,10 @@ class Cache extends AbstractExtendedCache
     /**
      * Updates TTL for all cache records associated to provided tag(s).
      *
-     * @param mixed $tag
-     * @param int   $lifetime
+     * @param  mixed  $tag
+     * @param  int    $lifetime
      *
-     * @return boolean TRUE if cache is removed FALSE otherwise
+     * @return boolean True if cache is removed false otherwise
      */
     public function updateExpireByTag($tag, $lifetime = null)
     {
@@ -258,7 +257,10 @@ class Cache extends AbstractExtendedCache
                 $this->updateExpireTag($tag, $lifetime);
             }
         } catch (\Exception $e) {
-            $this->log('warning', \sprintf('Unable to delete cache for tag(s) %s : %s', \implode(',', $tags), $e->getMessage()));
+            $this->log(
+                'warning',
+                sprintf('Unable to delete cache for tag(s) %s : %s', \implode(',', $tags), $e->getMessage())
+            );
 
             return false;
         }
@@ -275,7 +277,7 @@ class Cache extends AbstractExtendedCache
     {
         try {
             if (\apc_clear_cache('user')) {
-                $this->_hashmap = array();
+                $this->hashmap = array();
 
                 return $this->saveHashmap();
             }
@@ -296,10 +298,10 @@ class Cache extends AbstractExtendedCache
     private function removeTag($tag)
     {
         try {
-            if (isset($this->_hashmap[$tag])) {
-                foreach (array_keys($this->_hashmap[$tag]) as $key) {
+            if (isset($this->hashmap[$tag])) {
+                foreach (array_keys($this->hashmap[$tag]) as $key) {
                     if (\apc_delete($key)) {
-                        unset($this->_hashmap[$tag][$key]);
+                        unset($this->hashmap[$tag][$key]);
                     }
                 }
 
@@ -325,8 +327,8 @@ class Cache extends AbstractExtendedCache
     private function updateExpireTag($tag, $lifetime = null)
     {
         try {
-            if (isset($this->_hashmap[$tag])) {
-                foreach (array_keys($this->_hashmap[$tag]) as $key) {
+            if (isset($this->hashmap[$tag])) {
+                foreach (array_keys($this->hashmap[$tag]) as $key) {
                     $value = $this->load($key);
                     if ($value) {
                         $this->save($key, $value, $lifetime, $tag);
@@ -352,10 +354,10 @@ class Cache extends AbstractExtendedCache
     private function removeFromHashmapById($id)
     {
         try {
-            foreach ($this->_hashmap as $tag => $vars) {
+            foreach ($this->hashmap as $tag => $vars) {
                 foreach (array_keys($vars) as $key) {
                     if ($key == $id) {
-                        unset($this->_hashmap[$tag][$key]);
+                        unset($this->hashmap[$tag][$key]);
 
                         return $this->saveHashmap();
                     }
@@ -378,9 +380,9 @@ class Cache extends AbstractExtendedCache
     private function saveHashmap()
     {
         try {
-            return \apc_store($this->_hashmapId, $this->_hashmap, self::HASHMAP_TTL);
+            return \apc_store($this->hashmapId, $this->hashmap, self::HASHMAP_TTL);
         } catch (\Exception $e) {
-            $this->log('warning', \sprintf('Unable to store hashmap %s : %s', $this->_hashmapId, $e->getMessage()));
+            $this->log('warning', \sprintf('Unable to store hashmap %s : %s', $this->hashmapId, $e->getMessage()));
 
             return false;
         }
@@ -394,13 +396,13 @@ class Cache extends AbstractExtendedCache
     public function loadHashmap()
     {
         try {
-            if ($this->_hashmap = \apc_fetch($this->_hashmapId)) {
-                return $this->_hashmap;
+            if ($this->hashmap = \apc_fetch($this->hashmapId)) {
+                return $this->hashmap;
             } else {
-                return array();
+                return [];
             }
         } catch (\Exception $e) {
-            $this->log('warning', \sprintf('Unable to load hashmap %s : %s', $this->_hashmapId, $e->getMessage()));
+            $this->log('warning', \sprintf('Unable to load hashmap %s : %s', $this->hashmapId, $e->getMessage()));
 
             return false;
         }

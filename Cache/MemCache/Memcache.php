@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,13 +17,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\MemCache;
 
 use Psr\Log\LoggerInterface;
+
 use BackBee\Cache\Exception\CacheException;
 
 /**
@@ -60,15 +59,15 @@ class Memcache extends AbstractMemcache
 
         parent::__construct($options, $context, $logger);
 
-        if (true === $this->_instance_options['compression']) {
+        if (true === $this->getOption('compression')) {
             $this->compression = MEMCACHE_COMPRESSED;
         }
 
-        if (false === is_array($this->_instance_options['servers'])) {
+        if (false === is_array($this->getOption('servers'))) {
             throw new CacheException('Memcache adapter: Memcache servers is not an array.');
         }
 
-        $this->addServers($this->_instance_options['servers']);
+        $this->addServers($this->getOption('servers'));
     }
 
     /**

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,14 +17,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Cache\IdentifierAppender;
 
 use Doctrine\ORM\EntityManager;
-use Symfony\Component\Security\Core\Util\ClassUtils;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
 
 use BackBee\ClassContent\AbstractClassContent;
 use BackBee\Renderer\RendererInterface;
@@ -36,13 +34,11 @@ use BackBee\Renderer\RendererInterface;
  *     - PARENT_NODE (='parent'): it will append the current parent page uid to the cache identifier
  *     - ROOT_NODE (='root'): it will append the current root page uid to the cache identifier.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  */
 class NodeAppender implements IdentifierAppenderInterface
 {
+
     const SELF_NODE = 'self';
     const PARENT_NODE = 'parent';
     const ROOT_NODE = 'root';
@@ -50,7 +46,7 @@ class NodeAppender implements IdentifierAppenderInterface
     /**
      * Application main entity manager.
      *
-     * @var Doctrine\ORM\EntityManager
+     * @var EntityManager
      */
     private $em;
 
@@ -64,40 +60,35 @@ class NodeAppender implements IdentifierAppenderInterface
     /**
      * constructor.
      *
-     * @param EntityManager $em    application main entity manager
-     * @param array         $group list of groups this appender belongs to
+     * @param EntityManager $em     application main entity manager
+     * @param array         $groups list of groups this appender belongs to
      */
-    public function __construct(EntityManager $em, $groups = array())
+    public function __construct(EntityManager $em, $groups = [])
     {
         $this->em = $em;
         $this->groups = (array) $groups;
     }
 
     /**
-     * @see BackBee\Cache\IdentifierAppender\IdentifierAppenderInterface::computeIdentifier
+     * @see IdentifierAppenderInterface::computeIdentifier
      */
     public function computeIdentifier($identifier, RendererInterface $renderer = null)
     {
-        if (
-            null !== $renderer
+        if (null !== $renderer
             && true === ($renderer->getObject() instanceof AbstractClassContent)
             && null !== $renderer->getCurrentPage()
         ) {
             switch ((string) $this->getClassContentCacheNodeParameter($renderer->getObject())) {
                 case self::SELF_NODE:
                     $identifier .= '-'.$renderer->getCurrentPage()->getUid();
-
                     break;
                 case self::PARENT_NODE:
                     if (null !== $renderer->getCurrentPage()->getParent()) {
                         $identifier .= '-'.$renderer->getCurrentPage()->getParent()->getUid();
                     }
-
                     break;
                 case self::ROOT_NODE:
                     $identifier .= '-'.$renderer->getCurrentRoot()->getUid();
-
-                default:
                     break;
             }
         }
@@ -106,7 +97,7 @@ class NodeAppender implements IdentifierAppenderInterface
     }
 
     /**
-     * @see BackBee\Cache\IdentifierAppender\IdentifierAppenderInterface::getGroups
+     * @see IdentifierAppenderInterface::getGroups
      */
     public function getGroups()
     {
@@ -124,26 +115,29 @@ class NodeAppender implements IdentifierAppenderInterface
     {
         $classnames = array(ClassUtils::getRealClass($content));
 
-        $content_uids = $this->em->getRepository('\BackBee\ClassContent\Indexes\IdxContentContent')
+        $content_uids = $this->em
+            ->getRepository('\BackBee\ClassContent\Indexes\IdxContentContent')
             ->getDescendantsContentUids($content)
         ;
 
         if (0 < count($content_uids)) {
             $classnames = array_merge(
                 $classnames,
-                $this->em->getRepository('\BackBee\ClassContent\AbstractClassContent')->getClassnames($content_uids)
+                $this->em
+                    ->getRepository(AbstractClassContent::class)
+                    ->getClassnames($content_uids)
             );
         }
 
         $node_parameter = null;
         foreach ($classnames as $classname) {
-            if (false === class_exists($classname)) {
+            if (!class_exists($classname)) {
                 continue;
             }
 
             $object = new $classname();
             if (null !== $parameters = $object->getProperty('cache-param')) {
-                if (true === isset($parameters['node'])) {
+                if (isset($parameters['node'])) {
                     $node_parameter = $parameters['node'];
                     break;
                 }
