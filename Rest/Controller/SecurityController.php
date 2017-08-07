@@ -76,8 +76,8 @@ class SecurityController extends AbstractRestController
         $this->getApplication()->getSecurityContext()->setToken($tokenAuthenticated);
 
         return $this->createJsonResponse(null, 201, array(
-            'x-api-key'       => $tokenAuthenticated->getUser()->getApiKeyPublic(),
-            'x-api-signature' => $tokenAuthenticated->getNonce(),
+            'X-API-KEY'       => $tokenAuthenticated->getUser()->getApiKeyPublic(),
+            'X-API-SIGNATURE' => $tokenAuthenticated->getNonce(),
         ));
     }
 
