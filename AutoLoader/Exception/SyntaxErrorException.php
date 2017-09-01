@@ -31,9 +31,6 @@ class SyntaxErrorException extends AutoloaderException
 
     /**
      * The default error code.
-     *
-     * @var int
      */
-    protected $_code = self::INVALID_OPCODE;
-
+    protected $code = self::INVALID_OPCODE;
 }

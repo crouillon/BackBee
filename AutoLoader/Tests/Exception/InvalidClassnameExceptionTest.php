@@ -19,18 +19,27 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\AutoLoader\Exception;
+namespace BackBee\AutoLoader\Exception\Tests;
+
+use BackBee\AutoLoader\Exception\InvalidClassnameException;
 
 /**
- * Exception thrown if the namespace is not registered.
+ * Tests suite for class InvalidClassnameException.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass BackBee\AutoLoader\Exception\InvalidClassnameException
  */
-class UnregisteredNamespaceException extends AutoloaderException
+class InvalidClassnameExceptionTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * The default error code.
      */
-    protected $code = self::UNREGISTERED_NAMESPACE;
+    public function testCode()
+    {
+        $exception = new InvalidClassnameException();
+        $this->assertEquals(
+            InvalidClassnameException::INVALID_CLASSNAME,
+            $exception->getCode()
+        );
+    }
 }

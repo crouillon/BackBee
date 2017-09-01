@@ -34,6 +34,5 @@ class InvalidClassnameException extends AutoloaderException
      *
      * @var int
      */
-    protected $_code = self::INVALID_CLASSNAME;
-
+    protected $code = self::INVALID_CLASSNAME;
 }

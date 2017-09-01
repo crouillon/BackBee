@@ -41,37 +41,26 @@ class AutoloaderException extends BBException
 
     /**
      * None file or wrapper found for the given class name.
-     *
-     * @var int
      */
     const CLASS_NOTFOUND = 2001;
 
     /**
      * The included file or wrapper contains invalid code.
-     *
-     * @var int
      */
     const INVALID_OPCODE = 2002;
 
     /**
      * The syntax of the given namespace is invalid.
-     *
-     * @var int
      */
     const INVALID_NAMESPACE = 2003;
 
     /**
      * The syntax of the given class name is invalid.
-     *
-     * @var int
      */
     const INVALID_CLASSNAME = 2004;
 
     /**
      * The given namespace is not registered.
-     *
-     * @var int
      */
     const UNREGISTERED_NAMESPACE = 2005;
-
 }
