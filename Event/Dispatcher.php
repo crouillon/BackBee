@@ -127,6 +127,22 @@ class Dispatcher extends EventDispatcher implements DumpableServiceInterface
     }
 
     /**
+     * Removes all listeners.
+     */
+    public function clearAllListeners()
+    {
+        foreach ($this->raw_listeners as $eventName => $data) {
+            foreach ($data as $listeners) {
+                foreach ($listeners as $listener) {
+                    $this->removeListener($eventName, $listener);
+                }
+            }
+        }
+
+        $this->raw_listeners = [];
+    }
+
+    /**
      * @see EventDispatcherInterface::dispatch
      *
      * @api
