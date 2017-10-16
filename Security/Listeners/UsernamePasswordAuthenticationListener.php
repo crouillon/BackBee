@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Listeners;
@@ -28,75 +26,98 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
+use Symfony\Component\Security\Core\AuthenticationEvents;
+use Symfony\Component\Security\Core\Event\AuthenticationFailureEvent;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Http\Event\InteractiveLoginEvent;
 use Symfony\Component\Security\Http\Firewall\ListenerInterface;
 use Symfony\Component\Security\Http\SecurityEvents;
+
 use BackBee\Security\Token\UsernamePasswordToken;
 
+@trigger_error('The '.__NAMESPACE__.'\UsernamePasswordAuthenticationListener class is '
+        . 'deprecated since version 1.4 and will be removed in 1.5. '
+        . 'Use Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener '
+        . 'instead.', E_USER_DEPRECATED);
+
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
 class UsernamePasswordAuthenticationListener implements ListenerInterface
 {
-    private $_context;
-    private $_authenticationManager;
-    private $_login_path;
-    private $_check_path;
-    private $_logger;
+    private $context;
+    private $authenticationManager;
+    private $login_path;
+    private $check_path;
+    private $logger;
 
-    public function __construct(SecurityContextInterface $context, AuthenticationManagerInterface $authManager, $login_path = null, $check_path = null, LoggerInterface $logger = null)
-    {
-        $this->_context = $context;
-        $this->_authenticationManager = $authManager;
-        $this->_login_path = $login_path;
-        $this->_check_path = $check_path;
-        $this->_logger = $logger;
+    public function __construct(
+        SecurityContextInterface $context,
+        AuthenticationManagerInterface $authManager,
+        $login_path = null,
+        $check_path = null,
+        LoggerInterface $logger = null
+    ) {
+        $this->context = $context;
+        $this->authenticationManager = $authManager;
+        $this->login_path = $login_path;
+        $this->check_path = $check_path;
+        $this->logger = $logger;
     }
 
     public function handle(GetResponseEvent $event)
     {
         $request = $event->getRequest();
 
-        $token = $this->_context->getToken();
+        $token = $this->context->getToken();
         $errmsg = '';
 
         if (null !== $request->request->get('login') && null !== $request->request->get('password')) {
             $token = new UsernamePasswordToken($request->request->get('login'), $request->request->get('password'));
             $token->setUser($request->request->get('login'), $request->request->get('password'));
             try {
-                $token = $this->_authenticationManager->authenticate($token);
+                $token = $this->authenticationManager->authenticate($token);
 
-                if (null !== $this->_logger) {
-                    $this->_logger->info(sprintf('Authentication request succeed for user "%s"', $token->getUsername()));
+                if (null !== $this->logger) {
+                    $this->logger->info(sprintf('Authentication request succeed for user "%s"', $token->getUsername()));
                 }
-                
+
                 $loginEvent = new InteractiveLoginEvent($request, $token);
                 $event->getDispatcher()
                         ->dispatch(SecurityEvents::INTERACTIVE_LOGIN, $loginEvent);
-            } catch (\Symfony\Component\Security\Core\Exception\AuthenticationException $e) {
+            } catch (AuthenticationException $e) {
                 $event->getDispatcher()
-                        ->dispatch(\Symfony\Component\Security\Core\AuthenticationEvents::AUTHENTICATION_FAILURE, new \Symfony\Component\Security\Core\Event\AuthenticationFailureEvent($token, $e));
+                        ->dispatch(
+                            AuthenticationEvents::AUTHENTICATION_FAILURE,
+                            new AuthenticationFailureEvent($token, $e)
+                        );
                 $errmsg = $e->getMessage();
-                if (null !== $this->_logger) {
-                    $this->_logger->info(sprintf('Authentication request failed for user "%s": %s', $token->getUsername(), $e->getMessage()));
+                if (null !== $this->logger) {
+                    $this->logger->info(sprintf(
+                        'Authentication request failed for user "%s": %s',
+                        $token->getUsername(),
+                        $e->getMessage()
+                    ));
                 }
             } catch (\Exception $e) {
                 $errmsg = $e->getMessage();
-                if (null !== $this->_logger) {
-                    $this->_logger->info(sprintf('Authentication request failed for user "%s": %s', $token->getUsername(), $e->getMessage()));
+                if (null !== $this->logger) {
+                    $this->logger->info(sprintf(
+                        'Authentication request failed for user "%s": %s',
+                        $token->getUsername(),
+                        $e->getMessage()
+                    ));
                 }
             }
         }
 
         if (is_a($token, 'BackBee\Security\Token\UsernamePasswordToken') && $errmsg != '') {
-            if (null !== $this->_login_path) {
-                if (preg_match('/%(.*)%/s', $this->_login_path, $matches)) {
-                    if ($this->_context->getApplication()->getContainer()->hasParameter($matches[1])) {
-                        $this->_login_path = $this->_context->getApplication()->getContainer()->getParameter($matches[1]);
+            if (null !== $this->login_path) {
+                if (preg_match('/%(.*)%/s', $this->login_path, $matches)) {
+                    if ($this->context->getApplication()->getContainer()->hasParameter($matches[1])) {
+                        $this->login_path = $this->context->getApplication()->getContainer()->getParameter($matches[1]);
                     }
                 }
 
@@ -111,7 +132,11 @@ class UsernamePasswordAuthenticationListener implements ListenerInterface
                     $redirect .= '?'.$qs;
                 }
 
-                $response = new RedirectResponse($event->getRequest()->getUriForPath($this->_login_path.'?redirect='.urlencode($redirect).'&errmsg='.urlencode($errmsg).'&login='.urlencode($request->request->get('login'))));
+                $response = new RedirectResponse($event->getRequest()->getUriForPath(
+                    $this->login_path
+                    .'?redirect='.urlencode($redirect).'&errmsg='.urlencode($errmsg)
+                    .'&login='.urlencode($request->request->get('login'))
+                ));
                 $event->setResponse($response);
 
                 return;
@@ -123,7 +148,7 @@ class UsernamePasswordAuthenticationListener implements ListenerInterface
         }
 
         if (null !== $token && is_a($token, 'BackBee\Security\Token\UsernamePasswordToken')) {
-            $this->_context->setToken($token);
+            $this->context->setToken($token);
 
             if ($request->request->get('redirect')) {
                 $response = new RedirectResponse($request->getBaseUrl().$request->request->get('redirect'));

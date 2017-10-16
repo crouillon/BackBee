@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,35 +17,51 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Repository;
 
 use Doctrine\ORM\EntityRepository;
-
+use Doctrine\ORM\QueryBuilder;
+use Symfony\Component\Security\Core\Exception\AccountStatusException;
 use Symfony\Component\Security\Core\Exception\DisabledException;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
 use Symfony\Component\Security\Core\User\UserCheckerInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
+
 use BackBee\Security\ApiUserProviderInterface;
 use BackBee\Security\User;
 
 /**
- * @category    BackBee
+ * A repository to serve User entities.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class UserRepository extends EntityRepository implements UserProviderInterface, UserCheckerInterface, ApiUserProviderInterface
 {
+
+    /**
+     * Checks the user account before authentication.
+     *
+     * @param UserInterface $user a UserInterface instance
+     *
+     * @throws AccountStatusException
+     * @codeCoverageIgnore
+     */
     public function checkPreAuth(UserInterface $user)
     {
     }
 
+    /**
+     * Checks the user account after authentication.
+     *
+     * @param UserInterface $user a UserInterface instance
+     *
+     * @throws AccountStatusException
+     * @codeCoverageIgnore
+     */
     public function checkPostAuth(UserInterface $user)
     {
     }
@@ -53,7 +69,7 @@ class UserRepository extends EntityRepository implements UserProviderInterface, 
     /**
      * Loads the user for the given public API key.
      *
-     * @param string $publicApiKey The username
+     * @param  string $publicApiKey The username
      *
      * @return UserInterface
      *
@@ -61,7 +77,7 @@ class UserRepository extends EntityRepository implements UserProviderInterface, 
      */
     public function loadUserByPublicKey($publicApiKey)
     {
-        if (null === $user = $this->findOneBy(array('_api_key_public' => $publicApiKey))) {
+        if (null === $user = $this->findOneBy(['_api_key_public' => $publicApiKey])) {
             throw new UsernameNotFoundException(sprintf('Unknown public API key `%s`.', $publicApiKey));
         }
 
@@ -71,7 +87,7 @@ class UserRepository extends EntityRepository implements UserProviderInterface, 
     /**
      * Loads the user for the given username.
      *
-     * @param string $username The username
+     * @param  string $username The username
      *
      * @return UserInterface
      *
@@ -79,7 +95,7 @@ class UserRepository extends EntityRepository implements UserProviderInterface, 
      */
     public function loadUserByUsername($username)
     {
-        if (null === $user = $this->findOneBy(array('_login' => $username))) {
+        if (null === $user = $this->findOneBy(['_login' => $username])) {
             throw new UsernameNotFoundException(sprintf('Unknown username `%s`.', $username));
         }
 
@@ -89,7 +105,7 @@ class UserRepository extends EntityRepository implements UserProviderInterface, 
     /**
      * Checks that the user is activated
      *
-     * @param User $user The user
+     * @param  User $user The user
      *
      * @return User
      *
@@ -104,6 +120,15 @@ class UserRepository extends EntityRepository implements UserProviderInterface, 
         return $user;
     }
 
+    /**
+     * Refreshes the user for the account interface.
+     *
+     * @param  UserInterface $user
+     *
+     * @return UserInterface
+     *
+     * @throws UnsupportedUserException if the account is not supported
+     */
     public function refreshUser(UserInterface $user)
     {
         if (false === $this->supportsClass(get_class($user))) {
@@ -113,47 +138,83 @@ class UserRepository extends EntityRepository implements UserProviderInterface, 
         return $this->loadUserByUsername($user->getUsername());
     }
 
+    /**
+     * Whether this provider supports the given user class.
+     *
+     * @param  string $class
+     *
+     * @return bool
+     */
     public function supportsClass($class)
     {
-        return ($class == 'BackBee\Security\User');
+        return (User::class === $class);
     }
 
+    /**
+     * Gets a collection of users matching params criteria.
+     *
+     * @param  array $params
+     *
+     * @return array
+     */
     public function getCollection($params)
     {
         $qb = $this->createQueryBuilder('u');
 
-        $likeParams = ['firstname', 'lastname', 'email', 'login'];
-
-        if (array_key_exists('name', $params)) {
-            $nameFilters = explode(' ', $params['name']);
-
-            foreach ($nameFilters as $key => $value) {
-                $qb->andWhere($qb->expr()->orX(
-                    $qb->expr()->like('u._firstname', ':p' . $key),
-                    $qb->expr()->like('u._lastname', ':p' . $key)
-                ));
-                $qb->setParameter(':p' . $key, '%' . $value . '%');
-            }
-
+        if (isset($params['name'])) {
+            $this->addNameCriteria($qb, $params['name']);
             unset($params['name']);
         }
-        foreach ($params as $key => $value) {
-            if (property_exists('BackBee\Security\User', '_' . $key)) {
-                if (in_array($key, $likeParams)) {
-                    $qb->andWhere(
-                        $qb->expr()->like('u._' . $key, ':' . $key)
-                    );
-                    $qb->setParameter(':' . $key, '%' . $value . '%');
-                } else {
-                    $qb->andWhere(
-                        $qb->expr()->eq('u._' . $key, ':' . $key)
-                    );
-                    $qb->setParameter(':' . $key, $value);
-                }
-            }
-        }
 
+        $this->addCriteria($qb, $params);
 
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Adds a search criteria n user's name.
+     *
+     * @param QueryBuilder $qb
+     * @param string       $criteria
+     */
+    private function addNameCriteria(QueryBuilder $qb, $criteria)
+    {
+        $nameFilters = explode(' ', $criteria);
+
+        foreach ($nameFilters as $key => $value) {
+            $qb->andWhere($qb->expr()->orX(
+                $qb->expr()->like('u._firstname', ':p' . $key),
+                $qb->expr()->like('u._lastname', ':p' . $key)
+            ));
+            $qb->setParameter(':p' . $key, '%' . $value . '%');
+        }
+    }
+
+    /**
+     * Adds a set of search criteria.
+     *
+     * @param QueryBuilder $qb
+     * @param array        $params
+     */
+    private function addCriteria(QueryBuilder $qb, array $params)
+    {
+        $likeParams = ['firstname', 'lastname', 'email', 'login'];
+        foreach ($params as $key => $value) {
+            if (!property_exists(User::class, '_' . $key)) {
+                continue;
+            }
+
+            if (in_array($key, $likeParams)) {
+                $qb->andWhere(
+                    $qb->expr()->like('u._' . $key, ':' . $key)
+                );
+                $qb->setParameter(':' . $key, '%' . $value . '%');
+            } else {
+                $qb->andWhere(
+                    $qb->expr()->eq('u._' . $key, ':' . $key)
+                );
+                $qb->setParameter(':' . $key, $value);
+            }
+        }
     }
 }

@@ -22,9 +22,10 @@
 namespace BackBee\Bundle;
 
 use Doctrine\ORM\EntityManager;
+use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 
 use BackBee\ApplicationInterface;
-use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 
 /**
  * BundleInterface which define somes methods to implements for BackBee bundles,
@@ -32,7 +33,7 @@ use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
  *
  * @author Eric Chau <eric.chau@lp-digital.fr>
  */
-interface BundleInterface extends ObjectIdentifiableInterface, \JsonSerializable
+interface BundleInterface extends DomainObjectInterface, ObjectIdentityInterface, \JsonSerializable
 {
 
     /**

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Context;
@@ -26,24 +24,32 @@ namespace BackBee\Security\Context;
 use BackBee\Security\Listeners\ContextListener;
 
 /**
- * Description of AnonymousContext.
+ * Stateless context.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      nicolas.dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  */
-class StatelessContext extends AbstractContext implements ContextInterface
+class StatelessContext extends AbstractContext
 {
+
     /**
      * {@inheritdoc}
      */
     public function loadListeners($config)
     {
-        $listeners = array();
-        if (!array_key_exists('stateless', $config) || false === $config['stateless']) {
-            $contextKey = array_key_exists('context', $config) ? $config['context'] : $config['firewall_name'];
-            $listeners[] = new ContextListener($this->_context, $this->_context->getUserProviders(), $contextKey, $this->_context->getLogger(), $this->_context->getDispatcher());
+        $listeners = [];
+        if (
+            (!isset($config['stateless']) || false === $config['stateless'])
+            && (isset($config['context']) ||isset($config['firewall_name']))
+        ) {
+            $contextKey = isset($config['context']) ? $config['context'] : $config['firewall_name'];
+
+            $listeners[] = new ContextListener(
+                $this->getSecurityContext(),
+                $this->getSecurityContext()->getUserProviders(),
+                $contextKey,
+                $this->getSecurityContext()->getLogger(),
+                $this->getSecurityContext()->getDispatcher()
+            );
         }
 
         return $listeners;

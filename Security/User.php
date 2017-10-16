@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security;
@@ -27,32 +25,30 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use JMS\Serializer\Annotation as Serializer;
 
-use BackBee\Installer\Annotation as BB;
 use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 
 /**
- * User object in BackBee5.
+ * User object in BackBee.
  *
- * @category    BackBee
+ * @author Michel Baptista <michel.baptista@lp-digital.fr>
  *
- * @copyright   Lp digital system
- * @author      m.baptista <michel.baptista@lp-digital.fr>
- *
- * @Serializer\ExclusionPolicy("all")
  * @ORM\Entity(repositoryClass="BackBee\Security\Repository\UserRepository")
  * @ORM\Table(name="user", uniqueConstraints={@ORM\UniqueConstraint(name="UNI_LOGIN",columns={"login"})})
  * @ORM\HasLifecycleCallbacks
- * @BB\Fixtures(qty=20)
+ *
+ * @Serializer\ExclusionPolicy("all")
  */
 class User extends AbstractObjectIdentifiable implements ApiUserInterface
 {
 
     const PASSWORD_NOT_PICKED = 0;
     const PASSWORD_PICKED = 1;
+
     /**
      * Unique identifier of the user.
      *
      * @var integer
+     *
      * @ORM\Id
      * @ORM\Column(type="integer", name="id")
      * @ORM\GeneratedValue(strategy="IDENTITY")
@@ -67,8 +63,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      * The login of this user.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="login")
-     * @BB\Fixtures(type="word")
      *
      * @Serializer\Expose
      * @Serializer\Type("string")
@@ -79,8 +75,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      * The login of this user.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="email")
-     * @BB\Fixtures(type="email")
      *
      * @Serializer\Expose
      * @Serializer\Type("string")
@@ -98,8 +94,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      * The password of this user.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="password")
-     * @BB\Fixtures(type="word")
      *
      * @Serializer\Exclude()
      */
@@ -108,10 +104,16 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     /**
      * The User state.
      *
-     * @var Integer
+     * @var integer
+     *
+     * @ORM\Column(
+     *     type="integer",
+     *     name="state",
+     *     length=2,
+     *     options={"default": \BackBee\Security\User::PASSWORD_NOT_PICKED}
+     * )
      *
      * @Serializer\Expose
-     * @ORM\Column(type="integer", name="state", length=2, options={"default": \BackBee\Security\User::PASSWORD_NOT_PICKED})
      * @Serializer\Type("integer")
      */
     protected $_state = self::PASSWORD_NOT_PICKED;
@@ -119,10 +121,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     /**
      * The access state.
      *
-     * @var Boolean
-     * @Serializer\Expose
+     * @var boolean
+     *
      * @ORM\Column(type="boolean", name="activated")
-     * @BB\Fixtures(type="boolean")
+     *
+     * @Serializer\Expose
      * @Serializer\Type("boolean")
      */
     protected $_activated = false;
@@ -131,9 +134,10 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      * The firstame of this user.
      *
      * @var string
-     * @Serializer\Expose
+     *
      * @ORM\Column(type="string", name="firstname", nullable=true)
-     * @BB\Fixtures(type="firstName")
+     *
+     * @Serializer\Expose
      * @Serializer\Type("string")
      */
     protected $_firstname;
@@ -142,21 +146,30 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      * The lastname of this user.
      *
      * @var string
-     * @Serializer\Expose
+     *
      * @ORM\Column(type="string", name="lastname", nullable=true)
-     * @BB\Fixtures(type="lastName")
+     *
+     * @Serializer\Expose
      * @Serializer\Type("string")
      */
     protected $_lastname;
 
     /**
-     * @var BackBee\NestedNode\PageRevision
+     * A collection on user's revisions.
+     *
+     * @var ArrayCollection
+     *
      * @ORM\OneToMany(targetEntity="BackBee\NestedNode\PageRevision", mappedBy="_user", fetch="EXTRA_LAZY")
+     *
      * @Serializer\Exclude()
      */
     protected $_revisions;
 
     /**
+     * A collection of user's groups.
+     *
+     * @var ArrayCollection
+     *
      * @ORM\ManyToMany(targetEntity="BackBee\Security\Group", mappedBy="_users", fetch="EXTRA_LAZY")
      *
      * @Serializer\Expose
@@ -169,10 +182,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     /**
      * User's public api key.
      *
-     * @var String
-     * @Serializer\Expose
+     * @var string
+     *
      * @ORM\Column(type="string", name="api_key_public", nullable=true)
-     * @BB\Fixtures(type="string")
+     *
+     * @Serializer\Expose
      * @Serializer\Type("string")
      */
     protected $_api_key_public;
@@ -180,9 +194,10 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     /**
      * User's private api key.
      *
-     * @var String
+     * @var string
+     *
      * @ORM\Column(type="string", name="api_key_private", nullable=true)
-     * @BB\Fixtures(type="string")
+     *
      * @Serializer\Exclude()
      * @Serializer\Type("string")
      */
@@ -191,10 +206,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     /**
      * Whether the api key is enabled (default false).
      *
-     * @var Boolean
-     * @Serializer\Expose
+     * @var boolean
+     *
      * @ORM\Column(type="boolean", name="api_key_enabled", options={"default": false})
-     * @BB\Fixtures(type="boolean")
+     *
+     * @Serializer\Expose
      * @Serializer\Type("boolean")
      */
     protected $_api_key_enabled = false;
@@ -203,8 +219,10 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      * The creation datetime.
      *
      * @var \DateTime
-     * @Serializer\Expose
+     *
      * @ORM\Column(type="datetime", name="created")
+     *
+     * @Serializer\Expose
      * @Serializer\Type("DateTime")
      */
     protected $_created;
@@ -213,8 +231,10 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      * The last modification datetime.
      *
      * @var \DateTime
-     * @Serializer\Expose
+     *
      * @ORM\Column(type="datetime", name="modified")
+     *
+     * @Serializer\Expose
      * @Serializer\Type("DateTime")
      */
     protected $_modified;
@@ -247,7 +267,7 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      */
     public function getUid()
     {
-        return $this->_id;
+        return $this->getId();
     }
 
     /**
@@ -261,9 +281,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Serialize the user object.
+     * Serialize the user object using JSON.
      *
-     * @return Json_object
+     * @return string
      */
     public function serialize()
     {
@@ -275,9 +295,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param boolean $bool
+     * Changes the user's status.
      *
-     * @return \BackBee\Security\User
+     * @param  boolean $bool
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setActivated($bool)
@@ -290,9 +312,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $login
+     * Sets the user's login.
      *
-     * @return \BackBee\Security\User
+     * @param  string $login
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setLogin($login)
@@ -303,9 +327,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $email
+     * Sets the user's email.
      *
-     * @return \BackBee\Security\User
+     * @param  string $email
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setEmail($email)
@@ -316,9 +342,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $password
+     * Sets the user's password.
      *
-     * @return \BackBee\Security\User
+     * @param  string $password
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setRawPassword($password)
@@ -329,9 +357,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $password
+     * Sets the user's password.
      *
-     * @return \BackBee\Security\User
+     * @param  string $password
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setPassword($password)
@@ -342,9 +372,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $firstname
+     * Sets the user's firstname.
      *
-     * @return \BackBee\Security\User
+     * @param  string $firstname
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setFirstname($firstname)
@@ -355,9 +387,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $lastname
+     * Sets the user's lastname.
      *
-     * @return \BackBee\Security\User
+     * @param  string $lastname
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setLastname($lastname)
@@ -368,7 +402,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @return string
+     * Returns the user's identifier.
+     *
+     * @return integer
      * @codeCoverageIgnore
      */
     public function getId()
@@ -377,6 +413,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returnss the user's login.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -386,6 +424,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returns the user's email.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -395,6 +435,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returns the user's password.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -404,6 +446,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returns the user's password.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -413,6 +457,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returns the user's firstname.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -422,6 +468,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returns the user's lastname.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -431,7 +479,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @return string
+     * Returns the user's revisions.
+     *
+     * @return ArrayCollection
      * @codeCoverageIgnore
      */
     public function getRevisions()
@@ -440,7 +490,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @return \BackBee\Security\Group[]
+     * Returns the user's groups.
+     *
+     * @return ArrayCollection
      * @codeCoverageIgnore
      */
     public function getGroups()
@@ -449,7 +501,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param ArrayCollection
+     * Sets the user's groups.
+     *
+     * @param  ArrayCollection
      *
      * @return User
      * @codeCoverageIgnore
@@ -462,7 +516,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param Group $group
+     * Adds user to a new group.
+     *
+     * @param  Group $group
      *
      * @return User
      * @codeCoverageIgnore
@@ -475,7 +531,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @return array()
+     * Returns the user's role (empty array).
+     *
+     * @return array
      * @codeCoverageIgnore
      */
     public function getRoles()
@@ -484,6 +542,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returns th user's salt.
+     *
+     * @return null
      * @codeCoverageIgnore
      */
     public function getSalt()
@@ -492,6 +553,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Returns the user's username.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -502,6 +565,7 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
 
     /**
      * Is the user activated?
+     *
      * @return boolean
      * @codeCoverageIgnore
      */
@@ -515,10 +579,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
      */
     public function eraseCredentials()
     {
-        
     }
 
     /**
+     * Returns the user's API key.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -528,19 +593,23 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $api_key_public
+     * Sets the user's API key.
      *
-     * @return \BackBee\Security\User
+     * @param  string $apiKeyPublic
+     *
+     * @return User
      * @codeCoverageIgnore
      */
-    public function setApiKeyPublic($api_key_public)
+    public function setApiKeyPublic($apiKeyPublic)
     {
-        $this->_api_key_public = $api_key_public;
+        $this->_api_key_public = $apiKeyPublic;
 
         return $this;
     }
 
     /**
+     * Returns the user's API private key.
+     *
      * @return string
      * @codeCoverageIgnore
      */
@@ -550,19 +619,23 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param string $api_key_private
+     * Sets the user's API private key.
      *
-     * @return \BackBee\Security\User
+     * @param  string $apiKeyPrivate
+     *
+     * @return User
      * @codeCoverageIgnore
      */
-    public function setApiKeyPrivate($api_key_private)
+    public function setApiKeyPrivate($apiKeyPrivate)
     {
-        $this->_api_key_private = $api_key_private;
+        $this->_api_key_private = $apiKeyPrivate;
 
         return $this;
     }
 
     /**
+     * Is user's key enabled?
+     *
      * @return bool
      * @codeCoverageIgnore
      */
@@ -572,18 +645,21 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * @param bool $api_key_enabled
+     * Sets the user's key enabled.
      *
-     * @return \BackBee\Security\User
+     * @param  bool $api_key_enabled
+     *
+     * @return User
      */
-    public function setApiKeyEnabled($api_key_enabled)
+    public function setApiKeyEnabled($apiKeyEnabled)
     {
-        $this->_api_key_enabled = (bool) $api_key_enabled;
+        $this->_api_key_enabled = (bool) $apiKeyEnabled;
 
         return $this->generateKeysOnNeed();
     }
 
     /**
+     * Returns the user's status.
      *
      * @return bool
      * @codeCoverageIgnore
@@ -594,9 +670,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
+     * Sets the user's status.
      *
      * @param  bool $state
-     * @return \BackBee\Security\User
+     *
+     * @return User
      * @codeCoverageIgnore
      */
     public function setState($state)
@@ -607,8 +685,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Generate an REST api public key based on the private key
-     * @return String Rest api public key
+     * Generate an REST api public key based on the private key.
+     *
+     * @return string Rest api public key
      */
     private function generateApiPublicKey()
     {
@@ -620,8 +699,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Generate a random Api pulbic and private key
-     * @return void
+     * Generate a random Api pulbic and private key.
+     *
+     * @return User
      */
     public function generateRandomApiKey()
     {
@@ -633,9 +713,11 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Check if the public api key is correct
-     * @param  String $public_key public key to check
-     * @return Bool               The result of the check
+     * Check if the public api key is correct.
+     *
+     * @param  string $public_key The public key to check.
+     *
+     * @return boolean            The result of the check.
      */
     public function checkPublicApiKey($public_key)
     {
@@ -643,8 +725,9 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Generate API keys on apiKeyEnabled change
-     * @return \BackBee\Security\User
+     * Generate API keys on apiKeyEnabled change.
+     *
+     * @return User
      */
     protected function generateKeysOnNeed()
     {
@@ -656,7 +739,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Return the creation date of this user
+     * Return the creation date of this user.
+     *
      * @return \DateTime
      * @codeCoverageIgnore
      */
@@ -666,7 +750,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Return the last modification date of this user
+     * Return the last modification date of this user.
+     *
      * @return \DateTime
      * @codeCoverageIgnore
      */
@@ -676,7 +761,8 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Call after the user has been deserialized
+     * Call after the user has been deserialized.
+     *
      * @Serializer\PostDeserialize
      * @codeCoverageIgnore
      */
@@ -686,12 +772,12 @@ class User extends AbstractObjectIdentifiable implements ApiUserInterface
     }
 
     /**
-     * Update last modification date on pre-update
+     * Update last modification date on pre-update.
+     *
      * @ORM\PreUpdate
      */
     public function updateModified()
     {
         $this->_modified = new \DateTime();
     }
-
 }

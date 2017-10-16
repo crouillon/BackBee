@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,35 +17,38 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Context;
 
 use Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider;
-use BackBee\Security\Listeners\AnonymousAuthenticationListener;
+use Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener;
 
 /**
- * Description of AnonymousContext.
+ * Security context for anonymous connections.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      nicolas.dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  */
-class AnonymousContext extends AbstractContext implements ContextInterface
+class AnonymousContext extends AbstractContext
 {
+
     /**
      * {@inheritdoc}
      */
     public function loadListeners($config)
     {
-        $listeners = array();
-        if (array_key_exists('anonymous', $config)) {
+        $listeners = [];
+        if (isset($config['anonymous'])) {
             $key = array_key_exists('key', (array) $config['anonymous']) ? $config['anonymous']['key'] : 'anom';
-            $this->_context->addAuthProvider(new AnonymousAuthenticationProvider($key));
-            $listeners[] = new AnonymousAuthenticationListener($this->_context, $key, $this->_context->getLogger());
+
+            $this->getSecurityContext()
+                ->addAuthProvider(new AnonymousAuthenticationProvider($key));
+
+            $listeners[] = new AnonymousAuthenticationListener(
+                $this->getSecurityContext(),
+                $key,
+                $this->getSecurityContext()->getLogger()
+            );
         }
 
         return $listeners;

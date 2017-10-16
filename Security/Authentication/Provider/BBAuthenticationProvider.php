@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authentication\Provider;
@@ -26,24 +24,22 @@ namespace BackBee\Security\Authentication\Provider;
 use Symfony\Component\Security\Core\Authentication\Provider\AuthenticationProviderInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface;
-use Symfony\Component\Security\Core\Encoder\MessageDigestPasswordEncoder;
-use Symfony\Component\Security\Core\Encoder\PlaintextPasswordEncoder;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
-use BackBee\Bundle\Registry;
+
 use BackBee\Security\Encoder\RequestSignatureEncoder;
 use BackBee\Security\Exception\SecurityException;
 use BackBee\Security\Token\BBUserToken;
+use BackBee\Util\Registry\Registry;
+use BackBee\Util\Registry\Repository;
 
 /**
  * Retrieves BBUser for BBUserToken.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class BBAuthenticationProvider implements AuthenticationProviderInterface
 {
+
     /**
      * The nonce directory.
      *
@@ -54,7 +50,7 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * The user provider use to retrieve user.
      *
-     * @var \Symfony\Component\Security\Core\User\UserProviderInterface
+     * @var UserProviderInterface
      */
     protected $userProvider;
 
@@ -68,27 +64,33 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * The DB Registry repository to used to store nonce rather than file.
      *
-     * @var \BackBuillder\Bundle\Registry\Repository
+     * @var Repository
      */
     private $registryRepository;
 
     /**
      * The encoders factory.
      *
-     * @var \Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface
+     * @var EncoderFactoryInterface
      */
     protected $encoderFactory;
 
     /**
      * Class constructor.
      *
-     * @param \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider
-     * @param string                                                      $nonceDir
-     * @param int                                                         $lifetime
-     * @param \BackBuillder\Bundle\Registry\Repository                    $registryRepository
+     * @param UserProviderInterface   $userProvider
+     * @param string                  $nonceDir
+     * @param int                     $lifetime
+     * @param Repository              $registryRepository
+     * @param EncoderFactoryInterface $encoderFactory
      */
-    public function __construct(UserProviderInterface $userProvider, $nonceDir, $lifetime = 300, $registryRepository = null, EncoderFactoryInterface $encoderFactory = null)
-    {
+    public function __construct(
+        UserProviderInterface $userProvider,
+        $nonceDir,
+        $lifetime = 300,
+        Repository $registryRepository = null,
+        EncoderFactoryInterface $encoderFactory = null
+    ) {
         $this->userProvider = $userProvider;
         $this->nonceDir = $nonceDir;
         $this->lifetime = $lifetime;
@@ -103,11 +105,11 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * Attempts to authenticates a TokenInterface object.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
+     * @param  TokenInterface $token
      *
-     * @return \BackBee\Security\Token\BBUserToken
+     * @return BBUserToken
      *
-     * @throws \BackBee\Security\Exception\SecurityException
+     * @throws SecurityException
      */
     public function authenticate(TokenInterface $token)
     {
@@ -116,39 +118,15 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
         }
 
         try {
-            $user = $this->userProvider->loadUserByUsername($token->getUsername());
-            $secret = $user->getPassword();
-            if ($this->encoderFactory) {
-                try {
-                    $encoder = $this->encoderFactory->getEncoder($user);
-
-                    if ($encoder instanceof PlaintextPasswordEncoder) {
-                        $secret = md5($secret);
-                    } elseif ($encoder instanceof MessageDigestPasswordEncoder) {
-                        // $secret is already md5 encoded
-                        // NB: only md5 algo without salt is currently supported due to frontend dependency
-                    } else {
-                        // currently there is a dependency on md5 in frontend so all other encoders can't be supported
-                        throw new \RuntimeException('Encoder is not supported: '.get_class($encoder));
-                    }
-                } catch (\RuntimeException $e) {
-                    // no encoder defined
-                    $secret = md5($secret);
-                }
-            } else {
-                // no encoder - still have to encode with md5
-                $secret = md5($secret);
-            }
-
-            $this->checkNonce($token, $secret);
+            $this->checkNonce($token, $this->getSecret($token));
         } catch (\Exception $e) {
             $this->clearNonce($token);
             throw $e;
         }
 
-        $validToken = new BBUserToken($user->getRoles());
+        $validToken = new BBUserToken($token->getUser()->getRoles());
         $validToken
-            ->setUser($user)
+            ->setUser($token->getUser())
             ->setNonce($token->getNonce())
             ->setCreated(new \DateTime())
             ->setLifetime($this->lifetime)
@@ -162,11 +140,9 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * Checks whether this provider supports the given token.
      *
-     * @codeCoverageIgnore
+     * @param  TokenInterface $token
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     *
-     * @return boolean
+     * @return bool
      */
     public function supports(TokenInterface $token)
     {
@@ -176,7 +152,7 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * Clear nonce file for the current token.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
+     * @param TokenInterface $token
      */
     public function clearNonce(TokenInterface $token)
     {
@@ -188,14 +164,14 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * Checks for a valid nonce file according to the WSE.
      *
-     * @param string $digest  The digest string send by the client
-     * @param string $nonce   The nonce file
-     * @param string $created The creation date of the nonce
-     * @param string $secret  The secret (ie password) to be check
+     * @param  string $digest  The digest string send by the client
+     * @param  string $nonce   The nonce file
+     * @param  string $created The creation date of the nonce
+     * @param  string $secret  The secret (ie password) to be check
      *
-     * @return boolean
+     * @return bool
      *
-     * @throws \BackBee\Security\Exception\SecurityException
+     * @throws SecurityException
      */
     protected function checkNonce(BBUserToken $token, $secret)
     {
@@ -222,9 +198,9 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * Returns the nonce value if found, NULL otherwise.
      *
-     * @param type $nonce
+     * @param  string $nonce
      *
-     * @return NULL|int
+     * @return mixed
      */
     protected function readNonceValue($nonce)
     {
@@ -248,14 +224,16 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * Updates the nonce value.
      *
-     * @param string $nonce
+     * @param BBUserToken $token
      */
     protected function writeNonceValue(BBUserToken $token)
     {
         $now = strtotime($token->getCreated());
         $nonce = $token->getNonce();
-        $signature_generator = new RequestSignatureEncoder();
-        $signature = $signature_generator->createSignature($token);
+
+        $generator = new RequestSignatureEncoder();
+        $signature = $generator->createSignature($token);
+
         if (null === $this->registryRepository) {
             file_put_contents($this->nonceDir.DIRECTORY_SEPARATOR.$nonce, "$now;$signature");
         } else {
@@ -282,9 +260,9 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
     /**
      * Returns a Registry entry for $nonce.
      *
-     * @param string $nonce
+     * @param  string $nonce
      *
-     * @return \BackBee\Bundle\Registry
+     * @return Registry
      */
     private function getRegistry($nonce)
     {
@@ -294,5 +272,31 @@ class BBAuthenticationProvider implements AuthenticationProviderInterface
         }
 
         return $registry;
+    }
+    /**
+     * Returns the encoded secret from the token.
+     *
+     * @param  TokenInterface $token
+     *
+     * @return string
+     */
+    protected function getSecret(TokenInterface $token)
+    {
+        $user = $this->userProvider->loadUserByUsername($token->getUsername());
+        $token->setUser($user);
+
+        $password = $user->getPassword();
+        $secret = md5($password);
+
+        if ($this->encoderFactory) {
+            try {
+                $encoder = $this->encoderFactory->getEncoder($user);
+                $secret = $encoder->encodePassword($password, '');
+            } catch (\RuntimeException $e) {
+                // no encoder defined
+            }
+        }
+
+        return $secret;
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,43 +17,91 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Context;
 
+use Symfony\Component\Security\Core\User\UserProviderInterface;
+
 use BackBee\Security\SecurityContext;
 
 /**
- * Description of AbstractContext.
+ * Abstract class for security context definition.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      nicolas.dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author nicolas.dufreche <nicolas.dufreche@lp-digital.fr>
  */
-abstract class AbstractContext
+abstract class AbstractContext implements ContextInterface
 {
+
     /**
      * @var SecurityContext
      */
-    protected $_context;
+    private $securityContext;
 
-    public function __construct(SecurityContext $context)
+    /**
+     * Context constructor.
+     *
+     * @param SecurityContext $securityContext
+     */
+    public function __construct(SecurityContext $securityContext)
     {
-        $this->_context = $context;
+        $this->securityContext = $securityContext;
     }
 
-    public function getDefaultProvider($config)
+    /**
+     * Returns the BackBee secuirty context.
+     *
+     * @return SecurityContext
+     *
+     * @codeCoverageIgnore
+     */
+    protected function getSecurityContext()
     {
-        $user_provider = $this->_context->getUserProviders();
-        $default_provider = reset($user_provider);
-        if (array_key_exists('provider', $config) && array_key_exists($config['provider'], $this->_context->getUserProviders())) {
-            $user_provider = $this->_context->getUserProviders();
-            $default_provider = $user_provider[$config['provider']];
+        return $this->securityContext;
+    }
+
+    /**
+     * Magic getter on old property _context.
+     *
+     * @param  string $name
+     *
+     * @return SecurityContext
+     *
+     * @throws \InvalidArgumentException if $name is not _context.
+     * @codeCoverageIgnore
+     */
+    public function __get($name)
+    {
+        if ('_context' === $name) {
+            @trigger_error('The property _context of class ' . __CLASS__ . ' is deprecated since version 1.4 and '
+                . 'will be removed in 1.5. Use ' . __CLASS__ . '::getSecurityContext() instead.', E_USER_DEPRECATED);
+
+            return $this->getSecurityContext();
         }
 
-        return $default_provider;
+        throw new \InvalidArgumentException(sprintf(
+            'Unknown property %s for class %s.',
+            $name,
+            __CLASS__
+        ));
+    }
+
+    /**
+     * Returns the default user provider for context.
+     *
+     * @param  array $config
+     *
+     * @return UserProviderInterface
+     */
+    public function getDefaultProvider($config)
+    {
+        $providers = $this->getSecurityContext()->getUserProviders();
+        $defaultProvider = reset($providers);
+
+        if (isset($config['provider']) && isset($providers[$config['provider']])) {
+            $defaultProvider = $providers[$config['provider']];
+        }
+
+        return $defaultProvider;
     }
 }

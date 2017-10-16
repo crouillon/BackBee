@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authentication;
@@ -37,51 +35,91 @@ use Symfony\Component\Security\Core\Exception\ProviderNotFoundException;
 use BackBee\Security\Exception\SecurityException;
 
 /**
- * @category    BackBee
+ * AuthenticationProviderManager uses a list of AuthenticationProviderInterface
+ * instances to authenticate a Token.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class AuthenticationManager implements AuthenticationManagerInterface
 {
-    private $_providers;
-    private $_eraseCredentials;
-    private $_eventDispatcher;
 
     /**
-     * Constructor.
-     *
-     * @param AuthenticationProviderInterface[] $providers        An array of AuthenticationProviderInterface instances
-     * @param Boolean                           $eraseCredentials Whether to erase credentials after authentication or not
+     * @var AuthenticationProviderInterface[]
      */
-    public function __construct(array $providers, $dispatcher = null, $eraseCredentials = true)
+    private $providers;
+
+    /**
+     * @var bool
+     */
+    private $eraseCredentials;
+
+    /**
+     * @var EventDispatcherInterface
+     */
+    private $eventDispatcher;
+
+    /**
+     * Manager constructor.
+     *
+     * @param AuthenticationProviderInterface[]  $providers
+     * @param EventDispatcherInterface           $dispatcher
+     * @param bool                               $eraseCredentials
+     */
+    public function __construct(array $providers, EventDispatcherInterface $dispatcher = null, $eraseCredentials = true)
     {
-        $this->addProviders($providers);
+        $this->addProviders($providers)
+            ->setEventDispatcher($dispatcher);
 
-        if (null !== $dispatcher) {
-            $this->setEventDispatcher($dispatcher);
-        }
-
-        $this->_eraseCredentials = (Boolean) $eraseCredentials;
+        $this->eraseCredentials = (bool) $eraseCredentials;
     }
 
-    public function setEventDispatcher(EventDispatcherInterface $dispatcher)
+    /**
+     * Sets an event dispather.
+     *
+     * @param  EventDispatcherInterface|null $dispatcher
+     *
+     * @return AuthenticationManager
+     */
+    public function setEventDispatcher(EventDispatcherInterface $dispatcher = null)
     {
-        $this->_eventDispatcher = $dispatcher;
+        $this->eventDispatcher = $dispatcher;
 
         return $this;
     }
 
+    /**
+     * Adds an authentication provider to the list.
+     *
+     * @param  AuthenticationProviderInterface $provider
+     *
+     * @return AuthenticationManager
+     */
     public function addProvider(AuthenticationProviderInterface $provider)
     {
-        $this->_providers[] = $provider;
+        $this->providers[] = $provider;
 
         return $this;
     }
 
+    /**
+     * Adds an array og authentication provider to the list.
+     *
+     * @param  AuthenticationProviderInterface[] $providers
+     *
+     * @return AuthenticationManager
+     *
+     * @throws \InvalidArgumentException if a provider isn't implementing AuthenticationProviderInterface
+     */
     public function addProviders(array $providers)
     {
         foreach ($providers as $provider) {
+            if (!$provider instanceof AuthenticationProviderInterface) {
+                throw new \InvalidArgumentException(\sprintf(
+                    'Provider "%s" must implement the AuthenticationProviderInterface.',
+                    get_class($provider)
+                ));
+            }
+
             $this->addProvider($provider);
         }
 
@@ -89,14 +127,20 @@ class AuthenticationManager implements AuthenticationManagerInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Attempts to authenticate a TokenInterface object.
+     *
+     * @param  TokenInterface $token The TokenInterface instance to authenticate
+     *
+     * @return TokenInterface An authenticated TokenInterface instance, never null
+     *
+     * @throws AuthenticationException if the authentication fails
      */
     public function authenticate(TokenInterface $token)
     {
         $lastException = null;
         $result = null;
 
-        foreach ($this->_providers as $provider) {
+        foreach ($this->providers as $provider) {
             if (!$provider->supports($token)) {
                 continue;
             }
@@ -108,21 +152,23 @@ class AuthenticationManager implements AuthenticationManagerInterface
                     break;
                 }
             } catch (AccountStatusException $e) {
+                $e->setToken($token);
+
                 throw $e;
             } catch (AuthenticationException $e) {
                 $lastException = $e;
             } catch (SecurityException $e) {
-                $lastException = $e;
+                $lastException = new AuthenticationException($e->getMessage(), $e->getCode(), $e);
             }
         }
 
         if (null !== $result) {
-            if (true === $this->_eraseCredentials) {
+            if (true === $this->eraseCredentials) {
                 $result->eraseCredentials();
             }
 
-            if (null !== $this->_eventDispatcher) {
-                $this->_eventDispatcher->dispatch(
+            if (null !== $this->eventDispatcher) {
+                $this->eventDispatcher->dispatch(
                     AuthenticationEvents::AUTHENTICATION_SUCCESS,
                     new AuthenticationEvent($result)
                 );
@@ -138,17 +184,14 @@ class AuthenticationManager implements AuthenticationManagerInterface
             ));
         }
 
-        if (null !== $this->_eventDispatcher) {
-            $exception = $lastException;
-            if ($exception instanceof SecurityException) {
-                $exception = new AuthenticationException($exception->getMessage(), $exception->getCode(), $exception);
-            }
-
-            $this->_eventDispatcher->dispatch(
+        if (null !== $this->eventDispatcher) {
+            $this->eventDispatcher->dispatch(
                 AuthenticationEvents::AUTHENTICATION_FAILURE,
-                new AuthenticationFailureEvent($token, $exception)
+                new AuthenticationFailureEvent($token, $lastException)
             );
         }
+
+        $lastException->setToken($token);
 
         throw $lastException;
     }

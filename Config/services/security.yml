@@ -5,19 +5,27 @@ parameters:
     bbapp.expression_language.class: BackBee\Security\Authorization\ExpressionLanguage
     bbapp.securitycontext.roles.prefix: ROLE_
     bbapp.securitycontext.role.apiuser: 'API_USER'
+    bbapp.autorization.checker.alwaysauthenticated: false
 
 services:
     security.context:
         class:      %bbapp.securitycontext.class%
-        arguments:  ["@bbapp", "@security.authentication.manager", "@security.access.decision_manager"]
+        arguments:  ["@bbapp", "@security.token.storage", "@security.authorization.checker"]
+
+    security.token.storage:
+        class: Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage
+
+    security.authorization.checker:
+        class: Symfony\Component\Security\Core\Authorization\AuthorizationChecker
+        arguments: ["@security.token.storage", "@security.authentication.manager", "@security.access.decision_manager", %bbapp.autorization.checker.alwaysauthenticated%]
 
     security.authentication.manager:
         class: BackBee\Security\Authentication\AuthenticationManager
         arguments: [[], "@event.dispatcher"]
 
     security.trust_resolver:
-        class: BackBee\Security\Authentication\TrustResolver
-        arguments:  [BackBee\Security\Token\AnonymousToken, BackBee\Security\Token\RememberMeToken]
+        class: Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver
+        arguments:  [Symfony\Component\Security\Core\Authentication\Token\AnonymousToken, Symfony\Component\Security\Core\Authentication\Token\RememberMeToken]
 
     security.voter.sudo:
         class: BackBee\Security\Authorization\Voter\SudoVoter
@@ -69,7 +77,7 @@ services:
         arguments: ["@security.role_hierarchy", "@security.trust_resolver"]
 
     security.role_hierarchy:
-        class: BackBee\Security\Role\RoleHierarchy
+        class: Symfony\Component\Security\Core\Role\RoleHierarchy
         arguments: [[]]
 
     security.acl.permission.map:
@@ -96,7 +104,7 @@ services:
 
     security.acl_manager:
         class:      BackBee\Security\Acl\AclManager
-        arguments:  ["@security.context", "@security.acl.permission.map"]
+        arguments:  ["@security.acl_provider", "@security.acl.permission.map"]
 
     bb.expression_language:
         class: %bbapp.expression_language.class%

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Acl\Permission;
@@ -42,29 +40,27 @@ use Symfony\Component\Security\Acl\Permission\MaskBuilder as sfMaskBuilder;
  * </code>
  *
  * We have defined some commonly used base permissions which you can use:
- * - VIEW: the SID is allowed to view the domain object / field
- * - CREATE: the SID is allowed to create new instances of the domain object / fields
- * - EDIT: the SID is allowed to edit existing instances of the domain object / field
- * - DELETE: the SID is allowed to delete domain objects
+ * - VIEW:     the SID is allowed to view the domain object / field
+ * - CREATE:   the SID is allowed to create new instances of the domain object / fields
+ * - EDIT:     the SID is allowed to edit existing instances of the domain object / field
+ * - DELETE:   the SID is allowed to delete domain objects
  * - UNDELETE: the SID is allowed to recover domain objects from trash
- * - COMMIT: the SID is allowed to commit domain objects
- * - PUBLISH: the SID is allowed to publish domain objects
+ * - COMMIT:   the SID is allowed to commit domain objects
+ * - PUBLISH:  the SID is allowed to publish domain objects
  * - OPERATOR: the SID is allowed to perform any action on the domain object
  *             except for granting others permissions
- * - MASTER: the SID is allowed to perform any action on the domain object,
- *           and is allowed to grant other SIDs any permission except for
- *           MASTER and OWNER permissions
- * - OWNER: the SID is owning the domain object in question and can perform any
- *          action on the domain object as well as grant any permission
+ * - MASTER:   the SID is allowed to perform any action on the domain object,
+ *             and is allowed to grant other SIDs any permission except for
+ *             MASTER and OWNER permissions
+ * - OWNER:    the SID is owning the domain object in question and can perform any
+ *             action on the domain object as well as grant any permission
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class MaskBuilder extends sfMaskBuilder
 {
-    const MASK_COMMIT = 256;        // 1 << 8
+
+    const MASK_COMMIT = 256;         // 1 << 8
     const MASK_PUBLISH = 512;        // 1 << 9
     const MASK_NONE = 0;
     const CODE_COMMIT = 'S';

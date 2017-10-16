@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,35 +17,19 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Token;
 
 use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken as sfAnonymousToken;
 
+@trigger_error('The ' . __NAMESPACE__ . '\AnonymousToken class is deprecated since version 1.4, '
+    . 'to be removed in 1.5. '
+    . 'Use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken instead.', E_USER_DEPRECATED);
+
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4, to be removed in 1.5.
  */
 class AnonymousToken extends sfAnonymousToken
 {
-    /**
-     * Constructor.
-     *
-     * @codeCoverageIgnore
-     *
-     * @param string          $key   The key shared with the authentication provider
-     * @param string          $user  The user
-     * @param RoleInterface[] $roles An array of roles
-     */
-    public function __construct($key, $user, array $roles = array())
-    {
-        parent::__construct($key, $user, $roles);
-
-        $this->setAuthenticated(true);
-    }
 }

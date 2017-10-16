@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,23 +17,20 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Token;
 
-use Symfony\Component\Security\Core\User\UserInterface;
 use BackBee\Security\User;
 
 /**
- * @category    BackBee
+ * Base class for BackBee API token.
  *
- * @copyright   Lp digital system
- * @author      k.golovin
+ * @author Kenneth Golovin
  */
 class PublicKeyToken extends BBUserToken
 {
+
     /**
      * @var string
      */
@@ -49,7 +46,7 @@ class PublicKeyToken extends BBUserToken
      *
      * @param array $roles An array of roles
      */
-    public function __construct(array $roles = array())
+    public function __construct(array $roles = [])
     {
         parent::__construct($roles);
 
@@ -57,62 +54,23 @@ class PublicKeyToken extends BBUserToken
     }
 
     /**
-     * @codeCoverageIgnore
-     *
-     * @return type
-     */
-    public function isAuthenticated()
-    {
-        return ($this->getUser() instanceof UserInterface)
-            ? 0 < count($this->getUser()->getRoles())
-            : false
-        ;
-    }
-
-    /**
-     * @codeCoverageIgnore
-     *
-     * @return type
-     */
-    public function getCredentials()
-    {
-        return '';
-    }
-
-    /**
-     * @codeCoverageIgnore
-     * {@inheritdoc}
-     */
-    public function eraseCredentials()
-    {
-        parent::eraseCredentials();
-
-        $this->_credentials = null;
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function getUsername()
     {
-        $username = '';
         if ($this->getUser() instanceof User) {
-            $username = $this->getUser()->getApiKeyPublic();
-        } elseif ($username instanceof UserInterface) {
-            $username = $this->getUser()->getUsername();
-        } else {
-            $username = (string) $this->getUser();
+            return $this->getUser()->getApiKeyPublic();
         }
 
-        return $username;
+        return parent::getUsername();
     }
 
     /**
      * Public key attribute setter.
      *
-     * @param string $signature new public key value
+     * @param  string $publicKey new public key value
      *
-     * @return self
+     * @return PublicKeyToken
      */
     public function setPublicKey($publicKey)
     {
@@ -136,7 +94,7 @@ class PublicKeyToken extends BBUserToken
      *
      * @param string $signature new signature value
      *
-     * @return self
+     * @return PublicKeyToken
      */
     public function setSignature($signature)
     {

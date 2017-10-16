@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,36 +17,38 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authorization\Adapter;
 
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+
 use BackBee\BBApplication;
+use BackBee\Security\Role\Role;
+
+@trigger_error('The '.__NAMESPACE__.'\RoleReaderAdapterInterface interface is deprecated '
+        . 'since version 1.4, to be removed in 1.5.', E_USER_DEPRECATED);
 
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche
+ * @deprecated since version 1.4
  */
 interface RoleReaderAdapterInterface
 {
+
     /**
      * Object Constructor.
      *
-     * @param \BackBee\BBApplication $application
+     * @param BBApplication $application
      */
     public function __construct(BBApplication $application);
 
     /**
      * retrieve the users role thanks to the Token.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token;
+     * @param  TokenInterface $token
      *
-     * @return Array of \BackBee\Security\Role\Role
+     * @return Role[]
      */
     public function extractRoles(TokenInterface $token);
 }

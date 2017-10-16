@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Logout;
@@ -30,19 +28,17 @@ use Symfony\Component\Security\Http\Logout\LogoutSuccessHandlerInterface;
 /**
  * Logout success handler for BB connection.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class BBLogoutSuccessHandler implements LogoutSuccessHandlerInterface
 {
+
     /**
      * Resend the current Uri.
      *
-     * @param \Symfony\Component\HttpFoundation\Request $request
+     * @param  Request $request
      *
-     * @return \Symfony\Component\HttpFoundation\RedirectResponse
+     * @return RedirectResponse
      */
     public function onLogoutSuccess(Request $request)
     {

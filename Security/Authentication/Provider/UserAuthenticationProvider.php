@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,167 +17,171 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authentication\Provider;
 
-use BackBee\Security\Exception\SecurityException;
-use BackBee\Security\Token\UsernamePasswordToken;
-
-use Exception;
-
-use Symfony\Component\Security\Core\Authentication\Provider\AuthenticationProviderInterface;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
+use Symfony\Component\Security\Core\Authentication\Provider\UserAuthenticationProvider as sfUserAuthenticationProvider;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface;
+use Symfony\Component\Security\Core\Exception\BadCredentialsException;
+use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
+use Symfony\Component\Security\Core\User\UserChecker;
+use Symfony\Component\Security\Core\User\UserCheckerInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
+
+use BackBee\Security\Exception\SecurityException;
 
 /**
  * Authentication provider for username/password firewall.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class UserAuthenticationProvider implements AuthenticationProviderInterface
+class UserAuthenticationProvider extends sfUserAuthenticationProvider
 {
     /**
      * The user provider to query.
      *
-     * @var \Symfony\Component\Security\Core\User\UserProviderInterface
+     * @var UserProviderInterface
      */
-    private $_userProvider;
+    private $userProvider;
 
     /**
      * The encoders factory.
      *
-     * @var \Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface
+     * @var EncoderFactoryInterface
      */
-    private $_encoderFactory;
+    private $encoderFactory;
 
     /**
      * Class constructor.
      *
-     * @param \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider
+     * @param UserProviderInterface   $userProvider               An user provider.
+     * @param EncoderFactoryInterface $encoderFactory             An encoder factory
+     * @param string                  $providerKey                A provider key
+     * @param bool                    $hideUserNotFoundExceptions Whether to hide user not found exception or not
      */
-    public function __construct(UserProviderInterface $userProvider, EncoderFactoryInterface $encoderFactory = null)
-    {
-        $this->_userProvider = $userProvider;
-        $this->_encoderFactory = $encoderFactory;
+    public function __construct(
+        UserProviderInterface $userProvider,
+        EncoderFactoryInterface $encoderFactory = null,
+        $providerKey = 'default_key',
+        $hideUserNotFoundExceptions = true
+    ) {
+        if ($userProvider instanceof UserCheckerInterface) {
+            parent::__construct($userProvider, $providerKey, $hideUserNotFoundExceptions);
+        } else {
+            parent::__construct(new UserChecker(), $providerKey, $hideUserNotFoundExceptions);
+        }
+
+        $this->userProvider = $userProvider;
+        $this->encoderFactory = $encoderFactory;
     }
 
     /**
-     * Authenticate a token according to the user provider.
+     * Attempts to authenticate a TokenInterface object.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
+     * @param TokenInterface $token The TokenInterface instance to authenticate
      *
-     * @return \Symfony\Component\Security\Core\User\UserProviderInterface
+     * @return TokenInterface An authenticated TokenInterface instance, never null
      *
-     * @throws SecurityException Occures on invalid connection
+     * @throws SecurityException if the authentication fails
      */
     public function authenticate(TokenInterface $token)
     {
-        if (!$this->supports($token)) {
-            return;
+        try {
+            return parent::authenticate($token);
+        } catch (\Exception $ex) {
+            throw new SecurityException(
+                'Invalid authentication informations',
+                SecurityException::INVALID_CREDENTIALS,
+                $ex
+            );
+        }
+    }
+
+    /**
+     * Retrieves the user from an implementation-specific location.
+     *
+     * @param string                $username The username to retrieve
+     * @param UsernamePasswordToken $token    The Token
+     *
+     * @return UserInterface The user
+     *
+     * @throws UsernameNotFoundException if the credentials could not be validated
+     */
+    protected function retrieveUser($username, UsernamePasswordToken $token)
+    {
+        if (null === $user = $this->userProvider->loadUserByUsername($username)) {
+            $exception = new UsernameNotFoundException(sprintf(
+                'Unknown user with username `%s`.',
+                $username
+            ));
+            $exception->setToken($token);
+
+            throw $exception;
         }
 
-        $username = $token->getUsername();
-        if (empty($username)) {
-            $username = 'NONE_PROVIDED';
-        }
+        return $user;
+    }
 
-        $user = $this->_userProvider->loadUserByUsername($username);
-        if (false === is_array($user)) {
-            $user = array($user);
-        }
-
-        $authenticatedToken = false;
-        while (false === $authenticatedToken) {
-            if (null !== $provider = array_pop($user)) {
-                $authenticatedToken = $this->authenticateUser($token, $provider);
+    /**
+     * Does additional checks on the user and token (like validating the
+     * credentials).
+     *
+     * @param UserInterface         $user  The retrieved UserInterface instance
+     * @param UsernamePasswordToken $token The UsernamePasswordToken token to be authenticated
+     *
+     * @throws BadCredentialsException if the credentials could not be validated
+     */
+    protected function checkAuthentication(UserInterface $user, UsernamePasswordToken $token)
+    {
+        try {
+            if ($this->encoderFactory) {
+                $this->checkAuthenticationWithEncoder($user, $token);
             } else {
-                break;
+                $this->checkAuthenticationWithoutEncoder($user, $token);
             }
-        }
+        } catch (\Exception $ex) {
+            $exception = new BadCredentialsException($ex->getMessage(), $ex->getCode(), $ex);
+            $exception->setToken($token);
 
-        if (false === $authenticatedToken) {
-            throw new SecurityException('Invalid authentication informations', SecurityException::INVALID_CREDENTIALS);
-        }
-
-        return $authenticatedToken;
-    }
-
-    /**
-     * Checks whether this provider supports the given token.
-     *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     *
-     * @return Boolean true if the implementation supports the Token, false otherwise
-     */
-    public function supports(TokenInterface $token)
-    {
-        return $token instanceof UsernamePasswordToken;
-    }
-
-    /**
-     * Authenticate a token accoridng to the user provided.
-     *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     * @param \Symfony\Component\Security\Core\User\UserInterface                  $user
-     *
-     * @return boolean|\BackBee\Security\Token\UsernamePasswordToken
-     */
-    private function authenticateUser(TokenInterface $token, UserInterface $user)
-    {
-        if (null === $this->_encoderFactory) {
-            return $this->authenticateWithoutEncoder($token, $user);
-        } else {
-            return $this->authenticateWithEncoder($token, $user);
+            throw $exception;
         }
     }
 
     /**
      * Authenticate a token according to the user provided with password encoder.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     * @param \Symfony\Component\Security\Core\User\UserInterface                  $user
+     * @param UserInterface         $user  The retrieved UserInterface instance
+     * @param UsernamePasswordToken $token The UsernamePasswordToken token to be authenticated
      *
-     * @return boolean|\BackBee\Security\Token\UsernamePasswordToken
+     * @throws \RuntimeException if no encoder found for the user's classname
+     * @throws BadCredentialsException if the credentials could not be validated
      */
-    private function authenticateWithEncoder(TokenInterface $token, UserInterface $user)
+    private function checkAuthenticationWithEncoder(UserInterface $user, TokenInterface $token)
     {
-        try {
-            $classname = \Symfony\Component\Security\Core\Util\ClassUtils::getRealClass($user);
-            if (true === $this->_encoderFactory
-                    ->getEncoder($classname)
-                    ->isPasswordValid($user->getPassword(), $token->getCredentials(), $user->getSalt())) {
-                return new UsernamePasswordToken($user, $user->getPassword(), $user->getRoles());
-            }
-        } catch (Exception $e) {}
-
-        return false;
+        if (true !== $this->encoderFactory
+                ->getEncoder(ClassUtils::getRealClass($user))
+                ->isPasswordValid($user->getPassword(), $token->getCredentials(), $user->getSalt())) {
+            throw new BadCredentialsException();
+        }
     }
 
     /**
      * Authenticate a token according to the user provided without any password encoders.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     * @param \Symfony\Component\Security\Core\User\UserInterface                  $user
+     * @param UserInterface         $user  The retrieved UserInterface instance
+     * @param UsernamePasswordToken $token The UsernamePasswordToken token to be authenticated
      *
-     * @return boolean|\BackBee\Security\Token\UsernamePasswordToken
+     * @throws BadCredentialsException if the credentials could not be validated
      */
-    private function authenticateWithoutEncoder(TokenInterface $token, UserInterface $user)
+    private function checkAuthenticationWithoutEncoder(UserInterface $user, TokenInterface $token)
     {
-        if (null !== $user->getSalt() &&
-                call_user_func($user->getSalt(), $token->getCredentials()) === $user->getPassword()) {
-            return new UsernamePasswordToken($user, $user->getPassword(), $user->getRoles());
-        } elseif ($token->getCredentials() === $user->getPassword()) {
-            return new UsernamePasswordToken($user, $user->getPassword(), $user->getRoles());
-        } else {
-            return false;
+        if ($token->getCredentials() !== $user->getPassword()) {
+            throw new BadCredentialsException();
         }
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,41 +17,48 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authorization\Voter;
 
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
+
 use BackBee\BBApplication;
+use BackBee\Security\Token\BBUserToken;
+use BackBee\Security\Token\PublicKeyToken;
 
 /**
- * @category    BackBee
+ * A voter for sudoers.
  *
- * @copyright   Lp digital system
- * @author      Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>, Eric Chau <eric.chau@lp-digital.fr>
+ * @author Nicolas Dufreche, Eric Chau <eric.chau@lp-digital.fr>
  */
 class SudoVoter implements VoterInterface
 {
-    private $application;
+
+    /**
+     * @var array
+     */
     private $sudoers;
 
     /**
-     * @codeCoverageIgnore
+     * Voter constructor.
      *
-     * @param \BackBee\BBApplication $application
+     * @param BBApplication $application
      */
     public function __construct(BBApplication $application)
     {
-        $this->application = $application;
-        $this->sudoers = $this->application->getConfig()->getSecurityConfig('sudoers') ?: array();
+        $this->sudoers = $application->getConfig()->getSecurityConfig('sudoers') ?: [];
     }
 
     /**
-     * @codeCoverageIgnore
-     * {@inheritdoc}
+     * Checks if the voter supports the given attribute.
+     *
+     * @param  mixed $attribute An attribute (usually the attribute name string)
+     *
+     * @return bool true if this Voter supports the attribute, false otherwise
+     *
+     * @deprecated since version 1.4, to be removed in 1.5
      */
     public function supportsAttribute($attribute)
     {
@@ -59,38 +66,56 @@ class SudoVoter implements VoterInterface
     }
 
     /**
-     * @codeCoverageIgnore
-     * {@inheritdoc}
+     * Checks if the voter supports the given class.
+     *
+     * @param  string $class A class name
+     *
+     * @return bool true if this Voter can process the class
+     *
+     * @deprecated since version 1.4, to be removed in 1.5.
      */
     public function supportsClass($class)
     {
-        return $class === 'BackBee\Security\Token\BBUserToken'
-            || $class === 'BackBee\Security\Token\PublicKeyToken'
+        return $this->supportsToken($class);
+    }
+
+    /**
+     * Checks if the voter supports the given class.
+     *
+     * @param  string $class A class name
+     *
+     * @return bool true if this Voter can process the class
+     */
+    protected function supportsToken($class)
+    {
+        return $class === BBUserToken::class
+            || $class === PublicKeyToken::class
         ;
     }
 
     /**
-     * {@inheritdoc}
+     * Returns the vote for the given parameters.
+     *
+     * @param TokenInterface $token      A TokenInterface instance
+     * @param object|null    $object     The object to secure
+     * @param array          $attributes An array of attributes associated with the method being invoked
+     *
+     * @return int either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
      */
     public function vote(TokenInterface $token, $object, array $attributes)
     {
-        $result = VoterInterface::ACCESS_ABSTAIN;
+        if ($this->supportsToken(get_class($token))) {
+            $userId = $token->getUser()->getId();
+            $login = $token->getUser()->getUsername();
 
-        if (true === $this->supportsClass(get_class($token))) {
-            foreach ($attributes as $attribute) {
-                if (false === $this->supportsAttribute($attribute)) {
-                    continue;
-                }
-
-                if (
-                    true === array_key_exists($token->getUser()->getUsername(), $this->sudoers)
-                    && $token->getUser()->getId() === $this->sudoers[$token->getUser()->getUsername()]
-                ) {
-                    $result = VoterInterface::ACCESS_GRANTED;
-                }
+            if (
+                isset($this->sudoers[$login])
+                && $this->sudoers[$login] === $userId
+            ) {
+                return VoterInterface::ACCESS_GRANTED;
             }
         }
 
-        return $result;
+        return VoterInterface::ACCESS_ABSTAIN;
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,51 +17,47 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Listeners;
 
 use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
+use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\SecurityContextInterface;
-use BackBee\Security\Token\AnonymousToken;
+use Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener as sfAnonymousAuthenticationListener;
+
+@trigger_error('The '.__NAMESPACE__.'\AnonymousAuthenticationListener class is deprecated '
+        . 'since version 1.4 and will be removed in 1.5. '
+        . 'Use Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener '
+        . 'instead.', E_USER_DEPRECATED);
 
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
-class AnonymousAuthenticationListener
+class AnonymousAuthenticationListener extends sfAnonymousAuthenticationListener
 {
-    private $context;
-    private $key;
-    private $logger;
-
-    public function __construct(SecurityContextInterface $context, $key, LoggerInterface $logger = null)
-    {
-        $this->context = $context;
-        $this->key = $key;
-        $this->logger = $logger;
-    }
 
     /**
-     * Handles anonymous authentication.
+     * Listener constructor.
      *
-     * @param GetResponseEvent $event A GetResponseEvent instance
+     * @param TokenStorageInterface|SecurityContextInterface $tokenStorage
+     * @param string                                         $secret
+     * @param LoggerInterface|null                           $logger
+     * @param AuthenticationManagerInterface|null            $authenticationManager
      */
-    public function handle(GetResponseEvent $event)
-    {
-        if (null !== $this->context->getToken()) {
-            return;
+    public function __construct(
+        $tokenStorage,
+        $secret,
+        LoggerInterface $logger = null,
+        AuthenticationManagerInterface $authenticationManager = null
+    ) {
+        if ($tokenStorage instanceof SecurityContextInterface) {
+            $tokenStorage = new TokenStorage();
         }
 
-        $this->context->setToken(new AnonymousToken($this->key, 'anon.', array()));
-
-        if (null !== $this->logger) {
-            $this->logger->info(sprintf('Populated SecurityContext with an anonymous Token'));
-        }
+        parent::__construct($tokenStorage, $secret, $logger, $authenticationManager);
     }
 }

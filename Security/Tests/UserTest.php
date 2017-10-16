@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,60 +17,74 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Tests;
 
+use Doctrine\Common\Collections\ArrayCollection;
+
 use BackBee\Security\User;
-use BackBee\Tests\TestCase;
 
 /**
- * Test for User entity.
+ * Test suite for class User entity.
  *
  * @category    BackBee
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
- *
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  * @coversDefaultClass \BackBee\Security\User
  */
-class UserTest extends TestCase
+class UserTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * Mock user
-     * @var \BackBee\Security\User 
+     * @var User
      */
-    private $mockUser;
+    private $user;
+
+    /**
+     * Sets up the fixture.
+     */
+    protected function setUp()
+    {
+        parent::setUp();
+
+        $this->user = new User('login', 'password', 'firstname', 'lastname');
+    }
 
     /**
      * @covers ::__construct
      */
-    public function test__construct()
+    public function testConstruct()
     {
         $user = new User();
         $this->assertEquals('', $user->getLogin());
         $this->assertEquals('', $user->getPassword());
         $this->assertInstanceOf('\DateTime', $user->getCreated());
         $this->assertInstanceOf('\DateTime', $user->getModified());
-        $this->assertInstanceOf('\Doctrine\Common\Collections\ArrayCollection', $user->getGroups());
-        $this->assertInstanceOf('\Doctrine\Common\Collections\ArrayCollection', $user->getRevisions());
+        $this->assertInstanceOf(ArrayCollection::class, $user->getGroups());
+        $this->assertInstanceOf(ArrayCollection::class, $user->getRevisions());
 
-        $this->assertEquals('login', $this->mockUser->getLogin());
-        $this->assertEquals('password', $this->mockUser->getPassword());
-        $this->assertEquals('firstname', $this->mockUser->getFirstname());
-        $this->assertEquals('firstname', $this->mockUser->getFirstname());
-        $this->assertEquals('lastname', $this->mockUser->getLastname());
+        $this->assertEquals('login', $this->user->getLogin());
+        $this->assertEquals('password', $this->user->getPassword());
+        $this->assertEquals('firstname', $this->user->getFirstname());
+        $this->assertEquals('firstname', $this->user->getFirstname());
+        $this->assertEquals('lastname', $this->user->getLastname());
+    }
+
+    /**
+     * @covers ::getUid()
+     */
+    public function testGetUid()
+    {
+        $this->assertEquals($this->user->getId(), $this->user->getUid());
     }
 
     /**
      * @covers ::__toString
      */
-    public function test__toString()
+    public function testToString()
     {
-        $this->assertEquals('firstname lastname (login)', $this->mockUser->__toString());
+        $this->assertEquals('firstname lastname (login)', $this->user->__toString());
     }
 
     /**
@@ -78,7 +92,7 @@ class UserTest extends TestCase
      */
     public function testSerialize()
     {
-        $this->assertEquals('{"username":"login","commonname":"firstname lastname"}', $this->mockUser->serialize());
+        $this->assertEquals('{"username":"login","commonname":"firstname lastname"}', $this->user->serialize());
     }
 
     /**
@@ -87,11 +101,11 @@ class UserTest extends TestCase
      */
     public function testGenerateRandomApiKey()
     {
-        $this->mockUser->generateRandomApiKey();
-        $this->assertNotNull($this->mockUser->getApiKeyPrivate());
+        $this->user->generateRandomApiKey();
+        $this->assertNotNull($this->user->getApiKeyPrivate());
         $this->assertEquals(
-                sha1($this->mockUser->getCreated()->format(\DateTime::ATOM) . $this->mockUser->getApiKeyPrivate()),
-                $this->mockUser->getApiKeyPublic()
+            sha1($this->user->getCreated()->format(\DateTime::ATOM) . $this->user->getApiKeyPrivate()),
+            $this->user->getApiKeyPublic()
         );
     }
 
@@ -101,10 +115,10 @@ class UserTest extends TestCase
      */
     public function testCheckPublicApiKey()
     {
-        $this->assertFalse($this->mockUser->checkPublicApiKey(''));
+        $this->assertFalse($this->user->checkPublicApiKey(''));
 
-        $expected = sha1($this->mockUser->getCreated()->format(\DateTime::ATOM) . $this->mockUser->getApiKeyPrivate());
-        $this->assertTrue($this->mockUser->checkPublicApiKey($expected));
+        $expected = sha1($this->user->getCreated()->format(\DateTime::ATOM) . $this->user->getApiKeyPrivate());
+        $this->assertTrue($this->user->checkPublicApiKey($expected));
     }
 
     /**
@@ -113,27 +127,29 @@ class UserTest extends TestCase
      */
     public function testSetApiKeyEnabled()
     {
-        $this->assertNull($this->mockUser->getApiKeyPrivate());
-        $this->assertNull($this->mockUser->getApiKeyPublic());
+        $this->assertNull($this->user->getApiKeyPrivate());
+        $this->assertNull($this->user->getApiKeyPublic());
 
-        $this->mockUser->setApiKeyEnabled(true);
-        $privateKey = $this->mockUser->getApiKeyPrivate();
-        $publicKey = $this->mockUser->getApiKeyPublic();
+        $this->user->setApiKeyEnabled(true);
+        $privateKey = $this->user->getApiKeyPrivate();
+        $publicKey = $this->user->getApiKeyPublic();
 
         $this->assertNotNull($privateKey);
         $this->assertNotNull($publicKey);
 
-        $this->mockUser->setApiKeyEnabled(false);
-        $this->assertEquals($privateKey, $this->mockUser->getApiKeyPrivate());
-        $this->assertEquals($publicKey, $this->mockUser->getApiKeyPublic());
+        $this->user->setApiKeyEnabled(false);
+        $this->assertEquals($privateKey, $this->user->getApiKeyPrivate());
+        $this->assertEquals($publicKey, $this->user->getApiKeyPublic());
     }
 
     /**
-     * Sets up the fixture.
+     * @covers ::updateModified()
      */
-    public function setUp()
+    public function testUpdateModified()
     {
-        $this->mockUser = new User('login', 'password', 'firstname', 'lastname');
-    }
+        $modified = $this->user->getModified()->getTimestamp();
+        $this->user->updateModified();
 
+        $this->assertTrue($this->user->getModified()->getTimestamp() >= $modified);
+    }
 }

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Token;
@@ -28,22 +26,21 @@ use Symfony\Component\Security\Core\Authentication\Token\AbstractToken;
 /**
  * Base class for BackBee token's user.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class BBUserToken extends AbstractToken
 {
+
     /**
      * Token default lifetime (20 minutes)
      */
     const DEFAULT_LIFETIME = 1200;
 
     /**
-     * Creation date of the token.
+     * The formatted creation date of the token.
+     * Format: 'Y-m-d H:i:s'
      *
-     * @var \DateTime
+     * @var string
      */
     private $created;
 
@@ -69,22 +66,22 @@ class BBUserToken extends AbstractToken
     private $lifetime = self::DEFAULT_LIFETIME;
 
     /**
-     * Class Constructor.
+     * Token Constructor.
      *
      * @param array $roles An array of roles
      */
-    public function __construct(array $roles = array())
+    public function __construct(array $roles = [])
     {
         parent::__construct($roles);
+
         $this->setAuthenticated(true);
     }
 
     /**
-     * Returns the creation date of the token.
+     * Returns the string formatted creation date of the token.
+     * Format: 'Y-m-d H:i:s'
      *
-     * @codeCoverageIgnore
-     *
-     * @return \DateTime
+     * @return string
      */
     public function getCreated()
     {
@@ -92,11 +89,25 @@ class BBUserToken extends AbstractToken
     }
 
     /**
+     * Sets the creation date.
+     *
+     * @param  string|\DateTime $created
+     *
+     * @return BBUserToken
+     */
+    public function setCreated($created)
+    {
+        $this->created = $created instanceof \DateTime ? $created->format('Y-m-d H:i:s') : '' . $created;
+
+        return $this;
+    }
+
+    /**
      * Returns the credentials (empty for this token).
      *
-     * @codeCoverageIgnore
-     *
      * @return string
+     *
+     * @codeCoverageIgnore
      */
     public function getCredentials()
     {
@@ -106,9 +117,9 @@ class BBUserToken extends AbstractToken
     /**
      * Returns the current digest.
      *
-     * @codeCoverageIgnore
-     *
      * @return string
+     *
+     * @codeCoverageIgnore
      */
     public function getDigest()
     {
@@ -118,9 +129,9 @@ class BBUserToken extends AbstractToken
     /**
      * Returns the user's private nonce.
      *
-     * @codeCoverageIgnore
+     * @return string
      *
-     * @return type
+     * @codeCoverageIgnore
      */
     public function getNonce()
     {
@@ -128,25 +139,19 @@ class BBUserToken extends AbstractToken
     }
 
     /**
-     * Sets the creation date.
+     * Returns the token max lifetime in seconds.
      *
-     * @codeCoverageIgnore
-     *
-     * @param type $created
-     *
-     * @return self
+     * @return integer|null
      */
-    public function setCreated($created)
+    public function getLifetime()
     {
-        $this->created = $created instanceof \DateTime ? $created->format('Y-m-d H:i:s') : $created;
-
-        return $this;
+        return $this->lifetime;
     }
 
     /**
      * Sets token max lifetime.
      *
-     * @param integer $lifetime The token max lifetime value
+     * @param int $lifetime The token max lifetime value
      */
     public function setLifetime($lifetime)
     {
@@ -160,6 +165,7 @@ class BBUserToken extends AbstractToken
      * with token created datetime and its max lifetime.
      *
      * @return boolean
+     *
      * @throws \LogicException if token max lifetime or/and token created datetime are not setted
      */
     public function isExpired()
@@ -176,11 +182,11 @@ class BBUserToken extends AbstractToken
     /**
      * Sets the digest.
      *
+     * @param  string $digest
+     *
+     * @return BBUserToken
+     *
      * @codeCoverageIgnore
-     *
-     * @param type $digest
-     *
-     * @return self
      */
     public function setDigest($digest)
     {
@@ -192,11 +198,11 @@ class BBUserToken extends AbstractToken
     /**
      * Sets the user's private nonce.
      *
+     * @param  string $nonce
+     *
+     * @return BBuserToken
+     *
      * @codeCoverageIgnore
-     *
-     * @param type $nonce
-     *
-     * @return self
      */
     public function setNonce($nonce)
     {
@@ -206,13 +212,16 @@ class BBUserToken extends AbstractToken
     }
 
     /**
-     * Sets the user.
+     * Sets the user in the token.
      *
-     * @codeCoverageIgnore
+     * The user can be a UserInterface instance, or an object implementing
+     * a __toString method or the username as a regular string.
      *
-     * @param type $user
+     * @param string|object $user The user
      *
-     * @return self
+     * @return BBUserToken
+     *
+     * @throws \InvalidArgumentException
      */
     public function setUser($user)
     {
@@ -229,7 +238,7 @@ class BBUserToken extends AbstractToken
         return serialize([
             is_object($this->getUser()) ? clone $this->getUser() : $this->getUser(),
             $this->isAuthenticated(),
-            $this->getRoles(),
+            array_map(function ($role) {return clone $role;}, $this->getRoles()),
             $this->getAttributes(),
             $this->nonce,
             $this->created,

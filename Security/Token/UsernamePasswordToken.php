@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,66 +17,19 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Token;
 
-use Symfony\Component\Security\Core\Authentication\Token\AbstractToken;
-use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as sfUsernamePasswordToken;
+
+@trigger_error('The ' . __NAMESPACE__ . '\UsernamePasswordToken class is deprecated since version 1.4, '
+    . 'to be removed in 1.5. '
+    . 'Use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken instead.', E_USER_DEPRECATED);
 
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4, to be removed in 1.5.
  */
-class UsernamePasswordToken extends AbstractToken
+class UsernamePasswordToken extends sfUsernamePasswordToken
 {
-    private $_credentials;
-
-    /**
-     * Constructor.
-     *
-     * @param array $roles An array of roles
-     */
-    public function __construct($user, $credentials, array $roles = array())
-    {
-        parent::__construct($roles);
-
-        $this->setUser($user);
-        $this->_credentials = $credentials;
-    }
-
-    /**
-     * @codeCoverageIgnore
-     *
-     * @return type
-     */
-    public function isAuthenticated()
-    {
-        return ($this->getUser() instanceof UserInterface) ? (count($this->getUser()->getRoles()) > 0) : false;
-    }
-
-    /**
-     * @codeCoverageIgnore
-     *
-     * @return type
-     */
-    public function getCredentials()
-    {
-        return $this->_credentials;
-    }
-
-    /**
-     * @codeCoverageIgnore
-     * {@inheritdoc}
-     */
-    public function eraseCredentials()
-    {
-        parent::eraseCredentials();
-
-        $this->_credentials = null;
-    }
 }

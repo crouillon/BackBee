@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,41 +17,46 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Acl\Domain;
 
 use Symfony\Component\Security\Acl\Domain\SecurityIdentityRetrievalStrategy as sfStrategy;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Acl\Model\SecurityIdentityInterface;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-use Symfony\Component\Security\Core\Util\ClassUtils;
+
+use BackBee\Security\User;
 
 /**
- * Strategy for retrieving security identities unshifting group identities to BackBee users.
+ * Strategy for retrieving security identities unshifting group identities
+ * to BackBee users.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class SecurityIdentityRetrievalStrategy extends sfStrategy
 {
+
     /**
      * Retrieves the available security identities for the given token.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
+     * @param  TokenInterface $token
      *
-     * @return array An array of SecurityIdentityInterface implementations
+     * @return SecurityIdentityInterface[] An array of SecurityIdentityInterface implementations
      */
     public function getSecurityIdentities(TokenInterface $token)
     {
         $sids = parent::getSecurityIdentities($token);
 
-        if ($token->getUser() instanceof \BackBee\Security\User) {
-            foreach ($token->getUser()->getGroups() as $group) {
-                $securityIdentity = new UserSecurityIdentity($group->getObjectIdentifier(), ClassUtils::getRealClass($group));
+        $user = $token->getUser();
+        if ($user instanceof User) {
+            foreach ($user->getGroups() as $group) {
+                $securityIdentity = new UserSecurityIdentity(
+                    $group->getObjectIdentifier(),
+                    ClassUtils::getRealClass($group)
+                );
+
                 array_unshift($sids, $securityIdentity);
             }
         }

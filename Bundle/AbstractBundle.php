@@ -22,6 +22,7 @@
 namespace BackBee\Bundle;
 
 use Doctrine\ORM\EntityManager;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 use Symfony\Component\Security\Acl\Util\ClassUtils;
 
 use BackBee\ApplicationInterface;
@@ -29,7 +30,6 @@ use BackBee\Bundle\Event\BundleStartEvent;
 use BackBee\Config\Config;
 use BackBee\DependencyInjection\ContainerInterface;
 use BackBee\Routing\RouteCollection;
-use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 
 /**
  * Abstract class for BackBee's bundle.
@@ -414,11 +414,11 @@ abstract class AbstractBundle implements BundleInterface
     /**
      * Checks for an explicit objects equality.
      *
-     * @param  ObjectIdentifiableInterface $identity
+     * @param  ObjectIdentityInterface $identity
      *
      * @return Boolean
      */
-    public function equals(ObjectIdentifiableInterface $identity)
+    public function equals(ObjectIdentityInterface $identity)
     {
         return $this->getType() === $identity->getType()
                 && $this->getIdentifier() === $identity->getIdentifier();

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,43 +17,61 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Context;
 
+use Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler;
+use Symfony\Component\Security\Http\Authentication\DefaultAuthenticationSuccessHandler;
+use Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener;
+use Symfony\Component\Security\Http\HttpUtils;
+use Symfony\Component\Security\Http\Session\SessionAuthenticationStrategy;
+
 use BackBee\Security\Authentication\Provider\UserAuthenticationProvider;
-use BackBee\Security\Listeners\UsernamePasswordAuthenticationListener;
 
 /**
- * Description of AnonymousContext.
+ * Add a default UsernamePasswordFormAuthentication listener.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      nicolas.dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  */
 class UsernamePasswordContext extends AbstractContext implements ContextInterface
 {
+
     /**
      * {@inheritdoc}
      */
     public function loadListeners($config)
     {
-        $listeners = array();
-        if (array_key_exists('form_login', $config)) {
-            if (false !== ($default_provider = $this->getDefaultProvider($config))) {
-                $login_path = array_key_exists('login_path', $config['form_login']) ? $config['form_login']['login_path'] : null;
-                $check_path = array_key_exists('check_path', $config['form_login']) ? $config['form_login']['check_path'] : null;
-                $this->_context->getAuthenticationManager()->addProvider(new UserAuthenticationProvider($default_provider, $this->_context->getEncoderFactory()));
-                $listeners[] = new UsernamePasswordAuthenticationListener($this->_context, $this->_context->getAuthenticationManager(), $login_path, $check_path, $this->_context->getLogger());
+        $listeners = [];
+        if (
+            isset($config['form_login'])
+            && (false !== ($defaultProvider = $this->getDefaultProvider($config)))
+        ) {
+            $provider = new UserAuthenticationProvider(
+                $defaultProvider,
+                $this->getSecurityContext()->getEncoderFactory(),
+                isset($config['context']) ? $config['context'] : 'secret_key'
+            );
 
-                if (array_key_exists('rememberme', $config) && class_exists($config['rememberme'])) {
-                    $classname = $config['rememberme'];
-                    $listeners[] = new $classname($this->_context, $this->_context->getAuthenticationManager(), $this->_context->getLogger());
-                }
-            }
+            $this->getSecurityContext()
+                ->getAuthenticationManager()
+                ->addProvider($provider);
+
+            $listeners[] = new UsernamePasswordFormAuthenticationListener(
+                $this->getSecurityContext(),
+                $this->getSecurityContext()->getAuthenticationManager(),
+                new SessionAuthenticationStrategy(SessionAuthenticationStrategy::NONE),
+                new HttpUtils(),
+                isset($config['context']) ? $config['context'] : 'secret_key',
+                new DefaultAuthenticationSuccessHandler(new HttpUtils(), $config['form_login']),
+                new DefaultAuthenticationFailureHandler(
+                    $this->getSecurityContext()->getApplication()->getController(),
+                    new HttpUtils(),
+                    $config['form_login']
+                ),
+                [],
+                $this->getSecurityContext()->getLogger()
+            );
         }
 
         return $listeners;

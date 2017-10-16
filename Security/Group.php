@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security;
@@ -29,13 +27,13 @@ use JMS\Serializer\Annotation as Serializer;
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
 
 use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
-
+use BackBee\Site\Site;
 
 /**
- * @category    BackBee
+ * A group entity.
  *
- * @copyright   Lp digital system
  * @author      Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
+ *
  * @ORM\Entity
  * @ORM\Table(name="`group`", uniqueConstraints={@ORM\UniqueConstraint(name="UNI_IDENTIFIER",columns={"id"})})
  *
@@ -47,6 +45,7 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
      * Unique identifier of the group.
      *
      * @var integer
+     *
      * @ORM\Id
      * @ORM\Column(type="integer", name="id")
      * @ORM\GeneratedValue(strategy="IDENTITY")
@@ -60,6 +59,7 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
      * Group name.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="name")
      *
      * @Serializer\Expose
@@ -70,6 +70,7 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
      * Group description.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="description", nullable=true)
      *
      * @Serializer\Expose
@@ -77,12 +78,10 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     protected $_description;
 
     /**
-     * @var \Doctrine\Common\Collections\ArrayCollection
+     * A collection of users.
      *
-     * @Serializer\Expose
-     * @Serializer\MaxDepth(2)
-     * @Serializer\SerializedName("users")
-     * @Serializer\ReadOnly
+     * @var ArrayCollection
+     *
      * @ORM\ManyToMany(targetEntity="BackBee\Security\User", inversedBy="_groups", fetch="EXTRA_LAZY")
      * @ORM\JoinTable(
      *     name="user_group",
@@ -93,20 +92,26 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
      *         @ORM\JoinColumn(name="user_id", referencedColumnName="id")
      *     }
      * )
+     *
+     * @Serializer\Expose
+     * @Serializer\MaxDepth(2)
+     * @Serializer\SerializedName("users")
+     * @Serializer\ReadOnly
      */
     protected $_users;
 
     /**
      * Optional site.
      *
-     * @var \BackBee\Site\Site
+     * @var Site
+     *
      * @ORM\ManyToOne(targetEntity="BackBee\Site\Site", fetch="EXTRA_LAZY")
      * @ORM\JoinColumn(name="site_uid", referencedColumnName="uid")
      */
     protected $_site;
 
     /**
-     * @codeCoverageIgnore
+     * Group constructor.
      */
     public function __construct()
     {
@@ -114,9 +119,10 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns the group identifier.
      *
      * @return integer
+     * @codeCoverageIgnore
      */
     public function getId()
     {
@@ -124,9 +130,10 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns the group identifier.
      *
      * @return integer
+     * @codeCoverageIgnore
      */
     public function getUid()
     {
@@ -134,11 +141,12 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
+     * Sets the group identifier.
+     *
+     * @param  integer $id
+     *
+     * @return Group
      * @codeCoverageIgnore
-     *
-     * @param integer $id
-     *
-     * @return \BackBee\Security\Group
      */
     public function setId($id)
     {
@@ -148,9 +156,10 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns the group name.
      *
      * @return string
+     * @codeCoverageIgnore
      */
     public function getName()
     {
@@ -158,11 +167,12 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
+     * Sets the group name.
+     *
+     * @param  string $name
+     *
+     * @return Group
      * @codeCoverageIgnore
-     *
-     * @param string $name
-     *
-     * @return \BackBee\Security\Group
      */
     public function setName($name)
     {
@@ -172,9 +182,10 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns the group description.
      *
      * @return string
+     * @codeCoverageIgnore
      */
     public function getDescription()
     {
@@ -182,11 +193,12 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
+     * Sets the group description.
+     *
+     * @param  string $description
+     *
+     * @return Group
      * @codeCoverageIgnore
-     *
-     * @param string $description
-     *
-     * @return \BackBee\Security\Group
      */
     public function setDescription($description)
     {
@@ -196,9 +208,9 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Returns the group users.
      *
-     * @return type
+     * @return ArrayCollection
      */
     public function getUsers()
     {
@@ -206,11 +218,11 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Sets the group users collection.
      *
-     * @param \Doctrine\Common\Collections\ArrayCollection $users
+     * @param  ArrayCollection $users
      *
-     * @return \BackBee\Security\Group
+     * @return Group
      */
     public function setUsers(ArrayCollection $users)
     {
@@ -220,11 +232,11 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
+     * Adds a user to the current group.
      *
-     * @param \BackBee\Security\User $user
+     * @param  User $user
      *
-     * @return \BackBee\Security\Group
+     * @return Group
      */
     public function addUser(User $user)
     {
@@ -234,12 +246,11 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
-     * @codeCoverageIgnore
-     * Remove an from the group
+     * Removes an from the group
      *
-     * @param \BackBee\Security\User $user
+     * @param  User $user
      *
-     * @return \BackBee\Security\Group
+     * @return Group
      */
     public function removeUser(User $user)
     {
@@ -251,7 +262,7 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     /**
      * Returns the optional site.
      *
-     * @return \BackBee\Site\Site|NULL
+     * @return Site|NULL
      * @codeCoverageIgnore
      */
     public function getSite()
@@ -262,12 +273,12 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     /**
      * Sets the optional site.
      *
-     * @param \BackBee\Site\Site $site
+     * @param  Site $site
      *
-     * @return \BackBee\Security\Group
+     * @return Group
      * @codeCoverageIgnore
      */
-    public function setSite(\BackBee\Site\Site $site = null)
+    public function setSite(Site $site = null)
     {
         $this->_site = $site;
 
@@ -275,6 +286,8 @@ class Group extends AbstractObjectIdentifiable implements DomainObjectInterface
     }
 
     /**
+     * Returns the site uid if exists, null elsewhere.
+     *
      * @Serializer\VirtualProperty
      * @Serializer\SerializedName("site_uid")
      *

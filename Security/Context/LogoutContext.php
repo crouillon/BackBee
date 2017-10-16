@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,53 +17,68 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Context;
 
 use Symfony\Component\Security\Http\HttpUtils;
+use Symfony\Component\Security\Http\Logout\DefaultLogoutSuccessHandler;
+
 use BackBee\Security\Listeners\LogoutListener;
-use BackBee\Security\Logout\LogoutSuccessHandler;
 
 /**
- * Description of AnonymousContext.
+ * Logout context.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      nicolas.dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  */
-class LogoutContext extends AbstractContext implements ContextInterface
+class LogoutContext extends AbstractContext
 {
+
     /**
      * {@inheritdoc}
      */
     public function loadListeners($config)
     {
-        if (array_key_exists('logout', $config)) {
-            if (array_key_exists('handlers', $config['logout']) && is_array($handlers = $config['logout']['handlers'])) {
-                $this->initLogoutListener();
-                $this->setHandlers($handlers);
-            }
+        if (isset($config['logout'])
+            && array_key_exists('handlers', (array) $config['logout'])
+            && is_array($handlers = $config['logout']['handlers'])
+        ) {
+            $this->initLogoutListener();
+            $this->setHandlers($handlers);
         }
 
-        return array();
+        return [];
     }
 
+    /**
+     * Initializes a new logout listener if need.
+     */
     public function initLogoutListener()
     {
-        if (null === $this->_context->getLogoutListener()) {
+        if (null === $this->getSecurityContext()->getLogoutListener()) {
             $httpUtils = new HttpUtils();
-            $this->_context->setLogoutListener(new LogoutListener($this->_context, $httpUtils, new LogoutSuccessHandler($httpUtils)));
+            $listener = new LogoutListener(
+                $this->getSecurityContext(),
+                $httpUtils,
+                new DefaultLogoutSuccessHandler($httpUtils)
+            );
+
+            $this->getSecurityContext()
+                ->setLogoutListener($listener);
         }
     }
 
+    /**
+     * Adds handlers to logout listener.
+     *
+     * @param array $handlers
+     */
     public function setHandlers($handlers)
     {
         foreach ($handlers as $handler) {
-            $this->_context->getLogoutListener()->addHandler(new $handler());
+            $this->getSecurityContext()
+                ->getLogoutListener()
+                ->addHandler(new $handler());
         }
     }
 }

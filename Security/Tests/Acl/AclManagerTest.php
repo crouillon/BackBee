@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,138 +17,588 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Tests;
 
+use Symfony\Component\Security\Acl\Dbal\MutableAclProvider;
+use Symfony\Component\Security\Acl\Domain\Acl;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
+use Symfony\Component\Security\Acl\Domain\PermissionGrantingStrategy;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Acl\Exception\AclAlreadyExistsException;
+use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
+
 use BackBee\Security\Acl\AclManager;
+use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
+use BackBee\Security\Acl\Permission\MaskBuilder;
 use BackBee\Security\Acl\Permission\PermissionMap;
-use BackBee\Security\Group;
-use BackBee\Tests\TestCase;
+use BackBee\Security\SecurityContext;
+use BackBee\Tests\Traits\InvokeMethodTrait;
 
 /**
- * Test for AclManager.
+ * Test suite for AclManager.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      k.golovin
- *
- * @coversDefaultClass \BackBee\Acl\AclManager
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass \BackBee\Security\Acl\AclManager
  */
-class AclManagerTest extends TestCase
+class AclManagerTest extends \PHPUnit_Framework_TestCase
 {
+    use InvokeMethodTrait;
+
+    /**
+     * @var MutableAclProvider
+     */
+    private $aclProvider;
+
+    /**
+     * @var AclManager
+     */
     private $manager;
 
     /**
-     * @covers ::getAcl
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
+     * Sets up the fixture.
      */
-    public function test_getAcl_invalidObjectIdentity()
+    protected function setUp()
     {
-        $manager = $this->getAclManager();
+        parent::setUp();
 
-        $manager->getAcl(new \stdClass());
+        $this->aclProvider = $this->getMockBuilder(MutableAclProvider::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['createAcl', 'findAcl', 'updateAcl'])
+            ->getMock();
+
+        $this->manager = new AclManager(
+            $this->aclProvider,
+            new PermissionMap()
+        );
     }
 
     /**
-     * @covers ::updateClassAce
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
+     * @covers ::__construct()
      */
-    public function test_updateClassAce_invalidObjectIdentity()
+    public function testOldDefinitionConstruct()
     {
-        $manager = $this->getAclManager();
+        $aclProvider = $this->getMockBuilder(MutableAclProvider::class)
+            ->disableOriginalConstructor()
+            ->getMock();
 
-        $manager->updateClassAce(new \stdClass(), new UserSecurityIdentity('test', 'BackBee\Security\Group'), PermissionMap::PERMISSION_VIEW);
+        $context = $this->getMockBuilder(SecurityContext::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getAclProvider'])
+            ->getMock();
+
+        $context->expects($this->once())
+            ->method('getAclProvider')
+            ->willReturn($aclProvider);
+
+        new AclManager($context, new PermissionMap());
     }
 
     /**
-     * @covers ::updateClassAce
+     * @covers            ::__construct()
      * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
      */
-    public function test_updateClassAce_invalidSecurityIdentity()
+    public function testInvalidConstruct()
     {
-        $manager = $this->getAclManager();
-
-        $manager->updateClassAce(new ObjectIdentity('test', 'BackBee\Security\Group'), new \stdClass(), PermissionMap::PERMISSION_VIEW);
+        new AclManager(new \stdClass(), new PermissionMap());
     }
 
     /**
-     * @covers ::updateObjectAce
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
+     * @covers ::getAcl()
      */
-    public function test_updateObjectAce_invalidObjectIdentity()
+    public function testGetExistingAcl()
     {
-        $manager = $this->getAclManager();
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->will($this->throwException(new AclAlreadyExistsException()));
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('findAcl');
 
-        $manager->updateObjectAce(new \stdClass(), new UserSecurityIdentity('test', 'BackBee\Security\Group'), PermissionMap::PERMISSION_VIEW);
+        $this->assertNull($this->manager->getAcl(new ObjectIdentity('identifier', 'type')));
     }
 
     /**
-     * @covers ::updateObjectAce
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
+     * @covers ::getAcl()
      */
-    public function test_updateObjectAce_invalidSecurityIdentity()
+    public function testGetAcl()
     {
-        $manager = $this->getAclManager();
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl');
+        $this->aclProvider
+            ->expects($this->never())
+            ->method('findAcl');
 
-        $manager->updateObjectAce(new ObjectIdentity('test', 'BackBee\Security\Group'), new \stdClass(), PermissionMap::PERMISSION_VIEW);
+        $this->assertNull($this->manager->getAcl(new ObjectIdentity('identifier', 'type')));
     }
 
     /**
-     * @covers ::insertOrUpdateObjectAce
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
+     * @covers ::updateObjectAce()
+     * @covers ::insertOrUpdateObjectAce()
      */
-    public function test_insertOrUpdateObjectAce_invalidObjectIdentity()
+    public function testUpdateObjectAce()
     {
-        $manager = $this->getAclManager();
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertObjectAce($securityIdentity, MaskBuilder::MASK_VIEW);
 
-        $manager->insertOrUpdateObjectAce(new \stdClass(), new UserSecurityIdentity('test', 'BackBee\Security\Group'), PermissionMap::PERMISSION_VIEW);
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->updateObjectAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
+        $this->assertEquals(MaskBuilder::MASK_EDIT, $acl->getObjectAces()[0]->getMask());
     }
 
     /**
-     * @covers ::insertOrUpdateObjectAce
+     * @covers ::updateObjectAce()
+     * @covers ::insertOrUpdateObjectAce()
      * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
      */
-    public function test_insertOrUpdateObjectAce_invalidSecurityIdentity()
+    public function testUpdateUnknownObjectAce()
     {
-        $manager = $this->getAclManager();
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
 
-        $manager->insertOrUpdateObjectAce(new ObjectIdentity('test', 'BackBee\Security\Group'), new \stdClass(), PermissionMap::PERMISSION_VIEW);
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->manager->updateObjectAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
     }
 
     /**
-     * @covers ::insertOrUpdateClassAce
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
+     * @covers ::updateClassAce()
+     * @covers ::insertOrUpdateClassAce()
      */
-    public function test_insertOrUpdateClassAce_invalidObjectIdentity()
+    public function testUpdateClassAce()
     {
-        $manager = $this->getAclManager();
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertClassAce($securityIdentity, MaskBuilder::MASK_VIEW);
 
-        $manager->insertOrUpdateClassAce(new \stdClass(), new UserSecurityIdentity('test', 'BackBee\Security\Group'), PermissionMap::PERMISSION_VIEW);
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->updateClassAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
+        $this->assertEquals(MaskBuilder::MASK_EDIT, $acl->getClassAces()[0]->getMask());
     }
 
     /**
-     * @covers ::insertOrUpdateClassAce
+     * @covers ::updateClassAce()
+     * @covers ::insertOrUpdateClassAce()
      * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Object must implement ObjectIdentifiableInterface
      */
-    public function test_insertOrUpdateClassAce_invalidSecurityIdentity()
+    public function testUpdateUnknownClassAce()
     {
-        $manager = $this->getAclManager();
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
 
-        $manager->insertOrUpdateClassAce(new ObjectIdentity('test', 'BackBee\Security\Group'), new \stdClass(), PermissionMap::PERMISSION_VIEW);
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->manager->updateClassAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
+    }
+
+    /**
+     * @covers ::insertOrUpdateObjectAce()
+     */
+    public function testInsertOrUpdateObjectAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertObjectAce($securityIdentity, MaskBuilder::MASK_VIEW);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->insertOrUpdateObjectAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
+        $this->assertEquals(MaskBuilder::MASK_EDIT, $acl->getObjectAces()[0]->getMask());
+    }
+
+    /**
+     * @covers ::insertOrUpdateObjectAce()
+     */
+    public function testInsertOrUpdateUnknownObjectAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->insertOrUpdateObjectAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
+        $this->assertEquals(MaskBuilder::MASK_EDIT, $acl->getObjectAces()[0]->getMask());
+    }
+
+    /**
+     * @covers ::insertOrUpdateClassAce()
+     */
+    public function testInsertOrUpdateClassAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertClassAce($securityIdentity, MaskBuilder::MASK_VIEW);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->insertOrUpdateClassAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
+        $this->assertEquals(MaskBuilder::MASK_EDIT, $acl->getClassAces()[0]->getMask());
+    }
+
+    /**
+     * @covers ::insertOrUpdateClassAce()
+     */
+    public function testInsertOrUpdateUnknownClassAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->insertOrUpdateClassAce($objectIdentity, $securityIdentity, MaskBuilder::MASK_EDIT);
+        $this->assertEquals(MaskBuilder::MASK_EDIT, $acl->getClassAces()[0]->getMask());
+    }
+
+    /**
+     * @covers ::deleteClassAce()
+     */
+    public function testDeleteClassAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertClassAce($securityIdentity, MaskBuilder::MASK_VIEW);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->deleteClassAce($objectIdentity, $securityIdentity);
+        $this->assertEmpty($acl->getClassAces());
+    }
+
+    /**
+     * @covers            ::deleteClassAce()
+     * @expectedException \InvalidArgumentException
+     */
+    public function testDeleteUnknownClassAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->manager->deleteClassAce($objectIdentity, $securityIdentity);
+    }
+
+    /**
+     * @covers ::deleteObjectAce()
+     */
+    public function testDeleteObjectAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertObjectAce($securityIdentity, MaskBuilder::MASK_VIEW);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('updateAcl');
+
+        $this->manager->deleteObjectAce($objectIdentity, $securityIdentity);
+        $this->assertEmpty($acl->getClassAces());
+    }
+
+    /**
+     * @covers            ::deleteObjectAce()
+     * @expectedException \InvalidArgumentException
+     */
+    public function testDeleteUnknownObjectAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->manager->deleteObjectAce($objectIdentity, $securityIdentity);
+    }
+
+    /**
+     * @covers ::getClassAce()
+     */
+    public function testGetClassAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertClassAce($securityIdentity, MaskBuilder::MASK_VIEW);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->assertEquals($acl->getClassAces()[0], $this->manager->getClassAce($objectIdentity, $securityIdentity));
+    }
+
+    /**
+     * @covers            ::getClassAce()
+     * @expectedException \InvalidArgumentException
+     */
+    public function testGetUnknownClassAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->manager->getClassAce($objectIdentity, $securityIdentity);
+    }
+
+    /**
+     * @covers ::getObjectAce()
+     */
+    public function testGetObjectAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+        $acl->insertObjectAce($securityIdentity, MaskBuilder::MASK_VIEW);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->assertEquals($acl->getObjectAces()[0], $this->manager->getObjectAce($objectIdentity, $securityIdentity));
+    }
+
+    /**
+     * @covers            ::getObjectAce()
+     * @expectedException \InvalidArgumentException
+     */
+    public function testGetUnknownObjectAce()
+    {
+        $objectIdentity = new ObjectIdentity('identifier', 'type');
+        $strategy = new PermissionGrantingStrategy();
+        $securityIdentity = new UserSecurityIdentity('username', 'class');
+        $acl = new Acl(1, $objectIdentity, $strategy, [$securityIdentity], false);
+
+        $this->aclProvider
+            ->expects($this->once())
+            ->method('createAcl')
+            ->willReturn($acl);
+
+        $this->manager->getObjectAce($objectIdentity, $securityIdentity);
+    }
+
+    /**
+     * @covers ::getMask()
+     */
+    public function testGetMask()
+    {
+        $this->assertEquals(
+            MaskBuilder::MASK_EDIT + MaskBuilder::MASK_CREATE,
+            $this->manager->getMask(['EDIT', 'CREATE'])
+        );
+    }
+
+    /**
+     * @covers            ::getMask()
+     * @expectedException \BackBee\Security\Acl\Permission\InvalidPermissionException
+     */
+    public function testGetUnknownMask()
+    {
+        $this->manager->getMask(['EDIT', 'CREATE', 'UNKNOWN']);
+    }
+
+    /**
+     * @covers ::getPermissionCodes()
+     */
+    public function testGetPermissionCodes()
+    {
+        $expected = [
+            'view' => MaskBuilder::MASK_VIEW,
+            'create' => MaskBuilder::MASK_CREATE,
+            'edit' => MaskBuilder::MASK_EDIT,
+            'delete' => MaskBuilder::MASK_DELETE,
+            'undelete' => MaskBuilder::MASK_UNDELETE,
+            'operator' => MaskBuilder::MASK_OPERATOR,
+            'master' => MaskBuilder::MASK_MASTER,
+            'owner' => MaskBuilder::MASK_OWNER,
+            'iddqd' => MaskBuilder::MASK_IDDQD,
+            'commit' => MaskBuilder::MASK_COMMIT,
+            'publish' => MaskBuilder::MASK_PUBLISH,
+        ];
+
+        $this->assertEquals($expected, $this->manager->getPermissionCodes());
+    }
+
+    /**
+     * @covers ::enforceObjectIdentity()
+     */
+    public function testEnforceObjectIdentity()
+    {
+        $identity = $this->getMockForAbstractClass(
+            AbstractObjectIdentifiable::class,
+            [],
+            '',
+            false,
+            false,
+            false,
+            ['getUid']
+        );
+
+        $identity->expects($this->once())->method('getUid');
+        $this->invokeMethod($this->manager, 'enforceObjectIdentity', [&$identity]);
+        $this->assertInstanceOf(ObjectIdentity::class, $identity);
+    }
+
+    /**
+     * @covers            ::enforceObjectIdentity()
+     * @expectedException \InvalidArgumentException
+     */
+    public function testEnforceBdObjectIdentity()
+    {
+        $identity = new \stdClass();
+        $this->invokeMethod($this->manager, 'enforceObjectIdentity', [&$identity]);
+    }
+
+    /**
+     * @covers ::enforceSecurityIdentity()
+     */
+    public function testEnforceSecurityIdentity()
+    {
+        $sid = $this->getMockForAbstractClass(
+            DomainObjectInterface::class,
+            [],
+            '',
+            false,
+            false,
+            false,
+            ['getObjectIdentifier']
+        );
+
+        $sid->expects($this->once())->method('getObjectIdentifier')->willReturn('username');
+        $this->invokeMethod($this->manager, 'enforceSecurityIdentity', [&$sid]);
+        $this->assertInstanceOf(UserSecurityIdentity::class, $sid);
+    }
+
+    /**
+     * @covers            ::enforceSecurityIdentity()
+     * @expectedException \InvalidArgumentException
+     */
+    public function testEnforceBadSecurityIdentity()
+    {
+        $sid = new \stdClass();
+        $this->invokeMethod($this->manager, 'enforceSecurityIdentity', [&$sid]);
+    }
+
+    /**
+     * @covers ::resolveMask()
+     */
+    public function testResolveMask()
+    {
+        $this->assertEquals(1, $this->invokeMethod($this->manager, 'resolveMask', [1, new \stdClass()]));
+        $this->assertEquals(229, $this->invokeMethod($this->manager, 'resolveMask', ['VIEW', new \stdClass()]));
+        $this->assertEquals(230, $this->invokeMethod($this->manager, 'resolveMask', [[1, 'VIEW'], new \stdClass()]));
+    }
+
+    /**
+     * @covers ::resolveMask()
+     * @expectedException \RuntimeException
+     */
+    public function testResolveInvalidMask()
+    {
+        $this->invokeMethod($this->manager, 'resolveMask', [new \stdClass(), new \stdClass()]);
     }
 }

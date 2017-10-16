@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authentication\Provider;
@@ -26,24 +24,24 @@ namespace BackBee\Security\Authentication\Provider;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
+
 use BackBee\Security\ApiUserInterface;
 use BackBee\Security\Encoder\RequestSignatureEncoder;
 use BackBee\Security\Exception\SecurityException;
 use BackBee\Security\Token\PublicKeyToken;
+use BackBee\Util\Registry\Repository;
 
 /**
  * Authentication provider for username/password firewall.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class PublicKeyAuthenticationProvider extends BBAuthenticationProvider
 {
 
     /**
      * Role for API user
+     *
      * @var string
      */
     private $apiUserRole;
@@ -51,13 +49,21 @@ class PublicKeyAuthenticationProvider extends BBAuthenticationProvider
     /**
      * Class constructor.
      *
-     * @param \Symfony\Component\Security\Core\User\UserProviderInterface $userProvider
-     * @param string                                                      $nonceDir
-     * @param int                                                         $lifetime
-     * @param \BackBuillder\Bundle\Registry\Repository                    $registryRepository
+     * @param UserProviderInterface   $userProvider
+     * @param string                  $nonceDir
+     * @param int                     $lifetime
+     * @param Repository              $registryRepository
+     * @param EncoderFactoryInterface $encoderFactory
+     * @param string                  $apiUserRole
      */
-    public function __construct(UserProviderInterface $userProvider, $nonceDir, $lifetime = 300, $registryRepository = null, EncoderFactoryInterface $encoderFactory = null, $apiUserRole = 'ROLE_API_USER')
-    {
+    public function __construct(
+        UserProviderInterface $userProvider,
+        $nonceDir,
+        $lifetime = 300,
+        Repository $registryRepository = null,
+        EncoderFactoryInterface $encoderFactory = null,
+        $apiUserRole = 'ROLE_API_USER'
+    ) {
         parent::__construct($userProvider, $nonceDir, $lifetime, $registryRepository, $encoderFactory);
         $this->apiUserRole = $apiUserRole;
     }
@@ -71,23 +77,20 @@ class PublicKeyAuthenticationProvider extends BBAuthenticationProvider
             return;
         }
 
-        $publicKey = $token->getUsername();
-
         if (null === $nonce = $this->readNonceValue($token->getNonce())) {
-            $this->onInvalidAuthentication();
+            return $this->onInvalidAuthentication();
         }
 
-
+        $publicKey = $token->getUsername();
         $user = $this->userProvider->loadUserByPublicKey($publicKey);
-
         if (null === $user) {
-            $this->onInvalidAuthentication();
+            return $this->onInvalidAuthentication();
         }
 
         $token->setUser($user);
         $signature_encoder = new RequestSignatureEncoder();
         if (false === $signature_encoder->isApiSignatureValid($token, $nonce[1])) {
-            $this->onInvalidAuthentication();
+            return $this->onInvalidAuthentication();
         }
 
         if (time() > $nonce[0] + $this->lifetime) {
@@ -110,7 +113,9 @@ class PublicKeyAuthenticationProvider extends BBAuthenticationProvider
 
     /**
      * Add API user role to authenticated token
-     * @param ApiUserInterface $user
+     *
+     * @param  ApiUserInterface $user
+     *
      * @return array
      */
     private function getRoles(ApiUserInterface $user)

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,31 +17,25 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Acl;
 
-use InvalidArgumentException;
 use Symfony\Component\Security\Acl\Domain\Acl;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Acl\Exception\AclAlreadyExistsException;
-use Symfony\Component\Security\Acl\Exception\AclNotFoundException;
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
+use Symfony\Component\Security\Acl\Model\MutableAclProviderInterface;
 use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 use Symfony\Component\Security\Acl\Model\SecurityIdentityInterface;
 use Symfony\Component\Security\Acl\Permission\PermissionMapInterface;
-use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Core\Util\ClassUtils;
 
-use BackBee\NestedNode\Page;
 use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 use BackBee\Security\Acl\Permission\InvalidPermissionException;
 use BackBee\Security\Acl\Permission\MaskBuilder;
-use BackBee\Standard\Application;
 
 /**
  * Class AclManager
@@ -50,46 +44,63 @@ use BackBee\Standard\Application;
  */
 class AclManager
 {
-    /**
-     * @var SecurityContextInterface
-     */
-    protected $securityContext;
 
     /**
+     * A mutable ACL provider.
+     *
+     * @var MutableAclProviderInterface
+     */
+    protected $aclProvider;
+
+    /**
+     * A permission map.
+     *
      * @var PermissionMapInterface
      */
     protected $permissionMap;
 
     /**
-     * @var EntityManager
+     * Manager constructor.
+     *
+     * @param  MutableAclProviderInterface $aclProvider   A mutable ACL provider.
+     * @param  PermissionMapInterface      $permissionMap A permission map.
      */
-    protected $em;
-
-    /**
-     * @param SecurityContextInterface $securityContext
-     * @param PermissionMapInterface $permissionMap
-     */
-    public function __construct(SecurityContextInterface $securityContext, PermissionMapInterface $permissionMap)
+    public function __construct($aclProvider, PermissionMapInterface $permissionMap)
     {
-        $this->securityContext = $securityContext;
+        if ($aclProvider instanceof SecurityContext) {
+            @trigger_error('The AclManager definition  __construct(SecurityContextInterface $securityContext, '
+                . 'PermissionMapInterface $permissionMap) is deprecated since 1.4 and will be removed in 1.5, '
+                . 'use __construct(MutableAclProviderInterface $aclProvider, PermissionMapInterface $permissionMap) '
+                . 'instead', E_USER_DEPRECATED);
+
+            $aclProvider = $aclProvider->getAclProvider();
+        }
+
+        if (!($aclProvider instanceof MutableAclProviderInterface)) {
+            throw new \InvalidArgumentException(
+                'The first parameter of AclManager::__construct() should be a MutableAclInterface instance.'
+            );
+        }
+
+        $this->aclProvider = $aclProvider;
         $this->permissionMap = $permissionMap;
-        $this->em = $this->securityContext->getApplication()->getEntityManager();
     }
 
     /**
-     * Get ACL for the given domain object.
+     * Gets ACL for the given domain object.
      *
      * @param  ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @return Acl
+     *
+     * @return Acl|null
      */
     public function getAcl($objectIdentity)
     {
         $this->enforceObjectIdentity($objectIdentity);
 
         try {
-            $acl = $this->securityContext->getACLProvider()->createAcl($objectIdentity);
+            $acl = $this->aclProvider->createAcl($objectIdentity);
         } catch (AclAlreadyExistsException $e) {
-            $acl = $this->securityContext->getACLProvider()->findAcl($objectIdentity);
+            $acl = $this->aclProvider->findAcl($objectIdentity);
         }
 
         return $acl;
@@ -99,134 +110,110 @@ class AclManager
      * Updates an existing object ACE.
      *
      * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
-     * @param int  $mask
-     * @param string|null $strategy
+     * @param DomainObjectInterface|SecurityIdentityInterface    $sid
+     * @param int                                                $mask
+     * @param string|null                                        $strategy
+     *
+     * @return AclManager
      */
     public function updateObjectAce($objectIdentity, $sid, $mask, $strategy = null)
     {
-        $this->enforceObjectIdentity($objectIdentity);
-        $this->enforceSecurityIdentity($sid);
-        $mask = $this->resolveMask($mask, $objectIdentity);
-
-        $acl = $this->getAcl($objectIdentity);
-
-        $found = false;
-
-        foreach ($acl->getObjectAces() as $index => $ace) {
-            if ($ace->getSecurityIdentity()->equals($sid)) {
-                $acl->updateObjectAce($index, $mask, $strategy);
-                break;
-            }
-        }
-
-        if (false === $found) {
-            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
-        }
-
-        $this->securityContext->getACLProvider()->updateAcl($acl);
+        return $this->insertOrUpdateObjectAce($objectIdentity, $sid, $mask, $strategy, false);
     }
 
     /**
      * Updates an existing object ACE.
      *
      * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
-     * @param int $mask
-     * @param string|null $strategy
+     * @param DomainObjectInterface|SecurityIdentityInterface    $sid
+     * @param int                                                $mask
+     * @param string|null                                        $strategy
+     *
+     * @return AclManager
      */
     public function updateClassAce($objectIdentity, $sid, $mask, $strategy = null)
     {
-        $this->enforceObjectIdentity($objectIdentity);
-        $this->enforceSecurityIdentity($sid);
-        $mask = $this->resolveMask($mask, $objectIdentity);
-
-        $acl = $this->getAcl($objectIdentity);
-
-        $found = false;
-        foreach ($acl->getClassAces() as $index => $ace) {
-            if ($ace->getSecurityIdentity()->equals($sid)) {
-                $acl->updateClassAce($index, $mask, $strategy);
-                $found = true;
-                break;
-            }
-        }
-
-        if (false === $found) {
-            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
-        }
-
-        $this->securityContext->getACLProvider()->updateAcl($acl);
+        return $this->insertOrUpdateClassAce($objectIdentity, $sid, $mask, $strategy, false);
     }
 
     /**
-     * Updates an existing Object ACE, Inserts if it doesnt exist.
+     * Updates an existing object ACE, inserts if it doesnt exist.
      *
-     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
-     * @param int $mask
-     * @param string|null $strategy
-     * @return $this
+     * @param  ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param  DomainObjectInterface|SecurityIdentityInterface    $sid
+     * @param  int                                                $mask
+     * @param  string|null                                        $strategy
+     * @param  boolean                                            $insertIfMissing
+     *
+     * @return AclManager
      */
-    public function insertOrUpdateObjectAce($objectIdentity, $sid, $mask, $strategy = null)
+    public function insertOrUpdateObjectAce($objectIdentity, $sid, $mask, $strategy = null, $insertIfMissing = true)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
-        $mask = $this->resolveMask($mask, $objectIdentity);
-
+        $validMask = $this->resolveMask($mask, $objectIdentity);
         $acl = $this->getAcl($objectIdentity);
 
         $found = false;
-
         foreach ($acl->getObjectAces() as $index => $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
-                $acl->updateObjectAce($index, $mask, $strategy);
+                $acl->updateObjectAce($index, $validMask, $strategy);
                 $found = true;
                 break;
             }
         }
 
-        if (false === $found) {
+        if (!$found) {
+            if (!$insertIfMissing) {
+                throw new \InvalidArgumentException(
+                    'ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity'
+                );
+            }
             $acl->insertObjectAce($sid, $mask, 0, true, $strategy);
         }
 
-        $this->securityContext->getACLProvider()->updateAcl($acl);
+        $this->aclProvider->updateAcl($acl);
 
         return $this;
     }
 
     /**
-     * Updates an existing Class ACE, Inserts if it doesn't exist.
+     * Updates an existing class ACE, inserts if it doesnt exist.
      *
-     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
-     * @param int $mask
-     * @param string|null $strategy
-     * @return $this
+     * @param  ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param  DomainObjectInterface|SecurityIdentityInterface    $sid
+     * @param  int                                                $mask
+     * @param  string|null                                        $strategy
+     * @param  boolean                                            $insertIfMissing
+     *
+     * @return AclManager
      */
-    public function insertOrUpdateClassAce($objectIdentity, $sid, $mask, $strategy = null)
+    public function insertOrUpdateClassAce($objectIdentity, $sid, $mask, $strategy = null, $insertIfMissing = true)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
-        $mask = $this->resolveMask($mask, $objectIdentity);
-
+        $validMask = $this->resolveMask($mask, $objectIdentity);
         $acl = $this->getAcl($objectIdentity);
 
         $found = false;
-
         foreach ($acl->getClassAces() as $index => $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
-                $acl->updateClassAce($index, $mask, $strategy);
+                $acl->updateClassAce($index, $validMask, $strategy);
                 $found = true;
                 break;
             }
         }
 
-        if (false === $found) {
+        if (!$found) {
+            if (!$insertIfMissing) {
+                throw new \InvalidArgumentException(
+                    'ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity'
+                );
+            }
             $acl->insertClassAce($sid, $mask, 0, true, $strategy);
         }
 
-        $this->securityContext->getACLProvider()->updateAcl($acl);
+        $this->aclProvider->updateAcl($acl);
 
         return $this;
     }
@@ -235,17 +222,17 @@ class AclManager
      * Deletes a class-scope ACE.
      *
      * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
+     * @param DomainObjectInterface|SecurityIdentityInterface    $sid
+     *
+     * @return AclManager
      */
     public function deleteClassAce($objectIdentity, $sid)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
-
         $acl = $this->getAcl($objectIdentity);
 
         $found = false;
-
         foreach ($acl->getClassAces() as $index => $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
                 $acl->deleteClassAce($index);
@@ -254,28 +241,32 @@ class AclManager
             }
         }
 
-        if (false === $found) {
-            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+        if (!$found) {
+            throw new \InvalidArgumentException(
+                'ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity'
+            );
         }
 
-        $this->securityContext->getACLProvider()->updateAcl($acl);
+        $this->aclProvider->updateAcl($acl);
+
+        return $this;
     }
 
     /**
      * Deletes an object-scope ACE.
      *
      * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
+     * @param DomainObjectInterface|SecurityIdentityInterface    $sid
+     *
+     * @return AclManager
      */
     public function deleteObjectAce($objectIdentity, $sid)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
-
         $acl = $this->getAcl($objectIdentity);
 
         $found = false;
-
         foreach ($acl->getObjectAces() as $index => $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
                 $acl->deleteObjectAce($index);
@@ -284,62 +275,69 @@ class AclManager
             }
         }
 
-        if (false === $found) {
-            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+        if (!$found) {
+            throw new \InvalidArgumentException(
+                'ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity'
+            );
         }
 
-        $this->securityContext->getACLProvider()->updateAcl($acl);
+        $this->aclProvider->updateAcl($acl);
+
+        return $this;
     }
 
     /**
      * Get a class-scope ACE.
      *
      * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
+     * @param DomainObjectInterface|SecurityIdentityInterface    $sid
      */
     public function getClassAce($objectIdentity, $sid)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
 
-        $acl = $this->securityContext->getACLProvider()->findAcl($objectIdentity);
+        $acl = $this->aclProvider->findAcl($objectIdentity);
 
-        foreach ($acl->getClassAces() as $index => $ace) {
+        foreach ($acl->getClassAces() as $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
                 return $ace;
             }
         }
 
-        throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+        throw new \InvalidArgumentException(
+            'ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity'
+        );
     }
 
     /**
      * Get an object-scope ACE.
      *
      * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
+     * @param DomainObjectInterface|SecurityIdentityInterface    $sid
      */
     public function getObjectAce($objectIdentity, $sid)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
 
-        $acl = $this->securityContext->getACLProvider()->findAcl($objectIdentity);
+        $acl = $this->aclProvider->findAcl($objectIdentity);
 
-        foreach ($acl->getObjectAces() as $index => $ace) {
+        foreach ($acl->getObjectAces() as $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
                 return $ace;
             }
         }
-        throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+        throw new \InvalidArgumentException(
+            'ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity'
+        );
     }
 
     /**
      * Calculate mask for a list of permissions.
-     *
      * ['view', 'edit'] => (int) 5
      *
-     * @param array $permissions
+     * @param  array $permissions
      *
      * @return int
      */
@@ -350,8 +348,12 @@ class AclManager
         foreach ($permissions as $permission) {
             try {
                 $maskBuilder->add($permission);
-            } catch (InvalidArgumentException $e) {
-                throw new InvalidPermissionException('Invalid permission mask: '.$permission, $permission, $e);
+            } catch (\InvalidArgumentException $e) {
+                throw new InvalidPermissionException(
+                    'Invalid permission mask: '.$permission,
+                    $permission,
+                    $e
+                );
             }
         }
 
@@ -365,81 +367,87 @@ class AclManager
      */
     public function getPermissionCodes()
     {
-        $permissions = [
-            'view' => MaskBuilder::MASK_VIEW,
-            'create' => MaskBuilder::MASK_CREATE,
-            'edit' => MaskBuilder::MASK_EDIT,
-            'delete' => MaskBuilder::MASK_DELETE,
-            'undelete' => MaskBuilder::MASK_UNDELETE,
-            'operator' => MaskBuilder::MASK_OPERATOR,
-            'master' => MaskBuilder::MASK_MASTER,
-            'owner' => MaskBuilder::MASK_OWNER,
-            'iddqd' => MaskBuilder::MASK_IDDQD,
-            'commit' => MaskBuilder::MASK_COMMIT,
-            'publish' => MaskBuilder::MASK_PUBLISH,
-            'none' => MaskBuilder::CODE_NONE
-        ];
+        $permissions = [];
+        $reflection = new \ReflectionClass(MaskBuilder::class);
+        foreach ($reflection->getConstants() as $name => $constant) {
+            if ('MASK_' === substr($name, 0, 5)) {
+                $permissions[strtolower(substr($name, 5))] = $constant;
+            }
+        }
 
         return $permissions;
     }
 
     /**
+     * Ensure that $objectIdentity is an ObjectIdentityInterface instance.
+     *
      * @param  ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
-     * @throws InvalidArgumentException
+     *
+     * @throws \InvalidArgumentException if $objectIdentity cannot be convert to
+     *                                   an instance of ObjectIdentityInterface.
      */
     private function enforceObjectIdentity(&$objectIdentity)
     {
-        if (
-            ($objectIdentity instanceof ObjectIdentifiableInterface)
-        ) {
-            $objectIdentity = new ObjectIdentity($objectIdentity->getObjectIdentifier(), get_class($objectIdentity));
-        } elseif (! ($objectIdentity instanceof ObjectIdentityInterface)) {
-            throw new InvalidArgumentException('Object must implement ObjectIdentifiableInterface');
+        if ($objectIdentity instanceof AbstractObjectIdentifiable) {
+            $objectIdentity = new ObjectIdentity(
+                $objectIdentity->getObjectIdentifier(),
+                ClassUtils::getRealClass($objectIdentity)
+            );
+        }
+
+        if (!($objectIdentity instanceof ObjectIdentityInterface)) {
+            throw new \InvalidArgumentException('Object must implement ObjectIdentityInterface');
         }
     }
 
     /**
-     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
+     * Ensure that $sid is an SecurityIdentityInterface instance.
      *
-     * @throws InvalidArgumentException
+     * @param DomainObjectInterface|SecurityIdentityInterface $sid
+     *
+     * @throws \InvalidArgumentException if $sid cannot be convert to an instance
+     *                                   of SecurityIdentityInterface.
      */
     private function enforceSecurityIdentity(&$sid)
     {
-        if (
-            ($sid instanceof DomainObjectInterface)
-        ) {
-            $sid = new UserSecurityIdentity($sid->getObjectIdentifier(), get_class($sid));
-        } elseif (! ($sid instanceof SecurityIdentityInterface)) {
-            throw new InvalidArgumentException('Object must implement ObjectIdentifiableInterface');
+        if ($sid instanceof DomainObjectInterface) {
+            $sid = new UserSecurityIdentity(
+                $sid->getObjectIdentifier(),
+                ClassUtils::getRealClass($sid)
+            );
+        }
+
+        if (!($sid instanceof SecurityIdentityInterface)) {
+            throw new \InvalidArgumentException('Object must implement SecurityIdentityInterface');
         }
     }
 
     /**
      * Resolves any variation of masks/permissions to an integer.
      *
-     * @param string|int|array $masks
+     * @param  string|int|array $masks
+     * @param  object           $object
      *
-     * @param $object
      * @return int
      */
     private function resolveMask($masks, $object)
     {
-        $integerMask = 0;
+        $resolvedMask = 0;
 
         if (is_integer($masks)) {
-            $integerMask = $masks;
+            $resolvedMask = $masks;
         } elseif (is_string($masks)) {
             $permission = $this->permissionMap->getMasks($masks, $object);
-            $integerMask = $this->resolveMask($permission, $object);
+            $resolvedMask = $this->resolveMask($permission, $object);
         } elseif (is_array($masks)) {
             foreach ($masks as $mask) {
-                $integerMask += $this->resolveMask($mask, $object);
+                $resolvedMask += $this->resolveMask($mask, $object);
             }
         } else {
             throw new \RuntimeException('Not a valid mask type');
         }
 
-        return $integerMask;
+        return $resolvedMask;
     }
 
     /**

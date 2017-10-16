@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,26 +17,21 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Encoder;
 
-use Symfony\Component\Security\Core\Util\StringUtils;
 use BackBee\Security\Token\BBUserToken;
 
 /**
  * Request signature encoder.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      k.golovin
+ * @author Kenneth Golovin
  */
 class RequestSignatureEncoder
 {
-   /**
+
+    /**
     * Checks if the presented signature is valid or not according to token.
     *
     * @param BBUserToken $token
@@ -44,20 +39,20 @@ class RequestSignatureEncoder
     *
     * @return boolean true if signature is valid, else false
     */
-   public function isApiSignatureValid(BBUserToken $token, $signaturePresented)
-   {
-       return StringUtils::equals($this->createSignature($token), $signaturePresented);
-   }
+    public function isApiSignatureValid(BBUserToken $token, $signaturePresented)
+    {
+        return hash_equals($this->createSignature($token), $signaturePresented);
+    }
 
    /**
     * Create a signature for a given user.
     *
-    * @param BackBee\Security\Token\BBUserToken the token we want to generate API signature key
+    * @param  BBUserToken the token we want to generate API signature key
     *
     * @return string the generated signature
     */
-   public function createSignature(BBUserToken $token)
-   {
-       return md5($token->getUser()->getApiKeyPublic().$token->getUser()->getApiKeyPrivate().$token->getNonce());
-   }
+    public function createSignature(BBUserToken $token)
+    {
+        return md5($token->getUser()->getApiKeyPublic().$token->getUser()->getApiKeyPrivate().$token->getNonce());
+    }
 }

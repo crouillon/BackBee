@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,22 +17,15 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authorization\Voter;
 
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
-use Symfony\Component\Security\Acl\Model\AclProviderInterface;
 use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
-use Symfony\Component\Security\Acl\Model\ObjectIdentityRetrievalStrategyInterface;
-use Symfony\Component\Security\Acl\Model\SecurityIdentityRetrievalStrategyInterface;
-use Symfony\Component\Security\Acl\Permission\PermissionMapInterface;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
 use Symfony\Component\Security\Acl\Voter\AclVoter;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-use Symfony\Component\Security\Core\Util\ClassUtils;
 
 use BackBee\Bundle\AbstractBundle;
 use BackBee\ClassContent\AbstractClassContent;
@@ -40,32 +33,19 @@ use BackBee\NestedNode\AbstractNestedNode;
 use BackBee\NestedNode\Page;
 
 /**
- * @category    BackBee
+ * A voter for BackBee permissions throw ACL.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class BBAclVoter extends AclVoter
 {
-    /**
-     * The current BackBee application.
-     *
-     * @var \BackBee\BBApplication
-     */
-    private $_application;
-
-    public function __construct(AclProviderInterface $aclProvider, ObjectIdentityRetrievalStrategyInterface $oidRetrievalStrategy, SecurityIdentityRetrievalStrategyInterface $sidRetrievalStrategy, PermissionMapInterface $permissionMap, LoggerInterface $logger = null, $allowIfObjectIdentityUnavailable = true, \BackBee\BBApplication $application = null)
-    {
-        parent::__construct($aclProvider, $oidRetrievalStrategy, $sidRetrievalStrategy, $permissionMap, $logger, $allowIfObjectIdentityUnavailable);
-        $this->_application = $application;
-    }
 
     /**
      * Returns the vote for the given parameters.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token      A TokenInterface instance
-     * @param object|ObjectIdentityInterface                                       $object     The object to secure
-     * @param array                                                                $attributes An array of attributes associated with the method being invoked
+     * @param  TokenInterface $token      A TokenInterface instance
+     * @param  object|null    $object     The object to secure
+     * @param  array          $attributes An array of attributes associated with the method being invoked
      *
      * @return integer either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
      */
@@ -89,15 +69,15 @@ class BBAclVoter extends AclVoter
     }
 
     /**
-     * Returns the vote for the cuurent object, if denied try the vote for the general object.
+     * Returns the vote for the current object, if denied try the vote for the general object.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     * @param object|ObjectIdentityInterface                                       $object
-     * @param array                                                                $attributes
+     * @param  TokenInterface $token      A TokenInterface instance
+     * @param  object         $object     The object to secure
+     * @param  array          $attributes An array of attributes associated with the method being invoked
      *
      * @return integer either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
      */
-    private function voteForObject(TokenInterface $token, $object, array $attributes)
+    protected function voteForObject(TokenInterface $token, $object, array $attributes)
     {
         if (self::ACCESS_GRANTED !== $result = parent::vote($token, $object, $attributes)) {
             // try class-scope ace
@@ -109,11 +89,13 @@ class BBAclVoter extends AclVoter
     }
 
     /**
-     * Returns the class-scope object identity for $object
-     * @param ObjectIdentityInterface $object
+     * Returns the class-scope object identity for $object.
+     *
+     * @param  ObjectIdentityInterface $object
+     *
      * @return ObjectIdentity
      */
-    private function getClassScopeObjectIdentity($object)
+    protected function getClassScopeObjectIdentity($object)
     {
         $classname = ClassUtils::getRealClass($object);
         if ($object instanceof ObjectIdentityInterface) {
@@ -126,16 +108,17 @@ class BBAclVoter extends AclVoter
     /**
      * Returns the vote for page object, recursively till root.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface  $token
-     * @param  \BackBee\NestedNode\Page                                             $page
-     * @param  array                                                                $attributes
-     * @return integer                                                              either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
+     * @param  TokenInterface $token      A TokenInterface instance
+     * @param  Page           $page       The page to secure
+     * @param  array          $attributes An array of attributes associated with the method being invoked
+     *
+     * @return integer either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
      */
-    private function voteForPage(TokenInterface $token, Page $page, array $attributes)
+    protected function voteForPage(TokenInterface $token, Page $page, array $attributes)
     {
         if (self::ACCESS_DENIED === $result = $this->voteForObject($token, $page, $attributes)) {
-            if (null !== $page->getParent()) {
-                $result = $this->voteForPage($token, $page->getParent(), $attributes);
+            if (null !== $parent = $page->getParent()) {
+                $result = $this->voteForPage($token, $parent, $attributes);
             }
         }
 
@@ -145,16 +128,17 @@ class BBAclVoter extends AclVoter
     /**
      * Returns the vote for nested node object, recursively till root.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     * @param  \BackBee\NestedNode\AbstractNestedNode $node
-     * @param  array                                                                $attributes
-     * @return integer                                                              either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
+     * @param  TokenInterface     $token      A TokenInterface instance
+     * @param  AbstractNestedNode $node       The node to secure
+     * @param  array              $attributes An array of attributes associated with the method being invoked
+     *
+     * @return integer either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
      */
-    private function voteForNestedNode(TokenInterface $token, AbstractNestedNode $node, array $attributes)
+    protected function voteForNestedNode(TokenInterface $token, AbstractNestedNode $node, array $attributes)
     {
         if (self::ACCESS_DENIED === $result = $this->voteForObject($token, $node, $attributes)) {
-            if (null !== $node->getParent()) {
-                $result = $this->voteForNestedNode($token, $node->getParent(), $attributes);
+            if (null !== $parent = $node->getParent()) {
+                $result = $this->voteForNestedNode($token, $parent, $attributes);
             }
         }
 
@@ -164,26 +148,28 @@ class BBAclVoter extends AclVoter
     /**
      * Returns the vote for class content object, recursively till AbstractClassContent.
      *
-     * @param \Symfony\Component\Security\Core\Authentication\Token\TokenInterface $token
-     * @param  \BackBee\ClassContent\AbstractClassContent $content
-     * @param  array                                                                $attributes
-     * @return integer                                                              either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
+     * @param  TokenInterface       $token      A TokenInterface instance
+     * @param  AbstractClassContent $content       The node to secure
+     * @param  array                $attributes An array of attributes associated with the method being invoked
+     *
+     * @return integer either ACCESS_GRANTED, ACCESS_ABSTAIN, or ACCESS_DENIED
      */
-    private function voteForClassContent(TokenInterface $token, AbstractClassContent $content, array $attributes)
+    protected function voteForClassContent(TokenInterface $token, AbstractClassContent $content, array $attributes)
     {
         if (null === $content->getProperty('category')) {
             return self::ACCESS_GRANTED;
         }
 
-        if (self::ACCESS_DENIED === $result = $this->voteForObject($token, $content, $attributes)) {
-            if (false !== $parent_class = get_parent_class($content)) {
-                if ('BackBee\ClassContent\AbstractClassContent' !== $parent_class) {
-                    $parent_class = NAMESPACE_SEPARATOR.$parent_class;
-                    $result = $this->voteForClassContent($token, new $parent_class('*'), $attributes);
-                } else {
-                    $objectIdentity = new ObjectIdentity('all', 'BackBee\ClassContent\AbstractClassContent');
-                    $result = parent::vote($token, $objectIdentity, $attributes);
-                }
+        if (
+            (self::ACCESS_DENIED === $result = $this->voteForObject($token, $content, $attributes))
+            && (false !== $parent_class = get_parent_class($content))
+        ) {
+            if (AbstractClassContent::class !== $parent_class) {
+                $parent_class = NAMESPACE_SEPARATOR.$parent_class;
+                $result = $this->voteForClassContent($token, new $parent_class('*'), $attributes);
+            } else {
+                $objectIdentity = new ObjectIdentity('all', AbstractClassContent::class);
+                $result = parent::vote($token, $objectIdentity, $attributes);
             }
         }
 

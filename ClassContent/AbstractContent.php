@@ -28,10 +28,11 @@ use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\ClassContent\Exception\MalformedParameterException;
 use BackBee\ClassContent\Exception\UnknownPropertyException;
 use BackBee\Renderer\RenderableInterface;
-use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\Util\ClassUtils;
+use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 
 /**
  * Abstract class for every content and its revisions in BackBee.
@@ -42,7 +43,7 @@ use Symfony\Component\Security\Core\Util\ClassUtils;
  * @author      c.rouillon <charles.rouillon@lp-digital.fr>
  * @ORM\MappedSuperclass
  */
-abstract class AbstractContent implements ObjectIdentifiableInterface, RenderableInterface, \JsonSerializable
+abstract class AbstractContent implements DomainObjectInterface, ObjectIdentityInterface, RenderableInterface, \JsonSerializable
 {
     /**
      * BackBee's class content classname must be prefixed by this.
@@ -871,14 +872,14 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
     /**
      * Checks for an explicit objects equality.
      *
-     * @param  \BackBee\Security\Acl\Domain\ObjectIdentifiableInterface $identity
+     * @param  ObjectIdentityInterface $identity
      *
      * @return Boolean
      *
      * @see \BackBee\Security\Acl\Domain\IObjectIdentifiable
      * @codeCoverageIgnore
      */
-    public function equals(ObjectIdentifiableInterface $identity)
+    public function equals(ObjectIdentityInterface $identity)
     {
         return ($this->getType() === $identity->getType() && $this->getIdentifier() === $identity->getIdentifier());
     }
@@ -1135,7 +1136,7 @@ abstract class AbstractContent implements ObjectIdentifiableInterface, Renderabl
      *
      * @return string
      */
-    final public function getDefaultImageName()
+    public function getDefaultImageName()
     {
         return str_replace([self::CLASSCONTENT_BASE_NAMESPACE, NAMESPACE_SEPARATOR], ['', '/'], get_class($this->getContentInstance())).'.png';
     }

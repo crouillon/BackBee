@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,30 +17,29 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authorization\Voter;
 
-use BackBee\BBApplication;
-use BackBee\Security\Authorization\Adaptator\RoleReaderAdapterInterface;
-
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
+use BackBee\BBApplication;
+use BackBee\Security\Authorization\Adaptator\RoleReaderAdapterInterface;
+
+@trigger_error('The '.__NAMESPACE__.'\Yml class is deprecated since version 1.4, '
+        . 'to be removed in 1.5.', E_USER_DEPRECATED);
+
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
+ * @deprecated since version 1.4
  */
 class AccessVoter implements VoterInterface
 {
-    private $_application;
-    private $_adapter;
-    private $_prefix;
-    private $_class;
+    private $application;
+    private $adapter;
+    private $prefix;
+    private $class;
 
     /**
      * Constructor.
@@ -48,12 +47,16 @@ class AccessVoter implements VoterInterface
      * @param RoleReaderAdapterInterface $adapter
      * @param string               $prefix    The role prefix
      */
-    public function __construct(BBApplication $application, RoleReaderAdapterInterface $adapter, $class, $prefix = 'BB_')
-    {
-        $this->_adapter = $adapter;
-        $this->_prefix = $prefix;
-        $this->_class = $class;
-        $this->_application = $application;
+    public function __construct(
+        BBApplication $application,
+        RoleReaderAdapterInterface $adapter,
+        $class,
+        $prefix = 'BB_'
+    ) {
+        $this->adapter = $adapter;
+        $this->prefix = $prefix;
+        $this->class = $class;
+        $this->application = $application;
     }
 
     /**
@@ -61,7 +64,7 @@ class AccessVoter implements VoterInterface
      */
     public function supportsAttribute($attribute)
     {
-        return 0 === strpos($attribute, $this->_prefix);
+        return 0 === strpos($attribute, $this->prefix);
     }
 
     /**
@@ -77,7 +80,7 @@ class AccessVoter implements VoterInterface
      */
     public function vote(TokenInterface $token, $object, array $attributes)
     {
-        if (get_class($object) === $this->_class) {
+        if (getclass($object) === $this->class) {
             $result = $this->voteForSomething($token, $object, $attributes);
         } else {
             $result = $this->voteForAccess($token, $attributes);
@@ -103,13 +106,13 @@ class AccessVoter implements VoterInterface
      */
     private function extractRoles(TokenInterface $token)
     {
-        return $this->_adapter->extractRoles($token);
+        return $this->adapter->extractRoles($token);
     }
 
     private function getAccessRole()
     {
-        $classPath = explode('\\', $this->_class);
-        $config = $this->_application->getConfig()->getSecurityConfig();
+        $classPath = explode('\\', $this->class);
+        $config = $this->application->getConfig()->getSecurityConfig();
 
         foreach ($array as $value) {
         }

@@ -23,6 +23,8 @@ namespace BackBee\Bundle\Tests;
 
 use org\bovigo\vfs\vfsStream;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 
 use BackBee\Bundle\AbstractBundle;
 use BackBee\Bundle\BundleExposedControllerInterface;
@@ -279,8 +281,8 @@ class AbstractBundleTest extends BundleTestCase
     public function testEquals()
     {
         $bundle = $this->getBundle();
-        $identity = $this->getMockBuilder(ObjectIdentifiableInterface::class)
-            ->setMethods(['getType', 'getIdentifier', 'equals', 'getObjectIdentifier'])
+        $identity = $this->getMockBuilder(ObjectIdentityInterface::class)
+            ->setMethods(['getType', 'getIdentifier', 'equals'])
             ->getMock();
 
         $identity->expects($this->any())
@@ -299,8 +301,8 @@ class AbstractBundleTest extends BundleTestCase
     public function testNotEqualsType()
     {
         $bundle = $this->getBundle();
-        $identity = $this->getMockBuilder(ObjectIdentifiableInterface::class)
-            ->setMethods(['getType', 'getIdentifier', 'equals', 'getObjectIdentifier'])
+        $identity = $this->getMockBuilder(ObjectIdentityInterface::class)
+            ->setMethods(['getType', 'getIdentifier', 'equals'])
             ->getMock();
 
         $identity->expects($this->any())
@@ -319,8 +321,8 @@ class AbstractBundleTest extends BundleTestCase
     public function testNotEqualsIdentifier()
     {
         $bundle = $this->getBundle();
-        $identity = $this->getMockBuilder(ObjectIdentifiableInterface::class)
-            ->setMethods(['getType', 'getIdentifier', 'equals', 'getObjectIdentifier'])
+        $identity = $this->getMockBuilder(ObjectIdentityInterface::class)
+            ->setMethods(['getType', 'getIdentifier', 'equals'])
             ->getMock();
 
         $identity->expects($this->any())

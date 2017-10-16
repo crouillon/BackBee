@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,117 +17,28 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Listeners;
 
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\Security\Core\SecurityContextInterface;
-use Symfony\Component\Security\Http\Firewall\ListenerInterface;
-use Symfony\Component\Security\Http\HttpUtils;
-use Symfony\Component\Security\Http\Logout\LogoutHandlerInterface;
-use Symfony\Component\Security\Http\Logout\LogoutSuccessHandlerInterface;
+use Symfony\Component\Security\Http\Firewall\LogoutListener as sfLogoutListener;
 
 /**
  * LogoutListener logout users.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class LogoutListener implements ListenerInterface
+class LogoutListener extends sfLogoutListener
 {
-    /**
-     * The current security context.
-     *
-     * @var \Symfony\Component\Security\Core\SecurityContextInterface
-     */
-    private $securityContext;
-
-    /**
-     * An array of logout handlers.
-     *
-     * @var array
-     */
-    private $handlers;
-
-    /**
-     * @var \Symfony\Component\Security\Http\HttpUtils
-     */
-    private $httpUtils;
-
-    /**
-     * On success handler.
-     *
-     * @var \Symfony\Component\Security\Http\Logout\LogoutSuccessHandlerInterface
-     */
-    private $successHandler;
-
-    /**
-     * Class constructor.
-     *
-     * @param \Symfony\Component\Security\Core\SecurityContextInterface             $securityContext
-     * @param \Symfony\Component\Security\Http\HttpUtils                            $httpUtils       An HttpUtilsInterface instance
-     * @param \Symfony\Component\Security\Http\Logout\LogoutSuccessHandlerInterface $successHandler  A LogoutSuccessHandlerInterface instance
-     */
-    public function __construct(SecurityContextInterface $securityContext, HttpUtils $httpUtils, LogoutSuccessHandlerInterface $successHandler)
-    {
-        $this->securityContext = $securityContext;
-        $this->httpUtils = $httpUtils;
-        $this->handlers = array();
-        $this->successHandler = $successHandler;
-    }
-
-    /**
-     * Adds a logout handler.
-     *
-     * @param \Symfony\Component\Security\Http\Logout\LogoutHandlerInterface $handler
-     * @codeCoverageIgnore
-     */
-    public function addHandler(LogoutHandlerInterface $handler)
-    {
-        $this->handlers[] = $handler;
-    }
-
-    /**
-     * Performs the logout if requested.
-     *
-     * @param \Symfony\Component\HttpKernel\Event\GetResponseEvent $event A GetResponseEvent instance
-     *
-     * @throws RuntimeException if the LogoutSuccessHandlerInterface instance does not return a response
-     */
-    public function handle(GetResponseEvent $event)
-    {
-        $request = $event->getRequest();
-
-        $response = $this->successHandler->onLogoutSuccess($request);
-        if (!$response instanceof Response) {
-            throw new \RuntimeException('Logout Success Handler did not return a Response.');
-        }
-
-        // handle multiple logout attempts gracefully
-        if (null !== $token = $this->securityContext->getToken()) {
-            foreach ($this->handlers as $handler) {
-                $handler->logout($request, $response, $token);
-            }
-        }
-
-        $this->securityContext->setToken(null);
-        $event->setResponse($response);
-    }
 
     /**
      * Whether this request is asking for logout.
+     * Always says yes.
      *
-     * @param \Symfony\Component\HttpFoundation\Request $request
+     * @param  Request $request
      *
-     * @return Boolean
-     * @codeCoverageIgnore
+     * @return true
      */
     protected function requiresLogout(Request $request)
     {

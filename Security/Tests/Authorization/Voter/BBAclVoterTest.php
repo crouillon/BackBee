@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,127 +17,254 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Tests\Authorization\Voter;
 
-use Symfony\Component\Security\Acl\Dbal\MutableAclProvider;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
-use Symfony\Component\Security\Acl\Domain\ObjectIdentityRetrievalStrategy;
-use Symfony\Component\Security\Acl\Domain\PermissionGrantingStrategy;
-use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
-use BackBee\Security\Acl\Domain\SecurityIdentityRetrievalStrategy;
-use BackBee\Security\Acl\Permission\MaskBuilder;
-use BackBee\Security\Acl\Permission\PermissionMap;
-use BackBee\Security\Authentication\TrustResolver;
+use Symfony\Component\Security\Acl\Model\AclProviderInterface;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityRetrievalStrategyInterface;
+use Symfony\Component\Security\Acl\Model\SecurityIdentityRetrievalStrategyInterface;
+use Symfony\Component\Security\Acl\Permission\PermissionMapInterface;
+use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
+
+use BackBee\Bundle\AbstractBundle;
+use BackBee\ClassContent\AbstractClassContent;
+use BackBee\ClassContent\ContentSet;
+use BackBee\NestedNode\Page;
+use BackBee\NestedNode\Section;
 use BackBee\Security\Authorization\Voter\BBAclVoter;
-use BackBee\Security\Group;
-use BackBee\Security\Role\RoleHierarchy;
-use BackBee\Security\Token\UsernamePasswordToken;
-use BackBee\Security\User;
-use BackBee\Tests\TestCase;
+use BackBee\Security\Token\BBUserToken;
+use BackBee\Tests\Traits\InvokeMethodTrait;
 
 /**
- * @category    BackBee
+ * Test suite for class BBAclVoter.
  *
- * @copyright   Lp digital system
- * @author      k.golovin
- *
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  * @coversDefaultClass \BackBee\Security\Authorization\Voter\BBAclVoter
  */
-class BBAclVoterTest extends TestCase
+class BBAclVoterTest extends \PHPUnit_Framework_TestCase
 {
-    protected $aclVoter;
 
-    protected $user;
-    protected $group;
-    protected $token;
+    use InvokeMethodTrait;
 
+    /**
+     * @var AclProviderInterface
+     */
+    private $provider;
+
+    /**
+     * @var PermissionMapInterface
+     */
+    private $permissionMap;
+
+    /**
+     * @var ObjectIdentityRetrievalStrategyInterface
+     */
+    private $oidStrategy;
+
+    /**
+     * @var SecurityIdentityRetrievalStrategyInterface
+     */
+    private $sidStrategy;
+
+    /**
+     * @var BBAclVoter
+     */
+    private $aclVoter;
+
+    /**
+     * Sets up the fixture;
+     */
     protected function setUp()
     {
-        $this->initAutoload();
-        $this->bbapp = $this->getBBApp();
-        $this->initDb($this->bbapp);
-        $this->initAcl();
-        $this->bbapp->start();
+        parent::setUp();
 
-        $aclprovider = new MutableAclProvider(
-            $this->getBBApp()->getEntityManager()->getConnection(),
-            new PermissionGrantingStrategy(),
+        $this->provider = $this->getMock(AclProviderInterface::class);
+        $this->permissionMap = $this->getMock(PermissionMapInterface::class);
+        $this->oidStrategy = $this->getMock(ObjectIdentityRetrievalStrategyInterface::class);
+        $this->sidStrategy = $this->getMock(SecurityIdentityRetrievalStrategyInterface::class);
+    }
+
+    /**
+     * @param  array $methods
+     *
+     * @return BBAclVoter
+     */
+    private function getVoterMock(array $methods)
+    {
+        return $this->getMock(
+            BBAclVoter::class,
+            $methods,
             [
-                'class_table_name'         => 'acl_classes',
-                'entry_table_name'         => 'acl_entries',
-                'oid_table_name'           => 'acl_object_identities',
-                'oid_ancestors_table_name' => 'acl_object_identity_ancestors',
-                'sid_table_name'           => 'acl_security_identities',
+                $this->provider,
+                $this->oidStrategy,
+                $this->sidStrategy,
+                $this->permissionMap,
+                null,
+                true
             ]
         );
+    }
 
-        $this->aclVoter = new \BackBee\Security\Authorization\Voter\BBAclVoter(
-            $aclprovider,
-            new ObjectIdentityRetrievalStrategy(),
-            new SecurityIdentityRetrievalStrategy(
-                new RoleHierarchy(array()),
-                new TrustResolver('BackBee\Security\Token\AnonymousToken', 'BackBee\Security\Token\RememberMeToken')
-            ),
-            new PermissionMap(),
-            $this->getBBApp()->getLogging(),
+    /**
+     * @covers ::vote()
+     */
+    public function testVote()
+    {
+        $voter = $this->getVoterMock([
+            'voteForPage',
+            'voteForNestedNode',
+            'voteForClassContent',
+            'voteForObject'
+        ]);
+
+        $this->assertEquals(
+            VoterInterface::ACCESS_ABSTAIN,
+            $voter->vote(new BBUserToken(), null, [])
+        );
+
+        $voter->expects($this->once())->method('voteForPage');
+        $voter->vote(new BBUserToken(), new Page(), []);
+
+        $voter->expects($this->once())->method('voteForNestedNode');
+        $voter->vote(new BBUserToken(), new Section(), []);
+
+        $voter->expects($this->once())->method('voteForClassContent');
+        $voter->vote(new BBUserToken(), new ContentSet(), []);
+
+        $voter->expects($this->once())->method('voteForObject');
+        $voter->vote(new BBUserToken(), new \stdClass(), []);
+
+        $bundle = $this->getMockForAbstractClass(AbstractBundle::class, [], '', false);
+        $this->assertEquals(BBAclVoter::ACCESS_ABSTAIN, $voter->vote(new BBUserToken(), $bundle, []));
+    }
+
+    /**
+     * @covers ::voteForObject()
+     */
+    public function testVoteForObject()
+    {
+        $voter = $this->getVoterMock(['vote', 'getClassScopeObjectIdentity']);
+
+        $voter->expects($this->any())
+            ->method('vote')
+            ->willReturn(BBAclVoter::ACCESS_ABSTAIN);
+
+        $voter->expects($this->once())
+            ->method('getClassScopeObjectIdentity')
+            ->willReturn(new ObjectIdentity('identifier', 'type'));
+
+        $this->invokeMethod($voter, 'voteForObject', [new BBUserToken(), new \stdClass(), []]);
+    }
+
+    /**
+     * @covers ::getClassScopeObjectIdentity()
+     */
+    public function testGetClassScopeObjectIdentity()
+    {
+        $voter = $this->getVoterMock([]);
+
+        $object = $this->getMockForAbstractClass(
+            ObjectIdentityInterface::class,
+            [],
+            '',
             false,
-            $this->getBBApp()
+            false,
+            true,
+            ['getType']
         );
 
-        // save user
-        $this->group = new Group();
-        $this->group->setName('groupName');
-        $this->getBBApp()->getEntityManager()->persist($this->group);
+        $object->expects($this->once())
+            ->method('getType')
+            ->willReturn('FakeClass');
 
-        // valid user
-        $this->user = new User();
-        $this->user->addGroup($this->group);
-        $this->user->setLogin('user123');
-        $this->user->setEmail('user123@provider.com');
-        $this->user->setPassword('password123');
-        $this->user->setActivated(true);
-        $this->getBBApp()->getEntityManager()->persist($this->user);
+        $identity = $this->invokeMethod($voter, 'getClassScopeObjectIdentity', [$object]);
 
-        $this->getBBApp()->getEntityManager()->flush();
-
-        $this->token = new UsernamePasswordToken($this->user, []);
+        $this->assertInstanceOf(ObjectIdentity::class, $identity);
+        $this->assertEquals('all', $identity->getIdentifier());
+        $this->assertEquals('FakeClass', $identity->getType());
     }
 
-    public function test_vote_objectScope()
+    /**
+     * @covers ::voteForPage()
+     */
+    public function testVoteForPage()
     {
-        $aclManager = $this->getBBApp()->getContainer()->get('security.acl_manager');
-        $aclManager->insertOrUpdateClassAce(
-            ObjectIdentity::fromDomainObject($this->user),
-            new UserSecurityIdentity($this->group->getObjectIdentifier(), get_class($this->group)),
-            MaskBuilder::MASK_EDIT
+        $voter = $this->getVoterMock(['voteForObject']);
+        $voter->expects($this->any())
+            ->method('voteForObject')
+            ->willReturn(BBAclVoter::ACCESS_DENIED);
+
+        $page = $this->getMock(Page::class, ['getParent']);
+        $page->expects($this->once())
+            ->method('getParent')
+            ->willReturn(new Page());
+
+        $this->invokeMethod($voter, 'voteForPage', [new BBUserToken(), $page, []]);
+    }
+
+    /**
+     * @covers ::voteForNestedNode()
+     */
+    public function testVoteForNestedNode()
+    {
+        $voter = $this->getVoterMock(['voteForObject']);
+        $voter->expects($this->any())
+            ->method('voteForObject')
+            ->willReturn(BBAclVoter::ACCESS_DENIED);
+
+        $section = $this->getMock(Section::class, ['getParent']);
+        $section->expects($this->once())
+            ->method('getParent')
+            ->willReturn(new Section());
+
+        $this->invokeMethod($voter, 'voteForNestedNode', [new BBUserToken(), $section, []]);
+    }
+
+    /**
+     * @covers ::voteForClassContent()
+     */
+    public function testVoteForContentWithoutCategory()
+    {
+        $voter = $this->getVoterMock([]);
+        $this->assertEquals(
+            BBAclVoter::ACCESS_GRANTED,
+            $this->invokeMethod($voter, 'voteForClassContent', [new BBUserToken(), new ContentSet(), []])
+        );
+    }
+
+    /**
+     * @covers ::voteForClassContent()
+     */
+    public function testVoteForContent()
+    {
+        $voter = $this->getVoterMock(['voteForObject']);
+        $voter->expects($this->any())
+            ->method('voteForObject')
+            ->willReturn(BBAclVoter::ACCESS_DENIED);
+
+        $content = $this->getMock(ContentSet::class, ['getProperty']);
+        $content->expects($this->any())->method('getProperty')->willReturn('category');
+        $this->assertEquals(
+            BBAclVoter::ACCESS_GRANTED,
+            $this->invokeMethod($voter, 'voteForClassContent', [new BBUserToken(), $content, []])
         );
 
-        $this->assertEquals(BBAclVoter::ACCESS_GRANTED, $this->aclVoter->vote($this->token, $this->user, ['EDIT']));
-        $this->assertEquals(BBAclVoter::ACCESS_DENIED, $this->aclVoter->vote($this->token, new ObjectIdentity('all', get_class($this->user)), ['EDIT']));
-        $this->assertEquals(BBAclVoter::ACCESS_DENIED, $this->aclVoter->vote($this->token, new ObjectIdentity(23545866754, get_class($this->user)), ['EDIT']));
-    }
-
-    public function test_vote_classScope()
-    {
-        $aclManager = $this->getBBApp()->getContainer()->get('security.acl_manager');
-        $aclManager->insertOrUpdateClassAce(
-            new ObjectIdentity('all', get_class($this->user)),
-            new UserSecurityIdentity($this->group->getObjectIdentifier(), get_class($this->group)),
-            MaskBuilder::MASK_EDIT
+        $mock = $this->getMockForAbstractClass(
+            AbstractClassContent::class,
+            [],
+            '',
+            false,
+            false,
+            true,
+            ['getProperty']
         );
-
-        $this->assertEquals(BBAclVoter::ACCESS_GRANTED, $this->aclVoter->vote($this->token, new ObjectIdentity('all', get_class($this->user)), ['EDIT']));
-        $this->assertEquals(BBAclVoter::ACCESS_GRANTED, $this->aclVoter->vote($this->token, $this->user, ['EDIT']));
-        $this->assertEquals(BBAclVoter::ACCESS_GRANTED, $this->aclVoter->vote($this->token, new ObjectIdentity($this->user->getId(), get_class($this->user)), ['EDIT']));
-        $this->assertEquals(BBAclVoter::ACCESS_GRANTED, $this->aclVoter->vote($this->token, new ObjectIdentity(23545866754, get_class($this->user)), ['EDIT']));
-    }
-
-    public function test_vote_nullObject()
-    {
-        $this->assertEquals(BBAclVoter::ACCESS_ABSTAIN, $this->aclVoter->vote($this->token, null, ['EDIT']));
+        $mock->expects($this->any())->method('getProperty')->willReturn('category');
+        $this->assertEquals(
+            BBAclVoter::ACCESS_ABSTAIN,
+            $this->invokeMethod($voter, 'voteForClassContent', [new BBUserToken(), $mock, []])
+        );
     }
 }

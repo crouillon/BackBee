@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security;
@@ -28,17 +26,32 @@ use Symfony\Component\Security\Http\Firewall\ExceptionListener;
 use Symfony\Component\Security\Http\FirewallMap as sfFirewallMap;
 
 /**
- * @category    BackBee
+ * FirewallMap allows configuration of different firewalls for specific parts
+ * of the website.
+ * Add the unshift feature to symfony FirewallMap.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class FirewallMap extends sfFirewallMap
 {
-    protected $map;
 
-    public function unshift(RequestMatcherInterface $requestMatcher = null, array $listeners = array(), ExceptionListener $exceptionListener = null)
-    {
-        array_unshift($this->map, array($requestMatcher, $listeners, $exceptionListener));
+    /**
+     * @var array
+     */
+    protected $map = [];
+
+    /**
+     * Prepends a request matcher to the firewall map.
+     *
+     * @param RequestMatcherInterface $requestMatcher
+     * @param array                   $listeners
+     * @param ExceptionListener       $exceptionListener
+     */
+    public function unshift(
+        RequestMatcherInterface $requestMatcher = null,
+        array $listeners = [],
+        ExceptionListener $exceptionListener = null
+    ) {
+        array_unshift($this->map, [$requestMatcher, $listeners, $exceptionListener]);
     }
 }

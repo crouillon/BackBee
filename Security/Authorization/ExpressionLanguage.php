@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Security\Authorization;
@@ -28,13 +26,20 @@ use Symfony\Component\ExpressionLanguage\ExpressionLanguage as BaseExpressionLan
 /**
  * Adds some function to the default Symfony Security ExpressionLanguage.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>, k.golovin, d.bensid <djoudi.bensid@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>, Kenneth Golovin, Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 class ExpressionLanguage extends BaseExpressionLanguage
 {
+
+    /**
+     * Registers BackBee secuity functions:
+     *  * is_anonymous
+     *  * is_authenticated
+     *  * is_fully_authenticated
+     *  * is_remember_me
+     *  * has_role
+     *  * is_granted
+     */
     protected function registerFunctions()
     {
         parent::registerFunctions();
