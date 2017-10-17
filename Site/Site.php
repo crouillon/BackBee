@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,18 +17,15 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Site;
 
-use BackBee\Installer\Annotation as BB;
-use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
-
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use JMS\Serializer\Annotation as Serializer;
+
+use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 
 /**
  * A BackBee website entity.
@@ -38,16 +35,12 @@ use JMS\Serializer\Annotation as Serializer;
  * * a collection of available layouts
  * * a collection of default metadata sets
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  *
  * @ORM\Entity(repositoryClass="BackBee\Site\Repository\SiteRepository")
  * @ORM\Table(name="site", indexes={
  *     @ORM\Index(name="IDX_SERVERNAME", columns={"server_name"}),
  *     @ORM\Index(name="IDX_LABEL", columns={"label"})})
- * @BB\Fixtures(qty=1)
  *
  * @Serializer\ExclusionPolicy("all")
  */
@@ -57,9 +50,9 @@ class Site extends AbstractObjectIdentifiable
      * The unique identifier of this website.
      *
      * @var string
+     *
      * @ORM\Id
      * @ORM\Column(type="string", length=32, name="uid")
-     * @BB\Fixture(type="md5")
      *
      * @Serializer\Expose
      * @Serializer\SerializedName("id")
@@ -71,8 +64,8 @@ class Site extends AbstractObjectIdentifiable
      * The label of this website.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="label", nullable=false)
-     * @BB\Fixture(type="domainWord")
      *
      * @Serializer\Expose
      * @Serializer\SerializedName("label")
@@ -85,8 +78,8 @@ class Site extends AbstractObjectIdentifiable
      * The creation datetime.
      *
      * @var \DateTime
+     *
      * @ORM\Column(type="datetime", name="created", nullable=false)
-     * @BB\Fixture(type="dateTime")
      */
     protected $_created;
 
@@ -94,8 +87,8 @@ class Site extends AbstractObjectIdentifiable
      * The last modification datetime.
      *
      * @var \DateTime
+     *
      * @ORM\Column(type="datetime", name="modified", nullable=false)
-     * @BB\Fixture(type="dateTime")
      */
     protected $_modified;
 
@@ -103,8 +96,8 @@ class Site extends AbstractObjectIdentifiable
      * The optional server name.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="server_name", nullable=true)
-     * @BB\Fixture(type="domainWord")
      *
      * @Serializer\Expose
      * @Serializer\SerializedName("server_name")
@@ -122,6 +115,8 @@ class Site extends AbstractObjectIdentifiable
 
     /**
      * The collection of layouts available for this site.
+     *
+     * @var ArrayCollection
      *
      * @ORM\OneToMany(targetEntity="BackBee\Site\Layout", mappedBy="_site", fetch="EXTRA_LAZY")
      *
@@ -143,21 +138,15 @@ class Site extends AbstractObjectIdentifiable
         $this->_uid = (is_null($uid)) ? md5(uniqid('', true)) : $uid;
         $this->_created = new \DateTime();
         $this->_modified = new \DateTime();
-
         $this->_layouts = new ArrayCollection();
 
-        if (
-                true === is_array($options) &&
-                true === array_key_exists('label', $options)
-        ) {
+        if (is_array($options) && isset($options['label'])) {
             $this->setLabel($options['label']);
         }
     }
 
     /**
      * Returns the unique identifier.
-     *
-     * @codeCoverageIgnore
      *
      * @return string
      */
@@ -169,8 +158,6 @@ class Site extends AbstractObjectIdentifiable
     /**
      * Returns the label.
      *
-     * @codeCoverageIgnore
-     *
      * @return string
      */
     public function getLabel()
@@ -181,9 +168,7 @@ class Site extends AbstractObjectIdentifiable
     /**
      * Returns the associated server name.
      *
-     * @codeCoverageIgnore
-     *
-     * @return string|NULL
+     * @return string|null
      */
     public function getServerName()
     {
@@ -192,8 +177,6 @@ class Site extends AbstractObjectIdentifiable
 
     /**
      * Return the default defined extension.
-     *
-     * @codeCoverageIgnore
      *
      * @return string
      */
@@ -205,9 +188,7 @@ class Site extends AbstractObjectIdentifiable
     /**
      * Returns the collection of layouts available for this website.
      *
-     * @codeCoverageIgnore
-     *
-     * @return \Doctrine\Common\Collections\ArrayCollection
+     * @return ArrayCollection
      */
     public function getLayouts()
     {
@@ -215,19 +196,25 @@ class Site extends AbstractObjectIdentifiable
     }
 
     /**
-     * @param \BackBee\Site\Layout $layout
+     * Adds a new layout to the site collection.
+     *
+     * @param  Layout $layout
+     *
+     * @return Site
      */
     public function addLayout(Layout $layout)
     {
         $this->_layouts[] = $layout;
+
+        return $this;
     }
 
     /**
      * Sets the label of the website.
      *
-     * @param string $label
+     * @param  string $label
      *
-     * @return \BackBee\Site\Site
+     * @return Site
      */
     public function setLabel($label)
     {
@@ -239,9 +226,9 @@ class Site extends AbstractObjectIdentifiable
     /**
      * Sets the server name.
      *
-     * @param string $serverName
+     * @param  string $serverName
      *
-     * @return \BackBee\Site\Site
+     * @return Site
      */
     public function setServerName($serverName)
     {

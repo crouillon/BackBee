@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,27 +17,44 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Site\Repository;
+
+use Doctrine\ORM\EntityRepository;
 
 use BackBee\BBApplication;
 use BackBee\Site\Layout;
 use BackBee\Utils\File\File;
 
-use Doctrine\ORM\EntityRepository;
-use Exception;
-
 /**
- * @category    BackBee
+ * Base repository for Layout entities.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class LayoutRepository extends EntityRepository
 {
+
+    /**
+     * Returns layout models.
+     * ie not strictly attached to a Site.
+     *
+     * @return Layout[]
+     */
+    public function getModels()
+    {
+        try {
+            $q = $this->createQueryBuilder('l')
+                    ->where('l._site IS NULL')
+                    ->orderBy('l._label', 'ASC')
+                    ->getQuery();
+
+            return $q->getResult();
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
     /**
      * Draw a filled rect on image.
      *
@@ -48,10 +65,20 @@ class LayoutRepository extends EntityRepository
      * @param int       $background The background color
      * @param boolean   $nowpadding If true don't insert a right padding
      * @param boolean   $nohpadding If true don't insert a bottom padding
+     *
+     * @deprecated since version 1.4, will be removed in 1.5
+     * @codeCoverageIgnore
      */
     private function drawRect(&$image, $clip, $background, $nowpadding = true, $nohpadding = true)
     {
-        imagefilledrectangle($image, $clip[0], $clip[1], $clip[0] + $clip[2] - (!$nowpadding * 1), $clip[1] + $clip[3] - (!$nohpadding * 1), $background);
+        imagefilledrectangle(
+            $image,
+            $clip[0],
+            $clip[1],
+            $clip[0] + $clip[2] - (!$nowpadding * 1),
+            $clip[1] + $clip[3] - (!$nohpadding * 1),
+            $background
+        );
     }
 
     /**
@@ -67,6 +94,9 @@ class LayoutRepository extends EntityRepository
      * @param boolean   $lastChild  True if the current node is the last child of its parent node
      *
      * @return int The new X axis position;
+     *
+     * @deprecated since version 1.4, will be removed in 1.5
+     * @codeCoverageIgnore
      */
     private function drawThumbnailZone(&$thumbnail, $node, $clip, $background, $gridcolumn, $lastChild = false)
     {
@@ -84,7 +114,13 @@ class LayoutRepository extends EntityRepository
         }
 
         if (!$node->hasChildNodes()) {
-            $this->drawRect($thumbnail, array($x, $y, $width, $height), $background, ($width == $clip[2] || strpos($node->getAttribute('class'), 'hChild')), $lastChild);
+            $this->drawRect(
+                $thumbnail,
+                array($x, $y, $width, $height),
+                $background,
+                ($width == $clip[2] || strpos($node->getAttribute('class'), 'hChild')),
+                $lastChild
+            );
 
             return $width + 2;
         }
@@ -100,7 +136,14 @@ class LayoutRepository extends EntityRepository
                 continue;
             }
 
-            $x += $this->drawThumbnailZone($thumbnail, $child, array($x, $y, $clip[2], $height), $background, $gridcolumn, $node->isSameNode($node->parentNode->lastChild));
+            $x += $this->drawThumbnailZone(
+                $thumbnail,
+                $child,
+                array($x, $y, $clip[2], $height),
+                $background,
+                $gridcolumn,
+                $node->isSameNode($node->parentNode->lastChild)
+            );
         }
 
         return $x + $width - 2;
@@ -115,6 +158,9 @@ class LayoutRepository extends EntityRepository
      * @param BBApplication $app    The current instance of BBApplication
      *
      * @return mixed FALSE if something wrong, the ressource path of the thumbnail elsewhere
+     *
+     * @deprecated since version 1.4, will be removed in 1.5
+     * @codeCoverageIgnore
      */
     public function generateThumbnail(Layout $layout, BBApplication $app)
     {
@@ -166,13 +212,26 @@ class LayoutRepository extends EntityRepository
             $thumbnailfile = $thumbnaildir.'/'.$layout->getUid().'.'.strtolower($thumbnailconfig['format']);
 
             // Is a background color existing ?
-            if (!isset($thumbnailconfig['background']) || !is_array($thumbnailconfig['background']) || 3 != count($thumbnailconfig['background'])) {
+            if (
+                !isset($thumbnailconfig['background'])
+                || !is_array($thumbnailconfig['background'])
+                || 3 != count($thumbnailconfig['background'])
+            ) {
                 return false;
             }
-            $background = imagecolorallocate($thumbnail, $thumbnailconfig['background'][0], $thumbnailconfig['background'][1], $thumbnailconfig['background'][2]);
+            $background = imagecolorallocate(
+                $thumbnail,
+                $thumbnailconfig['background'][0],
+                $thumbnailconfig['background'][1],
+                $thumbnailconfig['background'][2]
+            );
 
             // Is a clipping zone existing ?
-            if (!isset($thumbnailconfig['clip']) || !is_array($thumbnailconfig['clip']) || 4 != count($thumbnailconfig['clip'])) {
+            if (
+                !isset($thumbnailconfig['clip'])
+                || !is_array($thumbnailconfig['clip'])
+                || 4 != count($thumbnailconfig['clip'])
+            ) {
                 return false;
             }
 
@@ -187,7 +246,13 @@ class LayoutRepository extends EntityRepository
             if (!$domlayout->hasChildNodes() || !$domlayout->firstChild->hasChildNodes()) {
                 $this->drawRect($thumbnail, $thumbnailconfig['clip'], $background);
             } else {
-                $this->drawThumbnailZone($thumbnail, $domlayout->firstChild, $thumbnailconfig['clip'], $background, $gridcolumn);
+                $this->drawThumbnailZone(
+                    $thumbnail,
+                    $domlayout->firstChild,
+                    $thumbnailconfig['clip'],
+                    $background,
+                    $gridcolumn
+                );
             }
 
             imagesavealpha($thumbnail, true);
@@ -207,6 +272,10 @@ class LayoutRepository extends EntityRepository
         return $layout->getPicPath();
     }
 
+    /**
+     * @deprecated since version 1.4, will be removed in 1.5
+     * @codeCoverageIgnore
+     */
     public function removeThumbnail(Layout $layout, BBApplication $app)
     {
         $thumbnailfile = $layout->getPicPath();
@@ -223,28 +292,5 @@ class LayoutRepository extends EntityRepository
         }
 
         return true;
-    }
-
-    /**
-     * Returns layout models.
-     *
-     * @access public
-     *
-     * @return array Array of Layout
-     */
-    public function getModels()
-    {
-        try {
-            $q = $this->createQueryBuilder('l')
-                    ->where('l._site IS NULL')
-                    ->orderBy('l._label', 'ASC')
-                    ->getQuery();
-
-            return $q->getResult();
-        } catch (\Doctrine\ORM\NoResultException $e) {
-            return;
-        } catch (Exception $e) {
-            return;
-        }
     }
 }

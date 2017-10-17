@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,29 +17,35 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Site\Repository;
 
 use Doctrine\ORM\EntityRepository;
 
+use BackBee\Site\Site;
+
 /**
- * @category    BackBee
+ * Base repository for Site entities.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class SiteRepository extends EntityRepository
 {
+
+    /**
+     * Searches for a Site by its name.
+     *
+     * @param  string $serverName A server name.
+     *
+     * @return Site|null
+     */
     public function findByServerName($serverName)
     {
-        return $this->createQueryBuilder('s')
+        return $this
+            ->createQueryBuilder('s')
             ->andWhere('s._server_name = :server_name')
-            ->setParameters([
-                'server_name' => $serverName
-            ])
+            ->setParameter('server_name', $serverName)
             ->getQuery()
             ->getOneOrNullResult()
         ;
@@ -48,26 +54,19 @@ class SiteRepository extends EntityRepository
     /**
      * Returns site entity according to custom server_name if it exists in sites_config.
      *
-     * @param string $server_name
-     * @param array  $sites_config
+     * @param  string $serverName
+     * @param  array  $serverConfig
      *
-     * @return null|BackBee\Site\Site
+     * @return Site|null
      */
-    public function findByCustomServerName($server_name, array $sites_config)
+    public function findByCustomServerName($serverName, array $serverConfig)
     {
-        $site_label = null;
-        foreach ($sites_config as $key => $data) {
-            if ($server_name === $data['domain']) {
-                $site_label = $key;
+        $site = null;
+        foreach ($serverConfig as $key => $data) {
+            if ($serverName === $data['domain']) {
+                $site = $this->findOneBy(['_label' => $key]);
                 break;
             }
-        }
-
-        $site = null;
-        if (null !== $site_label) {
-            $site = $this->findOneBy(array(
-                '_label' => $site_label,
-            ));
         }
 
         return $site;

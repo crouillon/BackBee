@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,19 +17,19 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Site;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation as Serializer;
+
+use BackBee\ClassContent\AbstractContent;
 use BackBee\Exception\InvalidArgumentException;
 use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 use BackBee\Utils\Numeric;
-use Doctrine\Common\Collections\ArrayCollection;
-use JMS\Serializer\Annotation as Serializer;
-
-use Doctrine\ORM\Mapping as ORM;
+use BackBee\Workflow\State;
 
 /**
  * A website layout.
@@ -44,19 +44,13 @@ use Doctrine\ORM\Mapping as ORM;
  *   templateLayouts: [      // Array of final droppable zones
  *     zone1: {
  *       id:                 // unique identifier of the zone
- *       defaultContainer:   // default AbstractClassContent drop at creation
- *       target:             // array of accepted AbstractClassContent dropable
- *       gridClassPrefix:    // prefix of responsive CSS classes
- *       gridSize:           // size of this zone for responsive CSS
+ *       ...
  *     },
  *     ...
  *   ]
  * }
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  * @ORM\Entity(repositoryClass="BackBee\Site\Repository\LayoutRepository")
  * @ORM\Table(name="layout",indexes={@ORM\Index(name="IDX_SITE", columns={"site_uid"})})
  * @ORM\HasLifecycleCallbacks
@@ -69,6 +63,7 @@ class Layout extends AbstractObjectIdentifiable
      * The unique identifier.
      *
      * @var string
+     *
      * @ORM\Id
      * @ORM\Column(type="string", length=32, name="uid")
      *
@@ -81,6 +76,7 @@ class Layout extends AbstractObjectIdentifiable
      * The label of this layout.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="label", nullable=false)
      *
      * @Serializer\Expose
@@ -92,6 +88,7 @@ class Layout extends AbstractObjectIdentifiable
      * The file name of the layout.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="path", nullable=false)
      *
      * @Serializer\Expose
@@ -103,6 +100,7 @@ class Layout extends AbstractObjectIdentifiable
      * The seralized data.
      *
      * @var string
+     *
      * @ORM\Column(type="text", name="data", nullable=false)
      */
     protected $_data;
@@ -111,6 +109,7 @@ class Layout extends AbstractObjectIdentifiable
      * The creation datetime.
      *
      * @var \DateTime
+     *
      * @ORM\Column(type="datetime", name="created", nullable=false)
      *
      * @Serializer\Expose
@@ -122,6 +121,7 @@ class Layout extends AbstractObjectIdentifiable
      * The last modification datetime.
      *
      * @var \DateTime
+     *
      * @ORM\Column(type="datetime", name="modified", nullable=false)
      *
      * @Serializer\Expose
@@ -133,6 +133,7 @@ class Layout extends AbstractObjectIdentifiable
      * The optional path to the layout icon.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="picpath", nullable=true)
      *
      * @Serializer\Expose
@@ -143,7 +144,8 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Optional owner site.
      *
-     * @var \BackBee\Site\Site
+     * @var Site
+     *
      * @ORM\ManyToOne(targetEntity="BackBee\Site\Site", inversedBy="_layouts", fetch="EXTRA_LAZY")
      * @ORM\JoinColumn(name="site_uid", referencedColumnName="uid")
      */
@@ -151,7 +153,8 @@ class Layout extends AbstractObjectIdentifiable
 
     /**
      * Store pages using this layout.
-     * var \Doctrine\Common\Collections\ArrayCollection.
+     *
+     * @var ArrayCollection
      *
      * @ORM\OneToMany(targetEntity="BackBee\NestedNode\Page", mappedBy="_layout", fetch="EXTRA_LAZY")
      */
@@ -160,22 +163,23 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Layout states.
      *
-     * var \Doctrine\Common\Collections\ArrayCollection
+     * @var ArrayCollection
      *
      * @ORM\OneToMany(targetEntity="BackBee\Workflow\State", fetch="EXTRA_LAZY", mappedBy="_layout")
      */
     protected $_states;
 
     /**
-     * The content's parameters.
+     * The layout's parameters.
      *
      * @var array
+     *
      * @ORM\Column(type="array", name="parameters", nullable = true)
      *
      * @Serializer\Expose
      * @Serializer\Type("array")
      */
-    protected $_parameters = array();
+    protected $_parameters = [];
 
     /**
      * The DOM document corresponding to the data.
@@ -211,25 +215,21 @@ class Layout extends AbstractObjectIdentifiable
         $this->_uid = (is_null($uid)) ? md5(uniqid('', true)) : $uid;
         $this->_created = new \DateTime();
         $this->_modified = new \DateTime();
-
         $this->_pages = new ArrayCollection();
+        $this->_states = new ArrayCollection();
 
-        if (true === is_array($options)) {
-            if (true === array_key_exists('label', $options)) {
+        if (is_array($options)) {
+            if (isset($options['label'])) {
                 $this->setLabel($options['label']);
             }
-            if (true === array_key_exists('path', $options)) {
+            if (isset($options['path'])) {
                 $this->setPath($options['path']);
             }
         }
-
-        $this->_states = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     /**
      * Returns the unique identifier.
-     *
-     * @codeCoverageIgnore
      *
      * @return string
      */
@@ -241,8 +241,6 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Returns the label.
      *
-     * @codeCoverageIgnore
-     *
      * @return string
      */
     public function getLabel()
@@ -252,8 +250,6 @@ class Layout extends AbstractObjectIdentifiable
 
     /**
      * Returns the file name of the layout.
-     *
-     * @codeCoverageIgnore
      *
      * @return string
      */
@@ -265,8 +261,6 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Returns the serialized data of the layout.
      *
-     * @codeCoverageIgnore
-     *
      * @return string
      */
     public function getData()
@@ -277,9 +271,7 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Returns the unserialzed object for the layout.
      *
-     * @codeCoverageIgnore
-     *
-     * @return \StdClass
+     * @return \stdClass
      */
     public function getDataObject()
     {
@@ -288,8 +280,6 @@ class Layout extends AbstractObjectIdentifiable
 
     /**
      * Returns the path to the layout icon if defined, NULL otherwise.
-     *
-     * @codeCoverageIgnore
      *
      * @return string|NULL
      */
@@ -301,9 +291,7 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Returns the owner site if defined, NULL otherwise.
      *
-     * @codeCoverageIgnore
-     *
-     * @return \BackBee\Site\Site|NULL
+     * @return Site|null
      */
     public function getSite()
     {
@@ -313,36 +301,27 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Return the final zones (ie with contentset) for the layout.
      *
-     * @return array|NULL Returns an array of zones or NULL is the layout datas
+     * @return array|null Returns an array of zones or NULL is the layout datas
      *                    are invalid.
      */
     public function getZones()
     {
-        if (null === $this->_zones) {
-            if (true === $this->isValid()) {
-                $this->_zones = array();
-                $zonesWithChild = array();
+        if (null === $this->_zones && $this->isValid()) {
+            $this->_zones = [];
 
-                $zones = $this->getDataObject()->templateLayouts;
-                foreach ($zones as $zone) {
-                    $zonesWithChild[] = substr($zone->target, 1);
+            $zones = $this->getDataObject()->templateLayouts;
+            foreach ($zones as $zone) {
+                if (!property_exists($zone, 'mainZone')) {
+                    $zone->mainZone = false;
                 }
 
-                foreach ($zones as $zone) {
-                    if (false === in_array($zone->id, $zonesWithChild)) {
-                        if (false === property_exists($zone, 'mainZone')) {
-                            $zone->mainZone = false;
-                        }
-
-                        if (false === property_exists($zone, 'defaultClassContent')) {
-                            $zone->defaultClassContent = null;
-                        }
-
-                        $zone->options = $this->getZoneOptions($zone);
-
-                        array_push($this->_zones, $zone);
-                    }
+                if (!property_exists($zone, 'defaultClassContent')) {
+                    $zone->defaultClassContent = null;
                 }
+
+                $zone->options = $this->getZoneOptions($zone);
+
+                array_push($this->_zones, $zone);
             }
         }
 
@@ -352,55 +331,27 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Returns defined parameters.
      *
-     * @param string $var The parameter to be return, if NULL, all parameters are returned
+     * @param  string $var The parameter to be return, if NULL, all parameters are returned
      *
      * @return mixed the parameter value or NULL if unfound
      */
     public function getParam($var = null)
     {
-        $param = $this->_parameters;
-        if (null !== $var) {
-            if (isset($this->_parameters[$var])) {
-                $param = $this->_parameters[$var];
-            } else {
-                $param = null;
-            }
+        if (null === $var) {
+            return $this->_parameters;
         }
 
-        return $param;
-    }
-
-    /**
-     * Goes all over the $param and keep looping until $pieces is empty to return
-     * the values user is looking for.
-     *
-     * @param mixed $param
-     * @param array $pieces
-     *
-     * @return mixed
-     */
-    private function getRecursivelyParam($param, array $pieces)
-    {
-        if (0 === count($pieces)) {
-            return $param;
-        }
-
-        $key = array_shift($pieces);
-        if (false === isset($param[$key])) {
-            return;
-        }
-
-        return $this->getRecursivelyParam($param[$key], $pieces);
+        return isset($this->_parameters[$var]) ? $this->_parameters[$var] : null;
     }
 
     /**
      * Returns the zone at the index $index.
      *
-     * @param int $index
+     * @param  int $index
      *
-     * @return \StdClass|null
+     * @return \stdClass|null
      *
-     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException if index is not an integer.
      */
     public function getZone($index)
     {
@@ -414,7 +365,7 @@ class Layout extends AbstractObjectIdentifiable
             }
         }
 
-        return;
+        return null;
     }
 
     /**
@@ -422,6 +373,9 @@ class Layout extends AbstractObjectIdentifiable
      *
      * @return \DOMDocument|NULL Returns a DOM document or NULL is the layout datas
      *                           are invalid.
+     *
+     * @deprecated since version 1.4, will be removed in 1.5
+     * @codeCoverageIgnore
      */
     public function getDomDocument()
     {
@@ -482,26 +436,12 @@ class Layout extends AbstractObjectIdentifiable
     public function isValid()
     {
         if (null === $this->_isValid) {
-            $this->_isValid = false;
-
-            if (null !== $data_object = $this->getDataObject()) {
-                if (true === property_exists($data_object, 'templateLayouts')
-                        && true === is_array($data_object->templateLayouts)
-                        && 0 < count($data_object->templateLayouts)) {
-                    $this->_isValid = true;
-
-                    foreach ($data_object->templateLayouts as $zone) {
-                        if (false === property_exists($zone, 'id')
-                                || false === property_exists($zone, 'defaultContainer')
-                                || false === property_exists($zone, 'target')
-                                || false === property_exists($zone, 'gridClassPrefix')
-                                || false === property_exists($zone, 'gridSize')) {
-                            $this->_isValid = false;
-                            break;
-                        }
-                    }
-                }
-            }
+            $this->_isValid = (
+                (null !== $data_object = $this->getDataObject())
+                && property_exists($data_object, 'templateLayouts')
+                && is_array($data_object->templateLayouts)
+                && 0 < count($data_object->templateLayouts)
+            );
         }
 
         return $this->_isValid;
@@ -510,11 +450,9 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Sets the label.
      *
-     * @codeCoverageIgnore
+     * @param  string $label
      *
-     * @param string $label
-     *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
     public function setLabel($label)
     {
@@ -526,11 +464,9 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Set the filename of the layout.
      *
-     * @codeCoverageIgnore
+     * @param  string $path
      *
-     * @param string $path
-     *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
     public function setPath($path)
     {
@@ -543,9 +479,9 @@ class Layout extends AbstractObjectIdentifiable
      * Sets the data associated to the layout.
      * No validation checks are performed at this step.
      *
-     * @param mixed $data
+     * @param  mixed $data
      *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
     public function setData($data)
     {
@@ -567,9 +503,9 @@ class Layout extends AbstractObjectIdentifiable
      * Sets the data associated to the layout.
      * None validity checks are performed at this step.
      *
-     * @param mixed $data
+     * @param  mixed $data
      *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
     public function setDataObject($data)
     {
@@ -583,11 +519,9 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Sets the path to the layout icon.
      *
-     * @codeCoverageIgnore
+     * @param  string $picpath
      *
-     * @param string $picpath
-     *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
     public function setPicPath($picpath)
     {
@@ -599,11 +533,9 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Associates this layout to a website.
      *
-     * @codeCoverageIgnore
+     * @param  Site $site
      *
-     * @param \BackBee\Site\Site $site
-     *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
     public function setSite(Site $site)
     {
@@ -615,10 +547,10 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Sets one or all parameters.
      *
-     * @param string $var    the parameter name to set, if NULL all the parameters array wil be set
-     * @param mixed  $values the parameter value or all the parameters if $var is NULL
+     * @param  string $var    the parameter name to set, if NULL all the parameters array wil be set
+     * @param  mixed  $values the parameter value or all the parameters if $var is NULL
      *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
     public function setParam($var = null, $values = null)
     {
@@ -634,35 +566,30 @@ class Layout extends AbstractObjectIdentifiable
     /**
      * Returns a contentset options according to the layout zone.
      *
-     * @param \StdClass $zone
+     * @param  \stdClass $zone
      *
      * @return array
      */
     private function getZoneOptions(\stdClass $zone)
     {
-        $options = array(
-            'parameters' => array(
-                'class' => array(
-                    'type' => 'scalar',
-                    'options' => array('default' => 'row'),
-                ),
-            ),
-        );
+        $options = [];
 
-        if (true === property_exists($zone, 'accept')
-                && true === is_array($zone->accept)
-                && 0 < count($zone->accept)
-                && $zone->accept[0] != '') {
+        if (
+            property_exists($zone, 'accept')
+            && is_array($zone->accept)
+            && 0 < count($zone->accept)
+            && $zone->accept[0] != ''
+        ) {
             $options['accept'] = $zone->accept;
 
-            $func = function (&$item, $key) {
-                        $item = ('' == $item) ? null : 'BackBee\ClassContent\\'.$item;
-                    };
+            $func = function (&$item) {
+                $item = ('' == $item) ? null : AbstractContent::CLASSCONTENT_BASE_NAMESPACE . $item;
+            };
 
             array_walk($options['accept'], $func);
         }
 
-        if (true === property_exists($zone, 'maxentry') && 0 < $zone->maxentry) {
+        if (property_exists($zone, 'maxentry') && 0 < $zone->maxentry) {
             $options['maxentry'] = $zone->maxentry;
         }
 
@@ -670,24 +597,36 @@ class Layout extends AbstractObjectIdentifiable
     }
 
     /**
+     * Returns the Site uid.
+     *
+     * @return string
+     *
      * @Serializer\VirtualProperty
      * @Serializer\SerializedName("site_uid")
      */
     public function getSiteUid()
     {
-        return null !== $this->_site ? $this->_site->getUid() : null;
+        return null !== $this->getSite() ? $this->getSite()->getUid() : null;
     }
 
     /**
+     * Returns the Site label.
+     *
+     * @return string
+     *
      * @Serializer\VirtualProperty
      * @Serializer\SerializedName("site_label")
      */
     public function getSiteLabel()
     {
-        return null !== $this->_site ? $this->_site->getLabel() : null;
+        return null !== $this->getSite() ? $this->getSite()->getLabel() : null;
     }
 
     /**
+     * Returns the layout data.
+     *
+     * @return array
+     *
      * @Serializer\VirtualProperty
      * @Serializer\SerializedName("data")
      */
@@ -697,31 +636,33 @@ class Layout extends AbstractObjectIdentifiable
     }
 
     /**
-     * Add state.
+     * Add a workflow state.
      *
-     * @param \BackBee\Workflow\State $state
+     * @param  State $state
      *
-     * @return \BackBee\Site\Layout
+     * @return Layout
      */
-    public function addState(\BackBee\Workflow\State $state)
+    public function addState(State $state)
     {
         $this->_states[] = $state;
 
         return $this;
     }
+
     /**
-     * Remove state.
+     * Remove a workfow state.
      *
-     * @param \BackBee\Workflow\State $state
+     * @param State $state
      */
-    public function removeState(\BackBee\Workflow\State $state)
+    public function removeState(State $state)
     {
         $this->_states->removeElement($state);
     }
+
     /**
-     * Get states.
+     * Get workflow states.
      *
-     * @return \Doctrine\Common\Collections\Collection
+     * @return ArrayCollection
      */
     public function getStates()
     {
@@ -729,34 +670,39 @@ class Layout extends AbstractObjectIdentifiable
     }
 
     /**
+     * Returns a serialization of the worflow states.
+     *
+     * @return array
+     *
      * @Serializer\VirtualProperty
      * @Serializer\SerializedName("workflow_states")
      */
-    public function getWokflowStates()
+    public function getWorkflowStates()
     {
-        $workflowStates = array(
-            'online'  => array(),
-            'offline' => array(),
-        );
+        $workflowStates = [
+            ['0' => ['label' => 'Hors ligne', 'code' => '0']],
+            'online'  => [],
+            'offline' => [],
+        ];
 
         foreach ($this->getStates() as $state) {
             if (0 < $code = $state->getCode()) {
-                $workflowStates['online'][$code] = array(
+                $workflowStates['online'][$code] = [
                     'label' => $state->getLabel(),
                     'code'  => '1_'.$code,
-                );
+                ];
             } else {
-                $workflowStates['offline'][$code] = array(
+                $workflowStates['offline'][$code] = [
                     'label' => $state->getLabel(),
                     'code'  => '0_'.$code,
-                );
+                ];
             }
         }
 
         $workflowStates = array_merge(
-            array('0' => array('label' => 'Hors ligne', 'code' => '0')),
+            ['0' => ['label' => 'Hors ligne', 'code' => '0']],
             $workflowStates['offline'],
-            array('1' => array('label' => 'En ligne', 'code' => '1')),
+            ['1' => ['label' => 'En ligne', 'code' => '1']],
             $workflowStates['online']
         );
 
@@ -764,6 +710,22 @@ class Layout extends AbstractObjectIdentifiable
     }
 
     /**
+     * Returns a serialization of the worflow states.
+     *
+     * @return array
+     * @deprecated since version 1.4
+     * @codeCoverageIgnore
+     */
+    public function getWokflowStates()
+    {
+        return $this->getWorkflowStates();
+    }
+
+    /**
+     * Is the layout final? (ie can't accept sub pages)
+     *
+     * @return bool
+     *
      * @Serializer\VirtualProperty
      * @Serializer\SerializedName("is_final")
      */
