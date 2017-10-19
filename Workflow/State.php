@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,18 +17,16 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Workflow;
 
+use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation as Serializer;
+
 use BackBee\Exception\InvalidArgumentException;
 use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 use BackBee\Site\Layout;
-
-use Doctrine\ORM\Mapping as ORM;
-use JMS\Serializer\Annotation as Serializer;
 
 /**
  * A workflow state for NestedNode\Page.
@@ -38,10 +36,8 @@ use JMS\Serializer\Annotation as Serializer;
  *
  * A state can be associated to a specific Site\Layout and/or Listener
  *
- * @category    BackBee
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
  * @ORM\Entity(repositoryClass="BackBee\Workflow\Repository\StateRepository")
  * @ORM\Table(name="workflow")
  *
@@ -49,10 +45,12 @@ use JMS\Serializer\Annotation as Serializer;
  */
 class State extends AbstractObjectIdentifiable implements \JsonSerializable
 {
+
     /**
      * The unique identifier of the state.
      *
      * @var string
+     *
      * @ORM\Id
      * @ORM\Column(type="string", length=32, name="uid")
      *
@@ -66,6 +64,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * The code of the workflow state.
      *
      * @var int
+     *
      * @ORM\Column(type="integer", name="code")
      *
      * @Serializer\Expose
@@ -77,6 +76,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * The label of the workflow state.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="label")
      *
      * @Serializer\Expose
@@ -87,7 +87,8 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     /**
      * The optional layout to be applied for state.
      *
-     * @var \BackBee\Site\Layout
+     * @var Layout
+     *
      * @ORM\ManyToOne(targetEntity="BackBee\Site\Layout", inversedBy="_states", fetch="EXTRA_LAZY")
      * @ORM\JoinColumn(name="layout", referencedColumnName="uid")
      */
@@ -97,6 +98,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * The optional listener classname.
      *
      * @var string
+     *
      * @ORM\Column(type="string", name="listener", nullable=true)
      */
     protected $_listener;
@@ -107,7 +109,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     protected $listenerInstance;
 
     /**
-     * State's constructor.
+     * State constructor.
      *
      * @param string $uid
      * @param array  $options
@@ -129,7 +131,6 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * Returns the unique identifier.
      *
      * @return string
-     * @codeCoverageIgnore
      */
     public function getUid()
     {
@@ -140,7 +141,6 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * Returns the code of the state.
      *
      * @return int
-     * @codeCoverageIgnore
      */
     public function getCode()
     {
@@ -152,9 +152,9 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      *
      * @param int $code
      *
-     * @return \BackBee\Workflow\State
+     * @return State
      *
-     * @throws \BackBee\Exception\InvalidArgumentException
+     * @throws InvalidArgumentException if code is not an integer.
      */
     public function setCode($code)
     {
@@ -171,7 +171,6 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * Returns the label.
      *
      * @return string
-     * @codeCoverageIgnore
      */
     public function getLabel()
     {
@@ -181,8 +180,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     /**
      * Returns the layout if defined, NULL otherwise.
      *
-     * @return \BackBee\Site\Layout
-     * @codeCoverageIgnore
+     * @return Layout
      */
     public function getLayout()
     {
@@ -193,7 +191,6 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * Returns the listener classname if defined, NULL otherwise.
      *
      * @return string
-     * @codeCoverageIgnore
      */
     public function getListener()
     {
@@ -204,7 +201,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
      * Creates an instance of the listener based on the provided namespace and return it or null
      * if listener namespace is not setted.
      *
-     * @return null|ListenerInterface
+     * @return ListenerInterface|null
      */
     public function getListenerInstance()
     {
@@ -218,10 +215,9 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     /**
      * Sets the label.
      *
-     * @param type $label
+     * @param string $label
      *
-     * @return \BackBee\Workflow\State
-     * @codeCoverageIgnore
+     * @return State
      */
     public function setLabel($label)
     {
@@ -233,9 +229,9 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     /**
      * Sets the layout associated to this state.
      *
-     * @param \BackBee\Site\Layout $layout
+     * @param  Layout $layout
      *
-     * @return \BackBee\Workflow\State
+     * @return State
      */
     public function setLayout(Layout $layout = null)
     {
@@ -247,8 +243,10 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     /**
      * Sets the optional listener classname.
      *
-     * @param mixed $listener The listener; it must implement BackBee\Workflow\ListenerInterface
-     * @return self
+     * @param  mixed $listener The listener; it must implement ListenerInterface
+     *
+     * @return State
+     *
      * @throws \InvalidArgumentException if provided listener is not type of null, object or string
      * @throws \LogicException if provided listener does not implement BackBee\Workflow\ListenerInterface
      */
@@ -261,10 +259,10 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
             ));
         }
 
-        if (null !== $listener && !is_subclass_of($listener, 'BackBee\Workflow\ListenerInterface')) {
+        if (null !== $listener && !is_subclass_of($listener, ListenerInterface::class)) {
             throw new \LogicException(sprintf(
                 'Workflow state listener must implement %s.',
-                'BackBee\Workflow\ListenerInterface'
+                ListenerInterface::class
             ));
         }
 
@@ -277,7 +275,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     /**
      * Layout's uid getter.
      *
-     * @return null|string
+     * @return string|null
      *
      * @Serializer\VirtualProperty
      * @Serializer\SerializedName("layout_uid")
@@ -294,7 +292,7 @@ class State extends AbstractObjectIdentifiable implements \JsonSerializable
     {
         return [
             'uid'        => $this->getUid(),
-            'layout_uid' => null !== $this->getLayout() ? $this->getLayout()->getUid() : null,
+            'layout_uid' => $this->getLayoutUid(),
             'code'       => $this->getCode(),
             'label'      => $this->getLabel(),
         ];

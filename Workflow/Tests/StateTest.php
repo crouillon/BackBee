@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,93 +17,126 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Workflow\Tests;
 
+use BackBee\Site\Layout;
+use BackBee\Workflow\ListenerInterface;
 use BackBee\Workflow\State;
-use BackBee\Workflow\Tests\Mock\StateListener;
 
 /**
- * Tests for BackBee\Workflow\State.
+ * Tests suite for class State.
  *
  * @author Eric Chau <eric.chau@lp-digital.fr>
+ * @coversDefaultClass \BackBee\Workflow\State
  */
 class StateTest extends \PHPUnit_Framework_TestCase
 {
-    public function testConstruct()
-    {
-        $state = new State();
-        $this->assertNotNull($state->getUid());
-        $this->assertNull($state->getCode());
-        $this->assertNull($state->getLabel());
 
-        $state = new State('test_state', [
-            'code'  => 123,
-            'label' => 'random label',
-        ]);
-        $this->assertSame('test_state', $state->getUid());
-        $this->assertSame(123, $state->getCode());
-        $this->assertSame('random label', $state->getLabel());
+    /**
+     * @var State
+     */
+    private $state;
+
+    /**
+     * Sets up the fixture.
+     */
+    protected function setUp()
+    {
+        parent::setUp();
+        $this->state = new State(null, ['code' => 421, 'label' => 'label']);
     }
 
     /**
+     * @covers ::__construct()
+     * @covers ::getUid()
+     * @covers ::setLabel()
+     * @covers ::getLabel()
+     * @covers ::setCode()
+     * @covers ::getCode()
+     */
+    public function testConstruct()
+    {
+        $this->assertEquals(32, strlen($this->state->getUid()));
+        $this->assertEquals('label', $this->state->getLabel());
+        $this->assertEquals(421, $this->state->getCode());
+    }
+
+    /**
+     * @covers                   ::setCode()
      * @expectedException        \BackBee\Exception\InvalidArgumentException
      * @expectedExceptionMessage The code of a workflow state has to be an integer
      */
     public function testSetWrongCodeTypeThrowsException()
     {
-        (new State())->setCode('123');
-    }
-
-    public function testSetListener()
-    {
-        $state = new State();
-        $this->assertNull($state->getListener());
-        $this->assertNull($state->getListenerInstance());
-
-        $state->setListener('BackBee\Workflow\Tests\Mock\StateListener');
-        $this->assertSame('BackBee\Workflow\Tests\Mock\StateListener', $state->getListener());
-        $this->assertInstanceOf('BackBee\Workflow\Tests\Mock\StateListener', $state->getListenerInstance());
-
-        $state->setListener(new StateListener());
-        $this->assertSame('BackBee\Workflow\Tests\Mock\StateListener', $state->getListener());
-        $this->assertInstanceOf('BackBee\Workflow\Tests\Mock\StateListener', $state->getListenerInstance());
-
-        $state->setListener(null);
-        $this->assertNull($state->getListener());
-        $this->assertNull($state->getListenerInstance());
+        $this->state->setCode('123');
     }
 
     /**
+     * @covers ::setLayout()
+     * @covers ::getLayout()
+     * @covers ::getLayoutUid()
+     */
+    public function testLayout()
+    {
+        $layout = new Layout('layout-uid');
+        $this->assertNull($this->state->getLayoutUid());
+        $this->assertEquals($this->state, $this->state->setLayout($layout));
+        $this->assertEquals($layout, $this->state->getLayout());
+        $this->assertEquals('layout-uid', $this->state->getLayoutUid());
+    }
+
+    /**
+     * @covers ::setListener()
+     * @covers ::getListener()
+     * @covers ::getListenerInstance()
+     */
+    public function testSetListener()
+    {
+        $listener = $this->getMockForAbstractClass(ListenerInterface::class);
+
+        $this->assertEquals($this->state, $this->state->setListener(get_class($listener)));
+        $this->assertEquals(get_class($listener), $this->state->getListener());
+        $this->assertInstanceOf(ListenerInterface::class, $this->state->getListenerInstance());
+
+        $this->state->setListener(null);
+        $this->assertNull($this->state->getListener());
+        $this->assertNull($this->state->getListenerInstance());
+    }
+
+    /**
+     * @covers                   ::setListener()
      * @expectedException        \InvalidArgumentException
      * @expectedExceptionMessage Workflow state listener must be type of null, object or string, boolean given.
      */
     public function testSetInvalidListenerTypeThrowsException()
     {
-        (new State())->setListener(true);
+        $this->state->setListener(true);
     }
 
     /**
+     * @covers                   ::setListener()
      * @expectedException        \LogicException
      * @expectedExceptionMessage Workflow state listener must implement BackBee\Workflow\ListenerInterface.
      */
     public function testSetInvalidListenerThrowsException()
     {
-        (new State())->setListener(new \stdClass());
+        $this->state->setListener(new \stdClass());
     }
 
+    /**
+     * @covers ::jsonSerialize()
+     */
     public function testJsonSerialize()
     {
-        $state = new State();
+        $expected = [
+            'uid'        => $this->state->getUid(),
+            'layout_uid' => $this->state->getLayoutUid(),
+            'code'       => $this->state->getCode(),
+            'label'      => $this->state->getLabel(),
+        ];
 
-        $json = $state->jsonSerialize();
-
-        $this->assertTrue(array_key_exists('uid', $json));
-        $this->assertTrue(array_key_exists('layout_uid', $json));
-        $this->assertTrue(array_key_exists('code', $json));
-        $this->assertTrue(array_key_exists('label', $json));
+        $this->assertEquals($expected, $this->state->jsonSerialize());
     }
 }

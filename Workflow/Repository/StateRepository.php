@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,40 +17,37 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Workflow\Repository;
 
 use Doctrine\ORM\EntityRepository;
+
 use BackBee\Site\Layout;
 
 /**
  * Workflow state repository.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class StateRepository extends EntityRepository
 {
+
     /**
      * Returns an array of available workflow states for the provided layout.
      *
-     * @param \BackBee\Site\Layout $layout
+     * @param  Layout $layout
      *
      * @return array
      */
     public function getWorkflowStatesForLayout(Layout $layout)
     {
-        $states = array();
-        foreach ($this->findBy(array('_layout' => null)) as $state) {
+        $states = [];
+        foreach ($this->findBy(['_layout' => null]) as $state) {
             $states[$state->getCode()] = $state;
         }
 
-        foreach ($this->findBy(array('_layout' => $layout)) as $state) {
+        foreach ($this->findBy(['_layout' => $layout]) as $state) {
             $states[$state->getCode()] = $state;
         }
 

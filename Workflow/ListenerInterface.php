@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Workflow;
@@ -28,13 +26,22 @@ use BackBee\Event\Event;
 /**
  * Listener of workflow state must implement this interface to be valid.
  *
- * @category    BackBee
- * @copyright   Lp digital system
- * @author      d.Bensid <djoudi.bensid@lp-digital.fr>
+ * @author Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 interface ListenerInterface
 {
+
+    /**
+     * Called when a page status is setted to a workflow state.
+     *
+     * @param Event $event
+     */
     public function switchOnState(Event $event);
 
+    /**
+     * Called when a page status is leaving a workflow state.
+     *
+     * @param Event $event
+     */
     public function switchOffState(Event $event);
 }
