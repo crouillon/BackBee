@@ -293,28 +293,33 @@ class AclController extends AbstractRestController
             $sid = $objectMap['sid'];
             $securityIdentity = new UserSecurityIdentity($sid, 'BackBee\Security\Group');
 
-            // Mask
-            $mask = intval($objectMap['mask']);
-            if (!isset($mask)) {
-                $violations->add(
-                    new ConstraintViolation(
-                        "Mask not supplied",
-                        "Mask not supplied",
-                        [],
-                        sprintf('%s[mask]', $i),
-                        sprintf('%s[mask]', $i),
-                        null
-                    )
-                );
-                continue;
+            // Clean aces.
+            if ($objectId) {
+
+                try{
+                    $aclManager->deleteObjectAce($objectIdentity, $securityIdentity);
+                }
+                catch (\Exception $e) { /* Do nothing */ }
+
+            } else {
+
+                try{
+                    $aclManager->deleteClassAce($objectIdentity, $securityIdentity);
+                }
+                catch (\Exception $e) { /* Do nothing */ }
             }
+
+            // Mask
+            if (!isset($objectMap['mask'])) continue;
 
             // Grant
             if ($objectId) {
-                $aclManager->insertOrUpdateObjectAce($objectIdentity, $securityIdentity, $mask);
-            }
-            else {
-                $aclManager->insertOrUpdateClassAce($objectIdentity, $securityIdentity, $mask);
+
+                $aclManager->insertOrUpdateObjectAce($objectIdentity, $securityIdentity, intval($objectMap['mask']));
+
+            } else {
+
+                $aclManager->insertOrUpdateClassAce($objectIdentity, $securityIdentity, intval($objectMap['mask']));
             }
         }
 
@@ -437,108 +442,44 @@ class AclController extends AbstractRestController
     public function postPermissionsPageAction(Request $request)
     {
         $em = $this->getApplication()->getEntityManager();
-
         $page = $request->attributes->get('uid');
         $group = $request->attributes->get('group');
-
-        $mask = $request->request->get('mask');
-
         $aclManager = $this->getContainer()->get('security.acl_manager');
 
-        if(true === $page->isRoot()){
+        if(true === $page->isRoot()) {
+
             $objectIdentity = new ObjectIdentity('all', $page->getType());
-            $aclManager->insertOrUpdateClassAce($objectIdentity, $group, $mask);
-        }
-        else{
-            $pages = $em->getRepository('BackBee\NestedNode\Page')->findBy(array('_url' => $page->getUrl()));
-            foreach ($pages as $page) {
-                $aclManager->insertOrUpdateObjectAce($page, $group, $mask);
-            }
-        }
-
-        return $this->createJsonResponse([], 200);
-    }
-
-    /**
-     * @api {post} /acl/:group/clear Clear all access for classes list
-     * @apiName clearPermissionsClassesAction
-     * @apiGroup Acl
-     * @apiVersion 0.2.0
-     *
-     * @apiPermission ROLE_API_USER
-     *
-     * @apiError NoAccessRight Invalid authentication information.
-     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>.
-     *
-     * @apiHeader {String} X-API-KEY User's public key.
-     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
-     *
-     * @apiParam {Number} group Group id.
-     * @apiParam {Number} uid Page uid.
-     *
-     * @apiSuccessExample Success-Response:
-     * HTTP/1.1 200 OK
-     */
-    /**
-     * Clear all access for classes list
-     *
-     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
-     *
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
-    public function clearPermissionsClassesAction(Request $request)
-    {
-        $classes = $request->request->get('classes');
-        $group = $request->attributes->get('group');
-
-        $aclManager = $this->getContainer()->get('security.acl_manager');
-
-        foreach ($classes as $class){
 
             try{
-                $aclManager->cleanAces($class, $group);
+                $aclManager->deleteClassAce($objectIdentity, $group);
             }
-            catch (\Exception $e){}
-        }
+            catch(\Exception $e){ /* do nothing */ }
 
-        return $this->createJsonResponse([], 200);
-    }
+            if($request->request->has('mask')) {
 
-    /**
-     * Clear all access for objects list.
-     *
-     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
-     *
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
-    public function clearPermissionsObjectsAction(Request $request)
-    {
-        $objects = $request->request->get('objects');
-        $group = $request->attributes->get('group');
+                $aclManager->insertOrUpdateClassAce($objectIdentity, $group, $request->request->get('mask'));
+            }
 
-        $aclManager = $this->getContainer()->get('security.acl_manager');
+        } else {
 
-        foreach ($objects as $object) {
+            $pages = $em->getRepository('BackBee\NestedNode\Page')->findBy(array('_url' => $page->getUrl()));
 
-            try {
+            foreach ($pages as $page) {
 
-                $aclManager->deleteObjectAce($object, $group);
+                try{
+                    $aclManager->deleteObjectAce($page, $group);
+                }
+                catch(\Exception $e){ /* do nothing */ }
 
-            } catch (\Exception $e) {
+                if($request->request->has('mask')) {
 
-                dump($e);
+                    $aclManager->insertOrUpdateObjectAce($page, $group, $request->request->get('mask'));
+                }
             }
         }
 
         return $this->createJsonResponse([], 200);
     }
-
 
     /**
      * @api {delete} /acl/:group/clear/:uid Clear permissions for an page
