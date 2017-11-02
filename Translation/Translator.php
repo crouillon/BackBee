@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,14 +17,13 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Translation;
 
 use Symfony\Component\Translation\Loader\XliffFileLoader;
 use Symfony\Component\Translation\Translator as sfTranslator;
+
 use BackBee\BBApplication;
 
 /**
@@ -34,6 +33,7 @@ use BackBee\BBApplication;
  */
 class Translator extends sfTranslator
 {
+
     /**
      * Override Symfony\Component\Translation\Translator to lazy load every catalogs from:
      *     - BackBee\Resources\translations
@@ -47,31 +47,49 @@ class Translator extends sfTranslator
     {
         parent::__construct($locale);
 
-        // retrieve default fallback from container and set it
-        $fallback = $application->getContainer()->getParameter('translator.fallback');
-        $this->setFallbackLocales([$fallback]);
-
         // xliff is recommended by Symfony so we register its loader as default one
         $this->addLoader('xliff', new XliffFileLoader());
 
+        if ($application->getContainer()->hasParameter('translator.fallback')) {
+            // retrieve default fallback from container and set it
+            $fallback = $application->getContainer()->getParameter('translator.fallback');
+            $this->setFallbackLocales([$fallback]);
+        }
+
         // define in which directory we should looking at to find xliff files
-        $dirToLookingAt = array(
-            $application->getBBDir().DIRECTORY_SEPARATOR.'Resources'.DIRECTORY_SEPARATOR.'translations',
-            $application->getRepository().DIRECTORY_SEPARATOR.'Resources'.DIRECTORY_SEPARATOR.'translations',
-        );
+        $dirToLookingAt = [
+            implode(DIRECTORY_SEPARATOR, [$application->getBBDir(), 'Resources', 'translations']),
+            implode(DIRECTORY_SEPARATOR, [$application->getRepository(), 'Resources', 'translations']),
+        ];
 
         if ($application->getRepository() !== $application->getBaseRepository()) {
-            $dirToLookingAt[] = $application->getBaseRepository().'Resources'.DIRECTORY_SEPARATOR.'translations';
+            $dirToLookingAt[] = implode(
+                DIRECTORY_SEPARATOR,
+                [$application->getBaseRepository(), 'Resources', 'translations']
+            );
         }
 
         // loop in every directory we should looking at and load catalog from file which match to the pattern
-        foreach ($dirToLookingAt as $dir) {
-            if (true === is_dir($dir)) {
-                foreach (scandir($dir) as $filename) {
-                    preg_match('/(.+)\.(.+)\.xlf$/', $filename, $matches);
-                    if (0 < count($matches)) {
-                        $this->addResource('xliff', $dir.DIRECTORY_SEPARATOR.$filename, $matches[2], $matches[1]);
-                    }
+        foreach ($dirToLookingAt as $dirname) {
+            $this->addResourcesDir($dirname);
+        }
+    }
+
+    /**
+     * @param string $dirname
+     */
+    private function addResourcesDir($dirname)
+    {
+        if (true === is_dir($dirname)) {
+            foreach (scandir($dirname) as $filename) {
+                $matches = [];
+                if (preg_match('/(.+)\.(.+)\.xlf$/', $filename, $matches)) {
+                    $this->addResource(
+                        'xliff',
+                        $dirname . DIRECTORY_SEPARATOR . $filename,
+                        $matches[2],
+                        $matches[1]
+                    );
                 }
             }
         }
