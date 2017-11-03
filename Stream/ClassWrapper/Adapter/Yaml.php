@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,28 +17,30 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Stream\ClassWrapper\Adapter;
 
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml as parserYaml;
+
 use BackBee\Event\Event;
 use BackBee\Exception\BBException;
 use BackBee\Stream\ClassWrapper\AbstractClassWrapper;
 use BackBee\Stream\ClassWrapper\Exception\ClassWrapperException;
 use BackBee\Utils\File\File;
 
+@trigger_error('The ' . __NAMESPACE__ . '\Yaml class is deprecated since version 1.4, '
+    . 'to be removed in 1.5. '
+    . 'Use BackBee\Stream\Adapter\Yaml instead.', E_USER_DEPRECATED);
+
 /**
  * Stream wrapper to interprete yaml file as class content description
  * Extends AbstractClassWrapper
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author     Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
 class Yaml extends AbstractClassWrapper
 {

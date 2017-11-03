@@ -1,0 +1,259 @@
+<?php
+
+/*
+ * Copyright (c) 2011-2017 Lp digital system
+ *
+ * This file is part of BackBee.
+ *
+ * BackBee is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * BackBee is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+namespace BackBee\Stream\Tests\Adapter;
+
+use org\bovigo\vfs\vfsStream;
+use org\bovigo\vfs\vfsStreamDirectory;
+
+use BackBee\Stream\Adapter\Yaml;
+use BackBee\Tests\Traits\InvokeMethodTrait;
+use BackBee\Tests\Traits\InvokePropertyTrait;
+
+/**
+ * Test suite for adapter class Yaml.
+ *
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass \BackBee\Stream\Adapter\Yaml
+ */
+class YamlTest extends \PHPUnit_Framework_TestCase
+{
+
+    use InvokeMethodTrait;
+    use InvokePropertyTrait;
+
+    /**
+     * @var vfsStreamDirectory
+     */
+    private $root;
+
+    /**
+     * @var Yaml
+     */
+    private $adapter;
+
+    /**
+     * Sets up the fixture.
+     */
+    protected function setUp()
+    {
+        parent::setUp();
+
+        $root = [
+            'dir1' => [
+                'Namespace' => [
+                    'Fake1.yml' => '{"invalid":"invalid"}',
+                    'Valid.yml' => '{"valid":{"properties":{"name":"valid"}}}'
+                ]
+            ],
+            'dir2' => [
+                'Namespace' => [
+                    'Fake2.yaml' => '{"invalid":{"invalid":"invalid"}}'
+                ]
+            ],
+        ];
+        $this->root = vfsStream::setup('root', 0700, $root);
+
+        $options = [
+            'pathinclude' => [vfsStream::url('root/dir1'), vfsStream::url('root/dir2')],
+            'extensions' => ['.yml', '.yaml'],
+            'cache' => null
+        ];
+
+        $this->adapter = new Yaml();
+        $this->adapter->context = stream_context_create([Yaml::PROTOCOL => $options]);
+    }
+
+    /**
+     * @covers                   ::stream_open()
+     * @expectedException        \PHPUnit_Framework_Error_Warning
+     * @expectedExceptionMessage Invalid mode for opening path, only `r` is allowed.
+     */
+    public function testInvalidOpenMode()
+    {
+        $this->assertFalse($this->adapter->stream_open('path', 'w', STREAM_REPORT_ERRORS, $openedPath));
+    }
+
+    /**
+     * @covers                   ::stream_open()
+     * @expectedException        \PHPUnit_Framework_Error_Warning
+     * @expectedExceptionMessage Cannot open unknown, file not found.
+     */
+    public function testUnknownOpen()
+    {
+        $this->assertFalse($this->adapter->stream_open('unknown', 'r', STREAM_REPORT_ERRORS, $openedPath));
+    }
+
+    /**
+     * @covers                   ::stream_open()
+     * @expectedException        \PHPUnit_Framework_Error_Warning
+     * @expectedExceptionMessage No valid class content description found
+     */
+    public function testMalformedOpen()
+    {
+        $this->assertFalse(
+            $this->adapter->stream_open(
+                'bb.class://Namespace/Fake1',
+                'r',
+                STREAM_REPORT_ERRORS,
+                $openedPath
+            )
+        );
+    }
+
+    /**
+     * @covers ::stream_open()
+     * @covers ::parseFile()
+     * @covers ::parseDefinition()
+     */
+    public function testStreamOpen()
+    {
+        $this->assertTrue(
+            $this->adapter->stream_open(
+                'bb.class://Namespace/Valid',
+                'r',
+                STREAM_REPORT_ERRORS+STREAM_USE_PATH,
+                $openedPath
+            )
+        );
+        $this->assertEquals(vfsStream::url('root/dir1/Namespace/Valid.yml'), $openedPath);
+        $this->assertEquals(0, $this->adapter->stream_tell());
+        $this->assertContains('class Valid extends', $this->invokeProperty($this->adapter, 'data'));
+    }
+
+    /**
+     * @covers ::stream_stat()
+     */
+    public function testStreamStat()
+    {
+        $this->assertFalse($this->adapter->stream_stat());
+
+        $this->invokeProperty($this->adapter, 'filename', vfsStream::url('root/dir1/Namespace/Valid.yml'));
+        $this->assertTrue(is_array($this->adapter->stream_stat()));
+    }
+
+    /**
+     * @covers ::url_stat()
+     */
+    public function testUrlStat()
+    {
+        $this->assertFalse($this->adapter->url_stat('bb.class://Unknown/Class', STREAM_URL_STAT_QUIET));
+
+        $this->assertEquals(
+            stat(vfsStream::url('root/dir1/Namespace/Fake1.yml')),
+            $this->adapter->url_stat('bb.class://Namespace/Fake1')
+        );
+
+        $this->assertEquals(
+            lstat(vfsStream::url('root/dir2/Namespace/Fake2.yaml')),
+            $this->adapter->url_stat('bb.class://Namespace/Fake2', STREAM_URL_STAT_LINK)
+        );
+    }
+
+    /**
+     * @covers            ::url_stat()
+     * @covers            ::triggerError()
+     * @expectedException \PHPUnit_Framework_Error_Warning
+     */
+    public function testWarningUrlStat()
+    {
+        $this->assertFalse($this->adapter->url_stat('bb.class://Unknown/Class'));
+    }
+
+    /**
+     * @covers ::stream_close()
+     */
+    public function testStreamClose()
+    {
+        $this->invokeProperty($this->adapter, 'filename', 'filename');
+        $this->adapter->stream_close();
+        $this->assertNull($this->invokeProperty($this->adapter, 'filename'));
+    }
+
+    /**
+     * @covers ::getClassname()
+     */
+    public function testGetClassname()
+    {
+        $this->invokeProperty($this->adapter, 'filename', 'test\with/filename.yml');
+        $this->assertEquals('filename', $this->invokeMethod($this->adapter, 'getClassname'));
+    }
+
+    /**
+     * @covers ::setNamespace()
+     */
+    public function testSetNamespace()
+    {
+        $this->invokeMethod($this->adapter, 'setNamespace', ['bb.class://Test\With/This/filename.yml']);
+        $this->assertEquals('BackBee\ClassContent\Test\With\This', $this->invokeProperty($this->adapter, 'namespace'));
+    }
+
+    /**
+     * @covers                   ::parseFile()
+     * @expectedException        \Symfony\Component\Yaml\Exception\ParseException
+     * @expectedExceptionMessage No valid class content description found
+     */
+    public function testParseUnknownFile()
+    {
+        $this->invokeProperty($this->adapter, 'filename', vfsStream::url('root/dir1/Namespace/Unknown.yml'));
+        $this->invokeMethod($this->adapter, 'parseFile');
+    }
+
+    /**
+     * @covers                   ::parseFile()
+     * @expectedException        \Symfony\Component\Yaml\Exception\ParseException
+     * @expectedExceptionMessage No valid class content description found
+     */
+    public function testParseInvalidFile()
+    {
+        $this->invokeProperty($this->adapter, 'filename', vfsStream::url('root/dir1/Namespace/Fake1.yml'));
+        $this->invokeMethod($this->adapter, 'parseFile');
+    }
+
+    /**
+     * @covers                   ::parseDefinition()
+     * @expectedException        \Symfony\Component\Yaml\Exception\ParseException
+     * @expectedExceptionMessage Unknown property type invalid.
+     */
+    public function testParseMalformedFile()
+    {
+        $this->invokeProperty($this->adapter, 'filename', vfsStream::url('root/dir2/Namespace/Fake2.yaml'));
+        $this->invokeMethod($this->adapter, 'parseFile');
+    }
+
+    /**
+     * @covers ::resolveFilePath()
+     */
+    public function testResolveFilePath()
+    {
+        $this->assertFalse($this->invokeMethod($this->adapter, 'resolveFilePath', ['bb.class://Unknown/Class']));
+
+        $this->assertEquals(
+            vfsStream::url('root/dir1/Namespace/Fake1.yml'),
+            $this->invokeMethod($this->adapter, 'resolveFilePath', ['bb.class://Namespace/Fake1'])
+        );
+
+        $this->assertEquals(
+            vfsStream::url('root/dir2/Namespace/Fake2.yaml'),
+            $this->invokeMethod($this->adapter, 'resolveFilePath', ['bb.class://Namespace\Fake2'])
+        );
+    }
+}
