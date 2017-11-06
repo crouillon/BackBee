@@ -23,7 +23,9 @@ namespace BackBee\Stream\Tests\Adapter;
 
 use org\bovigo\vfs\vfsStream;
 use org\bovigo\vfs\vfsStreamDirectory;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
+use BackBee\Cache\CacheInterface;
 use BackBee\Stream\Adapter\Yaml;
 use BackBee\Tests\Traits\InvokeMethodTrait;
 use BackBee\Tests\Traits\InvokePropertyTrait;
@@ -254,6 +256,113 @@ class YamlTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(
             vfsStream::url('root/dir2/Namespace/Fake2.yaml'),
             $this->invokeMethod($this->adapter, 'resolveFilePath', ['bb.class://Namespace\Fake2'])
+        );
+    }
+
+    /**
+     * @covers ::stream_open()
+     * @covers ::getCacheAdapter()
+     * @covers ::readFromCache()
+     */
+    public function testValidCache()
+    {
+        $cache = $this->getMockForAbstractClass(
+            CacheInterface::class,
+            [],
+            '',
+            false,
+            false,
+            true,
+            ['load', 'save']
+        );
+        $cache->expects($this->once())->method('load')->willReturn(true);
+        $cache->expects($this->never())->method('save');
+
+        $options = [
+            'pathinclude' => [vfsStream::url('root/dir1'), vfsStream::url('root/dir2')],
+            'extensions' => ['.yml', '.yaml'],
+            'cache' => $cache
+        ];
+
+        $this->adapter->context = stream_context_create([Yaml::PROTOCOL => $options]);
+        $this->assertTrue(
+            $this->adapter->stream_open(
+                'bb.class://Namespace/Valid',
+                'r',
+                STREAM_REPORT_ERRORS+STREAM_USE_PATH,
+                $openedPath
+            )
+        );
+    }
+
+    /**
+     * @covers ::stream_open()
+     * @covers ::getCacheAdapter()
+     * @covers ::readFromCache()
+     * @covers ::saveToCache()
+     */
+    public function testNoValidCache()
+    {
+        $cache = $this->getMockForAbstractClass(
+            CacheInterface::class,
+            [],
+            '',
+            false,
+            false,
+            true,
+            ['load', 'save']
+        );
+        $cache->expects($this->once())->method('load')->willReturn(false);
+        $cache->expects($this->once())->method('save');
+
+        $options = [
+            'pathinclude' => [vfsStream::url('root/dir1'), vfsStream::url('root/dir2')],
+            'extensions' => ['.yml', '.yaml'],
+            'cache' => $cache
+        ];
+
+        $this->adapter->context = stream_context_create([Yaml::PROTOCOL => $options]);
+        $this->assertTrue(
+            $this->adapter->stream_open(
+                'bb.class://Namespace/Valid',
+                'r',
+                STREAM_REPORT_ERRORS+STREAM_USE_PATH,
+                $openedPath
+            )
+        );
+    }
+
+    /**
+     * @covers ::dispatchEvents()
+     */
+    public function testEventDisptacher()
+    {
+        $dispatcher = $this->getMockForAbstractClass(
+            EventDispatcherInterface::class,
+            [],
+            '',
+            false,
+            false,
+            true,
+            ['dispatch']
+        );
+        $dispatcher->expects($this->at(0))->method('dispatch')->with('namespace.valid.streamparsing');
+        $dispatcher->expects($this->at(1))->method('dispatch')->with('classcontent.streamparsing');
+
+        $options = [
+            'pathinclude' => [vfsStream::url('root/dir1'), vfsStream::url('root/dir2')],
+            'extensions' => ['.yml', '.yaml'],
+            'dispatcher' => $dispatcher
+        ];
+
+        $this->adapter->context = stream_context_create([Yaml::PROTOCOL => $options]);
+        $this->assertTrue(
+            $this->adapter->stream_open(
+                'bb.class://Namespace/Valid',
+                'r',
+                STREAM_REPORT_ERRORS+STREAM_USE_PATH,
+                $openedPath
+            )
         );
     }
 }

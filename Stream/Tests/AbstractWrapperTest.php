@@ -442,6 +442,6 @@ class AbstractWrapperTest extends \PHPUnit_Framework_TestCase
     public function testTriggerError()
     {
         $this->assertFalse($this->invokeMethod($this->wrapper, 'triggerError', ['message', false]));
-        $this->invokeMethod($this->wrapper, 'triggerError', ['message', true]);
+        $this->assertFalse($this->invokeMethod($this->wrapper, 'triggerError', ['message', true]));
     }
 }

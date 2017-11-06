@@ -21,9 +21,13 @@
 
 namespace BackBee\Stream\Adapter;
 
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml as YamlParser;
 
+use BackBee\Cache\CacheInterface;
+use BackBee\ClassContent\AbstractContent;
+use BackBee\Event\Event;
 use BackBee\Stream\AbstractWrapper;
 use BackBee\Utils\File\File;
 
@@ -40,13 +44,15 @@ class Yaml extends AbstractWrapper
      * * pathinclude: should be an array of folders to look for yaml files
      * * extensions:  extensions to look for
      * * cache:       an optional cache adapter
+     * * dispatcher:  an optional event dispatcher
      *
      * @var array
      */
     protected $defaultOptions = [
         'pathinclude' => [],
         'extensions' => ['.yml', '.yaml'],
-        'cache' => null
+        'cache' => null,
+        'dispatcher' => null
     ];
 
     /**
@@ -55,6 +61,13 @@ class Yaml extends AbstractWrapper
      * @var string
      */
     private $filename;
+
+    /**
+     * A cache adapter.
+     *
+     * @var CacheInterface
+     */
+    private $cache;
 
     /**
      * This method is called immediately after the wrapper is initialized
@@ -85,22 +98,25 @@ class Yaml extends AbstractWrapper
             );
         }
 
-        try {
-            $this->setNamespace($path);
-            $this->parseFile();
-        } catch (\Exception $exception) {
-            return $this->triggerError(
-                $exception->getMessage(),
-                $options & STREAM_REPORT_ERRORS
-            );
-        }
+        if (!$this->readFromCache()) {
+            try {
+                $this->setNamespace($path);
+                $this->parseFile();
+            } catch (\Exception $exception) {
+                return $this->triggerError(
+                    $exception->getMessage(),
+                    $options & STREAM_REPORT_ERRORS
+                );
+            }
 
-        if ($options & STREAM_USE_PATH) {
-            $openedPath = $this->filename;
-        }
+            if ($options & STREAM_USE_PATH) {
+                $openedPath = $this->filename;
+            }
 
-        $this->position = 0;
-        $this->data = $this->buildClass();
+            $this->position = 0;
+            $this->data = $this->buildClass();
+            $this->saveToCache();
+        }
 
         return true;
     }
@@ -142,11 +158,8 @@ class Yaml extends AbstractWrapper
             $stats = @stat($filename);
         }
 
-        if (false === $stats && !($flags & STREAM_URL_STAT_QUIET)) {
-            return $this->triggerError(
-                error_get_last()['message'],
-                !($flags & STREAM_URL_STAT_QUIET)
-            );
+        if (false === $stats) {
+            return $this->triggerError( error_get_last()['message'], !($flags & STREAM_URL_STAT_QUIET));
         }
 
         return $stats;
@@ -159,7 +172,7 @@ class Yaml extends AbstractWrapper
     {
         parent::stream_close();
 
-        $this->filename = null;
+        $this->filename = $this->cache = $this->dispatcher = null;
     }
 
     /**
@@ -199,7 +212,7 @@ class Yaml extends AbstractWrapper
             throw new ParseException('No valid class content description found');
         }
 
-        foreach ($data as $definition) {
+        foreach ($this->dispatchEvents($data) as $definition) {
             if (!is_array($definition)) {
                 throw new ParseException('No valid class content description found');
             }
@@ -256,5 +269,87 @@ class Yaml extends AbstractWrapper
         }
 
         return false;
+    }
+
+    /**
+     * Returns a cache adapter if defined in option, false elsewhere.
+     *
+     * @return CacheInterface|false
+     */
+    private function getCacheAdapter()
+    {
+        if (null === $this->cache) {
+            $this->cache = false;
+            $cache = $this->getOption('cache');
+            if ($cache instanceof CacheInterface) {
+                $this->cache = $cache;
+            }
+        }
+
+        return $this->cache;
+    }
+
+    /**
+     * Reads the class content from cache if it exists and is valid.
+     *
+     * @return boolean
+     */
+    private function readFromCache()
+    {
+        if (false !== $this->getCacheAdapter()) {
+            $expire = new \DateTime(sprintf('@%s', $this->stream_stat()['mtime']));
+            if (false !== $data = $this->getCacheAdapter()->load(md5($this->filename), false, $expire)) {
+                $this->data = $data;
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Saves the generated content class to cache if adapter is defined.
+     */
+    private function saveToCache()
+    {
+        if (false !== $this->getCacheAdapter()) {
+            $this->getCacheAdapter()->save(md5($this->filename), $this->data, null, null);
+        }
+    }
+
+    /**
+     * Dispatches `streamparsing` events allowing listeners to change the definition.
+     *
+     * @param  array $data
+     *
+     * @return array
+     */
+    private function dispatchEvents(array $data)
+    {
+        $dispatcher = $this->getOption('dispatcher');
+        if ($dispatcher instanceof EventDispatcherInterface) {
+            $classname = $this->getNamespace() . NAMESPACE_SEPARATOR . $this->getClassname();
+            $event = new Event($classname, ['data' => $data]);
+
+            $dispatcher->dispatch(
+                sprintf(
+                    '%s.streamparsing',
+                    strtolower(str_replace([AbstractContent::CLASSCONTENT_BASE_NAMESPACE, NAMESPACE_SEPARATOR], ['', '.'], $classname))
+                ),
+                $event
+            );
+
+            $dispatcher->dispatch(
+                'classcontent.streamparsing',
+                $event
+            );
+
+            if ($event->hasArgument('data')) {
+                $data = $event->getArgument('data');
+            }
+        }
+
+        return $data;
     }
 }
