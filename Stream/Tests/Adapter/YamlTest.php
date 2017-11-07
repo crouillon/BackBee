@@ -86,31 +86,34 @@ class YamlTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @covers                   ::stream_open()
-     * @expectedException        \PHPUnit_Framework_Error_Warning
-     * @expectedExceptionMessage Invalid mode for opening path, only `r` is allowed.
+     * @expectedException        \RuntimeException
+     * @expectedExceptionMessage Invalid mode for opening path, only `r` and `rb` are allowed.
      */
     public function testInvalidOpenMode()
     {
+        $openedPath = '';
         $this->assertFalse($this->adapter->stream_open('path', 'w', STREAM_REPORT_ERRORS, $openedPath));
     }
 
     /**
      * @covers                   ::stream_open()
-     * @expectedException        \PHPUnit_Framework_Error_Warning
+     * @expectedException        \BackBee\AutoLoader\Exception\ClassNotFoundException
      * @expectedExceptionMessage Cannot open unknown, file not found.
      */
     public function testUnknownOpen()
     {
+        $openedPath = '';
         $this->assertFalse($this->adapter->stream_open('unknown', 'r', STREAM_REPORT_ERRORS, $openedPath));
     }
 
     /**
      * @covers                   ::stream_open()
-     * @expectedException        \PHPUnit_Framework_Error_Warning
+     * @expectedException        \Symfony\Component\Yaml\Exception\ParseException
      * @expectedExceptionMessage No valid class content description found
      */
     public function testMalformedOpen()
     {
+        $openedPath = '';
         $this->assertFalse(
             $this->adapter->stream_open(
                 'bb.class://Namespace/Fake1',
@@ -128,6 +131,7 @@ class YamlTest extends \PHPUnit_Framework_TestCase
      */
     public function testStreamOpen()
     {
+        $openedPath = '';
         $this->assertTrue(
             $this->adapter->stream_open(
                 'bb.class://Namespace/Valid',
@@ -172,7 +176,6 @@ class YamlTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @covers            ::url_stat()
-     * @covers            ::triggerError()
      * @expectedException \PHPUnit_Framework_Error_Warning
      */
     public function testWarningUrlStat()
@@ -188,6 +191,31 @@ class YamlTest extends \PHPUnit_Framework_TestCase
         $this->invokeProperty($this->adapter, 'filename', 'filename');
         $this->adapter->stream_close();
         $this->assertNull($this->invokeProperty($this->adapter, 'filename'));
+    }
+
+    /**
+     * @covers ::glob()
+     */
+    public function testGlob()
+    {
+        $expected = [
+            'BackBee\ClassContent\Element\Attachment',
+            'BackBee\ClassContent\Element\Date',
+            'BackBee\ClassContent\Element\File',
+            'BackBee\ClassContent\Element\Image',
+            'BackBee\ClassContent\Element\Keyword',
+            'BackBee\ClassContent\Element\Link',
+            'BackBee\ClassContent\Element\Select',
+            'BackBee\ClassContent\Element\Text'
+        ];
+
+        $options = [
+            'pathinclude' => dirname(__DIR__) . '/../../ClassContent',
+            'extensions' => ['.yml']
+        ];
+        $this->adapter->context = stream_context_create(['bb.class' => $options]);
+
+        $this->assertEquals($expected, $this->adapter->glob('Element\*'));
     }
 
     /**

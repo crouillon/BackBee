@@ -119,7 +119,7 @@ class AbstractWrapperTest extends \PHPUnit_Framework_TestCase
     public function testGetExtends()
     {
         $this->assertEquals(
-            AbstractClassContent::class,
+            NAMESPACE_SEPARATOR . AbstractClassContent::class,
             $this->invokeMethod($this->wrapper, 'getExtends')
         );
     }
@@ -167,15 +167,34 @@ class AbstractWrapperTest extends \PHPUnit_Framework_TestCase
      */
     public function testgetElements()
     {
-        $this->invokeProperty($this->wrapper, 'elements', ['name' => ['type' => 'string', 'options' => ['label' => 'name']]]);
+        $this->invokeProperty($this->wrapper, 'elements', [
+            'scalar' => '!!scalar default value',
+            'subcontent' => [
+                'type' => '\BackBee\ClassContent\Element\Text',
+                'label' => 'subcontent'
+            ],
+            'array' => []
+        ]);
 
         $expected = [
-            'name' => sprintf(
+            'scalar' => sprintf(
                 '$this->defineData("%s", "%s", %s);',
-                'name',
-                'string',
-                var_export(['label' => 'name'], true)
-            )
+                'scalar',
+                'scalar',
+                var_export(['default' => 'default value'], true)
+            ),
+            'subcontent' => sprintf(
+                '$this->defineData("%s", "%s", %s);',
+                'subcontent',
+                '\BackBee\ClassContent\Element\Text',
+                var_export(['label' => 'subcontent'], true)
+            ),
+            'array' => sprintf(
+                '$this->defineData("%s", "%s", %s);',
+                'array',
+                'array',
+                var_export(['default' => []], true)
+            ),
         ];
 
         $this->assertEquals(
@@ -433,15 +452,5 @@ class AbstractWrapperTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $this->invokeMethod($this->wrapper, 'getOptions'));
         $this->assertEquals('option', $this->invokeMethod($this->wrapper, 'getOption', ['other']));
         $this->assertNull($this->invokeMethod($this->wrapper, 'getOption', ['unknown']));
-    }
-
-    /**
-     * @covers            ::triggerError()
-     * @expectedException \PHPUnit_Framework_Error_Warning
-     */
-    public function testTriggerError()
-    {
-        $this->assertFalse($this->invokeMethod($this->wrapper, 'triggerError', ['message', false]));
-        $this->assertFalse($this->invokeMethod($this->wrapper, 'triggerError', ['message', true]));
     }
 }

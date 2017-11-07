@@ -362,7 +362,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     public function getDataDir()
     {
-        return $this->container->getParameter('bbapp.data.dir');
+        return $this->getContainer()->getParameter('bbapp.data.dir');
     }
 
     /**
@@ -456,7 +456,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
 
     public function getCacheDir()
     {
-        if (null === $this->container) {
+        if (null === $this->getContainer()) {
             throw new \Exception('Application\'s container is not ready!');
         }
 
@@ -486,11 +486,11 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     public function getConfig()
     {
-        if (null === $this->container) {
+        if (null === $this->getContainer()) {
             throw new \Exception('Application\'s container is not ready!');
         }
 
-        return $this->container->get('config');
+        return $this->getContainer()->get('config');
     }
 
     /**
@@ -557,7 +557,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
 
     public function getMediaDir()
     {
-        if (null === $this->container) {
+        if (null === $this->getContainer()) {
             throw new \Exception('Application\'s container is not ready!');
         }
 
@@ -808,7 +808,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     public function getRequest()
     {
-        return $this->container->get('request');
+        return $this->getContainer()->get('request');
     }
 
     /**
@@ -825,7 +825,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
     public function getSession()
     {
         if (null === $this->getRequest()->getSession()) {
-            $session = $this->container->get('bb_session');
+            $session = $this->getContainer()->get('bb_session');
             $this->getRequest()->setSession($session);
         }
 
@@ -854,7 +854,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
     public function getStorageDir()
     {
         if (null === $this->storageDir) {
-            $this->storageDir = $this->container->getParameter('bbapp.data.dir').DIRECTORY_SEPARATOR.'Storage';
+            $this->storageDir = $this->getContainer()->getParameter('bbapp.data.dir').DIRECTORY_SEPARATOR.'Storage';
         }
 
         return $this->storageDir;
@@ -866,7 +866,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
     public function getTemporaryDir()
     {
         if (null === $this->tmpDir) {
-            $this->tmpDir = $this->container->getParameter('bbapp.data.dir').DIRECTORY_SEPARATOR.'Tmp';
+            $this->tmpDir = $this->getContainer()->getParameter('bbapp.data.dir').DIRECTORY_SEPARATOR.'Tmp';
         }
 
         return $this->tmpDir;
@@ -877,7 +877,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     public function isReady()
     {
-        return $this->isInitialized && null !== $this->container;
+        return $this->isInitialized && null !== $this->getContainer();
     }
 
     /**
@@ -1124,19 +1124,20 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     private function initContentWrapper()
     {
-        if ($this->getAutoloader()->isRestored()) {
-            return $this;
-        }
-
         if (null === $contentwrapperConfig = $this->getConfig()->getContentwrapperConfig()) {
-            throw new BBException('None class content wrapper found');
+            throw new BBException('No class content wrapper found');
         }
 
         $namespace = isset($contentwrapperConfig['namespace']) ? $contentwrapperConfig['namespace'] : '';
         $protocol = isset($contentwrapperConfig['protocol']) ? $contentwrapperConfig['protocol'] : '';
         $adapter = isset($contentwrapperConfig['adapter']) ? $contentwrapperConfig['adapter'] : '';
+        $options = isset($contentwrapperConfig['options']) ? $contentwrapperConfig['options'] : [];
 
-        $this->getAutoloader()->registerStreamWrapper($namespace, $protocol, $adapter);
+        stream_context_set_default([$protocol => array_merge($options, ['pathinclude' => $this->getClassContentDir()])]);
+
+        if (!$this->getAutoloader()->isRestored()) {
+            $this->getAutoloader()->registerStreamWrapper($namespace, $protocol, $adapter);
+        }
 
         return $this;
     }
@@ -1148,7 +1149,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
      */
     private function initEntityManager()
     {
-        if (!$this->container->getDefinition('em')->isSynthetic()) {
+        if (!$this->getContainer()->getDefinition('em')->isSynthetic()) {
             return;
         }
 
@@ -1176,7 +1177,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
         $r = new \ReflectionClass('Doctrine\ORM\Events');
         $definition = new Definition('Doctrine\Common\EventManager');
         $definition->addMethodCall('addEventListener', [$r->getConstants(), new Reference('doctrine.listener')]);
-        $this->container->setDefinition('doctrine.event_manager', $definition);
+        $this->getContainer()->setDefinition('doctrine.event_manager', $definition);
 
         try {
             $loggerId = 'logging';
@@ -1197,7 +1198,7 @@ class BBApplication implements ApplicationInterface, DumpableServiceInterface, D
                 new Reference('service_container'),
             ]);
             $definition->setFactory(['BackBee\Util\Doctrine\EntityManagerCreator', 'create']);
-            $this->container->setDefinition('em', $definition);
+            $this->getContainer()->setDefinition('em', $definition);
 
             $this->debug(sprintf('%s(): Doctrine EntityManager initialized', __METHOD__));
         } catch (\Exception $e) {

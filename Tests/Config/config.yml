@@ -6,7 +6,10 @@ parameters:
 contentwrapper:
     namespace:    BackBee\ClassContent
     protocol:     bb.class
-    adapter:      \BackBee\Stream\ClassWrapper\Adapter\Yaml
+    adapter:      \BackBee\Stream\Adapter\Yaml
+    options:
+        cache:      "@cache.bootstrap"
+        dispatcher: "@event.dispatcher"
 
 renderer:
     adapter:      [\BackBee\Renderer\Adapter\Twig, \BackBee\Renderer\Adapter\phtml]

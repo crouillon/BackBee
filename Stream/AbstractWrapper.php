@@ -133,7 +133,7 @@ class <classname> extends <extends> <interfaces>
      *
      * @var string
      */
-    protected $extends = AbstractClassContent::class;
+    protected $extends = NAMESPACE_SEPARATOR . AbstractClassContent::class;
 
     /**
      * Interface(s) used by the class content.
@@ -313,11 +313,28 @@ class <classname> extends <extends> <interfaces>
      */
     protected function formatElement(&$value, $name)
     {
+        $type = 'scalar';
+        $options = [];
+
+        if (is_array($value)) {
+            $type = 'array';
+            $options['default'] = $value;
+            if (isset($value['type'])) {
+                $type = $value['type'];
+                $options = $value;
+                unset($options['type']);
+            }
+        } elseif ('!!' === substr($value, 0, 2)) {
+            $value = explode(' ', trim($value, ' !'), 2);
+            $type = $value[0];
+            $options['default'] = isset($value[1]) ? $value[1] : '';
+        }
+
         $value = sprintf(
             '$this->defineData("%s", "%s", %s);',
             $name,
-            $value['type'],
-            var_export($value['options'], true)
+            $type,
+            var_export($options, true)
         );
     }
 
@@ -649,22 +666,5 @@ class <classname> extends <extends> <interfaces>
         if (NAMESPACE_SEPARATOR !== substr($classname, 0, 1)) {
             $classname = NAMESPACE_SEPARATOR . $classname;
         }
-    }
-
-    /**
-     * Triggers an error if need.
-     *
-     * @param  message $message
-     * @param  bool    $trigger
-     *
-     * @return false
-     */
-    protected function triggerError($message, $trigger = true)
-    {
-        if ($trigger) {
-            trigger_error($message, E_USER_WARNING);
-        }
-
-        return false;
     }
 }

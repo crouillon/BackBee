@@ -107,4 +107,14 @@ interface WrapperInterface
      * @return array         Should return as many elements as stat() does.
      */
     public function url_stat($path, $flags);
+
+    /**
+     * Finds classnames matching a pattern.
+     *
+     * @param  string $pattern The pattern.
+     *
+     * @return string[]|false  Returns an array containing the matched files/directories,
+     *                         an empty array if no file matched or FALSE on error.
+     */
+    public function glob($pattern);
 }

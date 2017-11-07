@@ -25,6 +25,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml as YamlParser;
 
+use BackBee\AutoLoader\Exception\ClassNotFoundException;
 use BackBee\Cache\CacheInterface;
 use BackBee\ClassContent\AbstractContent;
 use BackBee\Event\Event;
@@ -81,33 +82,24 @@ class Yaml extends AbstractWrapper
      *                            file/resource that was actually opened.
      *
      * @return bool               Returns TRUE on success or FALSE on failure.
+     *
+     * @throws \RuntimeException if the mode is not `r`.
+     * @throws ClassNotFoundException if a corresponding file cannot be found.
+     * @throws ParseException is the founded file cannot be parsed.
      */
     public function stream_open($path, $mode, $options, &$openedPath)
     {
-        if ('r' !== $mode) {
-            return $this->triggerError(
-                sprintf('Invalid mode for opening %s, only `r` is allowed.', $path),
-                $options & STREAM_REPORT_ERRORS
-            );
+        if (!in_array($mode, ['r', 'rb'])) {
+            throw new \RuntimeException(sprintf('Invalid mode for opening %s, only `r` and `rb` are allowed.', $path));
         }
 
         if (false === $this->filename = $this->resolveFilePath($path)) {
-            return $this->triggerError(
-                sprintf('Cannot open %s, file not found.', $path),
-                $options & STREAM_REPORT_ERRORS
-            );
+            throw new ClassNotFoundException(sprintf('Cannot open %s, file not found.', $path));
         }
 
         if (!$this->readFromCache()) {
-            try {
-                $this->setNamespace($path);
-                $this->parseFile();
-            } catch (\Exception $exception) {
-                return $this->triggerError(
-                    $exception->getMessage(),
-                    $options & STREAM_REPORT_ERRORS
-                );
-            }
+            $this->setNamespace($path);
+            $this->parseFile();
 
             if ($options & STREAM_USE_PATH) {
                 $openedPath = $this->filename;
@@ -146,10 +138,11 @@ class Yaml extends AbstractWrapper
     public function url_stat($path, $flags = 0)
     {
         if (false === $filename = $this->resolveFilePath($path)) {
-            return $this->triggerError(
-                sprintf('Cannot stat %s, file not found.', $path),
-                !($flags & STREAM_URL_STAT_QUIET)
-            );
+            if (!($flags & STREAM_URL_STAT_QUIET)) {
+                trigger_error(sprintf('Cannot stat %s, file not found.', $path), E_USER_WARNING);
+            }
+
+            return false;
         }
 
         if ($flags & STREAM_URL_STAT_LINK) {
@@ -158,8 +151,8 @@ class Yaml extends AbstractWrapper
             $stats = @stat($filename);
         }
 
-        if (false === $stats) {
-            return $this->triggerError( error_get_last()['message'], !($flags & STREAM_URL_STAT_QUIET));
+        if (false === $stats && !($flags & STREAM_URL_STAT_QUIET)) {
+            trigger_error(error_get_last()['message'], E_USER_WARNING);
         }
 
         return $stats;
@@ -173,6 +166,39 @@ class Yaml extends AbstractWrapper
         parent::stream_close();
 
         $this->filename = $this->cache = $this->dispatcher = null;
+    }
+
+    /**
+     * Finds classnames matching a pattern.
+     *
+     * @param  string $pattern The pattern.
+     *
+     * @return string[]|false  Returns an array containing the matched files/directories,
+     *                         an empty array if no file matched or FALSE on error.
+     */
+    public function glob($pattern)
+    {
+        $classnames = [];
+        foreach ((array) $this->getOption('pathinclude') as $path) {
+            foreach ((array) $this->getOption('extensions') as $extension) {
+                if (false !== $files = @glob($path . DIRECTORY_SEPARATOR . $pattern . $extension)) {
+                    array_walk($files, function (&$file) use($path) {
+                        $file = AbstractContent::CLASSCONTENT_BASE_NAMESPACE .
+                            trim(
+                                str_replace(
+                                    [$path, DIRECTORY_SEPARATOR, '/'],
+                                    ['', NAMESPACE_SEPARATOR, NAMESPACE_SEPARATOR],
+                                    File::removeExtension($file)
+                                ),
+                                NAMESPACE_SEPARATOR
+                            );
+                    });
+                    $classnames = array_merge($classnames, $files);
+                }
+            }
+        }
+
+        return array_unique($classnames);
     }
 
     /**
