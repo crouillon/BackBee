@@ -27,8 +27,7 @@ use BackBee\DependencyInjection\ContainerInterface;
 use BackBee\DependencyInjection\Dumper\DumpableServiceInterface;
 use BackBee\DependencyInjection\Dumper\DumpableServiceProxyInterface;
 use BackBee\Event\Dispatcher;
-use BackBee\Exception\BBException;
-use BackBee\Stream\ClassWrapper\Exception\ClassWrapperException;
+use BackBee\Stream\AbstractWrapper;
 
 if (false === defined('NAMESPACE_SEPARATOR')) {
     define('NAMESPACE_SEPARATOR', '\\');
@@ -55,7 +54,7 @@ if (false === defined('NAMESPACE_SEPARATOR')) {
  *     // register classes throw wrappers
  *     $autoloader->registerStreamWrapper('BackBee\ClassContent',
  *                                        'bb.class',
- *                                        '\BackBee\Stream\ClassWrapper\YamlWrapper');
+ *                                        '\BackBee\Stream\YamlWrapper');
  *
  *     // register classes by namespaces
  *     $autoloader->registerNamespace('BackBee', __DIR__)
@@ -68,14 +67,6 @@ if (false === defined('NAMESPACE_SEPARATOR')) {
  */
 class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterface
 {
-    const DEFAULT_PROTOCOL = 'bb.class';
-
-    /**
-     * Current BackBee application instance.
-     *
-     * @var BBApplication
-     */
-    private $application;
 
     /**
      * Availables wrappers to resolve class loading.
@@ -129,12 +120,29 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
     /**
      * Class constructor.
      *
-     * @param BBApplication|null $application Optionnal, a BackBee Application.
-     * @param Dispatcher|null    $dispatcher  Optionnal, an events dispatcher.
+     * @param Dispatcher|null $dispatcher Optionnal, an events dispatcher.
      */
-    public function __construct(BBApplication $application = null, Dispatcher $dispatcher = null)
+    public function __construct($dispatcher = null, $arg = null)
     {
-        $this->setApplication($application);
+        $oldSignature = ($dispatcher instanceof BBApplication)
+            && (is_null($arg) || $arg instanceof Dispatcher);
+        $newSignature = is_null($dispatcher) || $dispatcher instanceof Dispatcher;
+
+        // confirm possible signatures
+        if (!$oldSignature && !$newSignature) {
+            throw new \BadMethodCallException(
+                'Unable to construct AutoLoader, please provide the correct arguments'
+            );
+        }
+
+        if ($oldSignature) {
+            @trigger_error('The '.__CLASS__.'(BBApplication, Dispatcher) is deprecated since v1.4 '
+                . 'and will be removed in v1.5. Use '.__CLASS__.'(Dispatcher) instead.', E_USER_DEPRECATED);
+
+            // renamed for clarity
+            $dispatcher =  $arg;
+        }
+
         $this->setEventDispatcher($dispatcher);
 
         $this->availableWrappers = stream_get_wrappers();
@@ -147,11 +155,12 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
      * @param  BBApplication|null $application Optionnal, a BackBee Application.
      *
      * @return AutoLoader                      The current autoloader instance.
+     *
+     * @deprecated since version 1.4 will be removed in 1.5
+     * @codeCoverageIgnore
      */
     public function setApplication(BBApplication $application = null)
     {
-        $this->application = $application;
-
         return $this;
     }
 
@@ -159,10 +168,13 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
      * Returns the current BackBee application if defined, NULL otherwise.
      *
      * @return BBApplication|null
+     *
+     * @deprecated since version 1.4 will be removed in 1.5
+     * @codeCoverageIgnore
      */
     public function getApplication()
     {
-        return $this->application;
+        return null;
     }
 
     /**
@@ -196,7 +208,6 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
      *
      * @return boolean               True if the class is found false elsewhere
      *
-     * @throws ClassWrapperException if the wrapper can not build PHP code.
      * @throws SyntaxErrorException  if the generated PHP code is not valid.
      */
     private function includeClass($filename)
@@ -205,14 +216,11 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
             @include $filename;
 
             return true;
-        } catch (ClassWrapperException $e) {
-            // The class wrapper cannot return a valid class
-            throw $e;
-        } catch (\RuntimeException $e) {
+        } catch (Exception\ClassNotFoundException $e) {
+            // Nothing to do
+        } catch (\Exception $e) {
             // The include php file is not valid
             throw new Exception\SyntaxErrorException($e->getMessage(), null, $e->getPrevious());
-        } catch (BBException $e) {
-            // Nothing to do
         }
 
         return false;
@@ -232,6 +240,7 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
         $dir = str_replace(NAMESPACE_SEPARATOR, DIRECTORY_SEPARATOR, $registered);
         foreach ($pathfiles as $pathfile) {
             $filename = $path . DIRECTORY_SEPARATOR . $pathfile;
+
             if (!file_exists($filename)) {
                 $filename = $path .DIRECTORY_SEPARATOR . str_replace($dir, '', $pathfile);
             }
@@ -435,7 +444,7 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
      * @return array|false          An array of classnames matching the pattern
      *                              or FALSE if none found
      */
-    public function glob($pattern, $protocol = self::DEFAULT_PROTOCOL)
+    public function glob($pattern, $protocol = AbstractWrapper::PROTOCOL)
     {
         $classnames = [];
         $wrappers = $this->getStreamWrapperClassname('BackBee\ClassContent', $protocol);
@@ -486,6 +495,8 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
      */
     public function registerNamespace($namespace, $paths)
     {
+        $namespace = trim($namespace, NAMESPACE_SEPARATOR);
+
         if (!isset($this->namespaces[$namespace])) {
             $this->namespaces[$namespace] = [];
         }
@@ -524,6 +535,8 @@ class AutoLoader implements DumpableServiceInterface, DumpableServiceProxyInterf
      */
     public function registerStreamWrapper($namespace, $protocol, $classname)
     {
+        $namespace = trim($namespace, NAMESPACE_SEPARATOR);
+
         if (!isset($this->namespaces[$namespace])) {
             $this->namespaces[$namespace] = [];
         }

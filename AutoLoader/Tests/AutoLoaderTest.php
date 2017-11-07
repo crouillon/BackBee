@@ -22,14 +22,19 @@
 namespace BackBee\AutoLoader\Tests;
 
 use BackBee\AutoLoader\AutoLoader;
-use BackBee\Tests\BackBeeTestCase;
+use BackBee\BBApplication;
+use BackBee\ClassContent\AbstractContent;
+use BackBee\DependencyInjection\Container;
+use BackBee\Event\Dispatcher;
+use BackBee\Stream\Adapter\Yaml;
 
 /**
  * Tests suite for BackBee AutoLoader.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass \BackBee\AutoLoader\AutoLoader
  */
-class AutoLoaderTest extends BackBeeTestCase
+class AutoLoaderTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
@@ -44,31 +49,58 @@ class AutoLoaderTest extends BackBeeTestCase
     {
         parent::setUp();
 
-        $this->autoloader = self::$app->getAutoloader();
+        $this->autoloader = new AutoLoader();
+        $this->autoloader
+            ->register()
+            ->registerStreamWrapper(
+                AbstractContent::CLASSCONTENT_BASE_NAMESPACE,
+                Yaml::PROTOCOL,
+                Yaml::class
+            )
+            ->registerNamespace(
+                'BackBee\Event\Listener',
+                dirname(__DIR__) . '/../Listener'
+            );
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::__construct()
-     * @covers BackBee\AutoLoader\AutoLoader::setApplication()
-     * @covers BackBee\AutoLoader\AutoLoader::getApplication()
-     * @covers BackBee\AutoLoader\AutoLoader::setEventDispatcher()
-     * @covers BackBee\AutoLoader\AutoLoader::getEventDispatcher()
+     * @covers            ::__construct()
+     * @expectedException \BadMethodCallException
+     */
+    public function testInvalidConstruct()
+    {
+        new AutoLoader('string');
+    }
+
+    /**
+     * @covers ::__construct()
+     * @covers ::setEventDispatcher()
+     * @covers ::getEventDispatcher()
+     * @covers ::isRestored()
      */
     public function testConstruct()
     {
-        $autoloader = new AutoLoader(self::$app, self::$app->getEventDispatcher());
-        $this->assertEquals(self::$app, $autoloader->getApplication());
-        $this->assertEquals(
-            self::$app->getEventDispatcher(),
-            $autoloader->getEventDispatcher()
-        );
-        $this->assertFalse($autoloader->isRestored());
+        $application = $this->getMockBuilder(BBApplication::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $dispatcher = $this->getMockBuilder(Dispatcher::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $oldSignature = new AutoLoader($application, $dispatcher);
+        $this->assertEquals($dispatcher, $oldSignature->getEventDispatcher());
+
+        $newSignature = new AutoLoader($dispatcher);
+        $this->assertEquals($dispatcher, $newSignature->getEventDispatcher());
+
+        $this->assertFalse($this->autoloader->isRestored());
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::autoload()
-     * @covers BackBee\AutoLoader\AutoLoader::normalizeClassname()
-     * @expectedException BackBee\AutoLoader\Exception\InvalidNamespaceException
+     * @covers            ::autoload()
+     * @covers            ::normalizeClassname()
+     * @expectedException \BackBee\AutoLoader\Exception\InvalidNamespaceException
      */
     public function testAutoloadWrongNamespaceSyntax()
     {
@@ -76,9 +108,9 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::autoload()
-     * @covers BackBee\AutoLoader\AutoLoader::normalizeClassname()
-     * @expectedException BackBee\AutoLoader\Exception\InvalidClassnameException
+     * @covers            ::autoload()
+     * @covers            ::normalizeClassname()
+     * @expectedException \BackBee\AutoLoader\Exception\InvalidClassnameException
      */
     public function testAutoloadWrongClassnameSyntax()
     {
@@ -86,8 +118,10 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::autoload()
-     * @expectedException BackBee\AutoLoader\Exception\ClassNotFoundException
+     * @covers            ::autoload()
+     * @covers            ::autoloadThrowWrappers()
+     * @covers            ::includeClass()
+     * @expectedException \BackBee\AutoLoader\Exception\ClassNotFoundException
      */
     public function testAutoloadUnknownClassContentClass()
     {
@@ -95,8 +129,10 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::autoload()
-     * @expectedException BackBee\AutoLoader\Exception\ClassNotFoundException
+     * @covers            ::autoload()
+     * @covers            ::autoloadThrowFilesystem()
+     * @covers            ::scanPaths()
+     * @expectedException \BackBee\AutoLoader\Exception\ClassNotFoundException
      */
     public function testAutoloadUnknownHandleClass()
     {
@@ -104,33 +140,45 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::autoload()
+     * @covers ::autoload()
+     * @covers ::autoloadThrowWrappers()
+     * @covers ::autoloadThrowFilesystem()
+     * @covers ::scanPaths()
      */
     public function testAutoloadUnknownClass()
     {
-        $this->assertNull(
-            $this->autoloader->autoload('\Unknown\Classname')
-        );
-    }
-
-    public function testAutoloadThrowWrapper()
-    {
-        $this->assertNull(
-            $this->autoloader->autoload('BackBee\ClassContent\Element\Text')
-        );
-    }
-
-    public function testAutoloadThrowFileSystem()
-    {
-        $this->autoloader->registerListenerNamespace(__DIR__);
-
-        $this->assertNull(
-            $this->autoloader->autoload('BackBee\Event\Listener\FakeListener')
-        );
+        $this->assertFalse(class_exists('\Unknown\Classname'));
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::getStreamWrapperClassname()
+     * @covers ::autoload()
+     * @covers ::autoloadThrowWrappers()
+     * @covers ::includeClass()
+     */
+    public function testAutoloadThrowWrapper()
+    {
+        $this->assertTrue(class_exists('\BackBee\ClassContent\Element\Image'));
+    }
+
+    /**
+     * @covers ::autoload()
+     * @covers ::registerListenerNamespace()
+     * @covers ::autoloadThrowFilesystem()
+     * @covers ::scanPaths()
+     * @covers ::normalizeClassname()
+     */
+    public function testAutoloadThrowFileSystem()
+    {
+        $this->assertEquals(
+            $this->autoloader,
+            $this->autoloader->registerListenerNamespace(__DIR__)
+        );
+
+        $this->assertNull($this->autoloader->autoload('\BackBee\Event\Listener\FakeListener'));
+    }
+
+    /**
+     * @covers ::getStreamWrapperClassname()
      */
     public function testGetStreamWrapperClassname()
     {
@@ -143,13 +191,13 @@ class AutoLoaderTest extends BackBeeTestCase
             'bb.class'
         ));
         $this->assertEquals(
-            ['\BackBee\Stream\ClassWrapper\Adapter\Yaml'],
+            [Yaml::class],
             $this->autoloader->getStreamWrapperClassname('BackBee\ClassContent', 'bb.class')
         );
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::glob()
+     * @covers ::glob()
      */
     public function testGlob()
     {
@@ -166,7 +214,7 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::register()
+     * @covers ::register()
      */
     public function testRegister()
     {
@@ -178,7 +226,7 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::registerNamespace()
+     * @covers ::registerNamespace()
      */
     public function testRegisterNamespace()
     {
@@ -191,7 +239,7 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::registerListenerNamespace()
+     * @covers ::registerListenerNamespace()
      */
     public function testRegisterListenerNamespace()
     {
@@ -205,8 +253,8 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::registerStreamWrapper()
-     * @covers BackBee\AutoLoader\AutoLoader::registerStreams()
+     * @covers ::registerStreamWrapper()
+     * @covers ::registerStreams()
      */
     public function testRegisterStreamWrapper()
     {
@@ -214,13 +262,13 @@ class AutoLoaderTest extends BackBeeTestCase
         $this->assertEquals($autoloader, $autoloader->registerStreamWrapper(
             'BackBee\ClassContent',
             'test.protocol',
-            'BackBee\Stream\ClassWrapper\Adapter\Yaml'
+            'BackBee\Stream\Adapter\Yaml'
         ));
         $this->assertTrue(in_array('test.protocol', stream_get_wrappers()));
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::getClassProxy()
+     * @covers ::getClassProxy()
      */
     public function testGetClassProxy()
     {
@@ -228,7 +276,7 @@ class AutoLoaderTest extends BackBeeTestCase
     }
 
     /**
-     * @covers BackBee\AutoLoader\AutoLoader::dump()
+     * @covers ::dump()
      */
     public function testDump()
     {
@@ -237,7 +285,7 @@ class AutoLoaderTest extends BackBeeTestCase
             ->registerStreamWrapper(
                 'BackBee\ClassContent',
                 'test.protocol',
-                'BackBee\Stream\ClassWrapper\Adapter\Yaml'
+                'BackBee\Stream\Adapter\Yaml'
             );
 
         $expected = [
@@ -247,7 +295,7 @@ class AutoLoaderTest extends BackBeeTestCase
             'wrappers_namespaces' => [
                 'BackBee\ClassContent' => [[
                     'protocol' => 'test.protocol',
-                    'classname' => 'BackBee\Stream\ClassWrapper\Adapter\Yaml'
+                    'classname' => 'BackBee\Stream\Adapter\Yaml'
                 ]]
             ],
             'has_event_dispatcher' => false
@@ -269,7 +317,7 @@ class AutoLoaderTest extends BackBeeTestCase
             'wrappers_namespaces' => [
                 'BackBee\ClassContent' => [[
                     'protocol' => 'test.protocol',
-                    'classname' => 'BackBee\Stream\ClassWrapper\Adapter\Yaml'
+                    'classname' => 'BackBee\Stream\Adapter\Yaml'
                 ]]
             ],
             'has_event_dispatcher' => true
@@ -278,9 +326,16 @@ class AutoLoaderTest extends BackBeeTestCase
         $autoloader = new AutoLoader();
         $this->assertFalse($autoloader->isRestored());
 
-        $autoloader->restore(self::$app->getContainer(), $dump);
+        $dispatcher = $this->getMockBuilder(Dispatcher::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $container = new Container();
+        $container->set('event.dispatcher', $dispatcher);
+
+        $autoloader->restore($container, $dump);
         $this->assertTrue($autoloader->isRestored());
         $this->assertEquals($dump, $autoloader->dump());
-        $this->assertEquals(self::$app->getEventDispatcher(), $autoloader->getEventDispatcher());
+        $this->assertEquals($dispatcher, $autoloader->getEventDispatcher());
     }
 }

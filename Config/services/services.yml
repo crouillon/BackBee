@@ -131,7 +131,6 @@ services:
 
     autoloader:
         class:      %bbapp.autoloader.class%
-        arguments:  ["@bbapp"]
         calls:
             - [setEventDispatcher, ["@event.dispatcher"]]
         tags:
