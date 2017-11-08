@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,47 +17,61 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Serializer\Naming;
 
+use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use JMS\Serializer\Metadata\PropertyMetadata;
 use JMS\Serializer\Naming\PropertyNamingStrategyInterface;
+
 use BackBee\Doctrine\Registry;
 
 /**
  * Doctrine property naming strategy.
- *
  * Uses Doctrine's annotations
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      k.golovin
+ * @author Kenneth Golovin
  */
 class DoctrinePropertyNamingStrategy implements PropertyNamingStrategyInterface
 {
     /**
-     * @var BackBee\Doctrine\Registry
+     * @var Registry
      */
     private $doctrine;
 
+    /**
+     * @var PropertyNamingStrategyInterface
+     */
     private $delegate;
 
+    /**
+     * @var array
+     */
     private static $metadataCache = array();
 
+    /**
+     * Constructor.
+     *
+     * @param Registry                        $doctrine
+     * @param PropertyNamingStrategyInterface $namingStrategy
+     */
     public function __construct(Registry $doctrine, PropertyNamingStrategyInterface $namingStrategy)
     {
         $this->doctrine = $doctrine;
         $this->delegate = $namingStrategy;
     }
 
+    /**
+     * Translates the name of the property to the serialized version.
+     *
+     * @param PropertyMetadata $property
+     *
+     * @return string
+     */
     public function translateName(PropertyMetadata $property)
     {
         $metadata = $this->getDoctrineMetadata($property);
-
         if (isset($metadata->columnNames[$property->name])) {
             return $metadata->columnNames[$property->name];
         }
@@ -65,6 +79,13 @@ class DoctrinePropertyNamingStrategy implements PropertyNamingStrategyInterface
         return $this->delegate->translateName($property);
     }
 
+    /**
+     * Returns the Doctrine class metadata for the provided property.
+     *
+     * @param  PropertyMetadata $property
+     *
+     * @return ClassMetadata
+     */
     protected function getDoctrineMetadata(PropertyMetadata $property)
     {
         if (!isset(self::$metadataCache[$property->class])) {

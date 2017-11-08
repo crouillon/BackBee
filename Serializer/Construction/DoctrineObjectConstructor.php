@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Serializer\Construction;
@@ -32,14 +30,19 @@ use JMS\Serializer\VisitorInterface;
 /**
  * Doctrine object constructor for new (or existing) objects during deserialization.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      k.golovin
+ * @author Kenneth Golovin
  */
 class DoctrineObjectConstructor implements ObjectConstructorInterface
 {
+
+    /**
+     * @var ManagerRegistry
+     */
     private $managerRegistry;
+
+    /**
+     * @var ObjectConstructorInterface
+     */
     private $fallbackConstructor;
 
     /**
@@ -57,8 +60,13 @@ class DoctrineObjectConstructor implements ObjectConstructorInterface
     /**
      * {@inheritdoc}
      */
-    public function construct(VisitorInterface $visitor, ClassMetadata $metadata, $data, array $type, DeserializationContext $context)
-    {
+    public function construct(
+        VisitorInterface $visitor,
+        ClassMetadata $metadata,
+        $data,
+        array $type,
+        DeserializationContext $context
+    ) {
         // Locate possible ObjectManager
         $objectManager = $this->managerRegistry->getManagerForClass($metadata->name);
 
