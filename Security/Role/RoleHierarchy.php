@@ -23,14 +23,24 @@ namespace BackBee\Security\Role;
 
 use Symfony\Component\Security\Core\Role\RoleHierarchy as sfRoleHierarchy;
 
-@trigger_error('The ' . __NAMESPACE__ . '\RoleHierarchy class is deprecated since version 1.4, to be removed in 1.5. '
-                . 'Use Symfony\Component\Security\Core\Role\RoleHierarchy instead.', E_USER_DEPRECATED);
-
 /**
  * RoleHierarchy defines a role hierarchy.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class RoleHierarchy extends sfRoleHierarchy
 {
+
+    /**
+     * @param array $hierarchy An array defining the hierarchy
+     */
+    public function __construct(array $hierarchy)
+    {
+        @trigger_error('The ' . __NAMESPACE__ . '\RoleHierarchy class is deprecated since version 1.4, '
+            . 'to be removed in 1.5. Use Symfony\Component\Security\Core\Role\RoleHierarchy instead.', E_USER_DEPRECATED);
+
+        parent::__construct($hierarchy);
+    }
 }

@@ -32,6 +32,7 @@ use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 interface ObjectIdentifiableInterface extends DomainObjectInterface
 {

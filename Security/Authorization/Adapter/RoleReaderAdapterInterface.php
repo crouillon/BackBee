@@ -32,6 +32,7 @@ use BackBee\Security\Role\Role;
 /**
  * @author Nicolas Dufreche
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 interface RoleReaderAdapterInterface
 {

@@ -23,13 +23,29 @@ namespace BackBee\Security\Token;
 
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken as sfUsernamePasswordToken;
 
-@trigger_error('The ' . __NAMESPACE__ . '\UsernamePasswordToken class is deprecated since version 1.4, '
-    . 'to be removed in 1.5. '
-    . 'Use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken instead.', E_USER_DEPRECATED);
-
 /**
  * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
 class UsernamePasswordToken extends sfUsernamePasswordToken
 {
+        /**
+     * @param string|object            $user        The username (like a nickname, email address, etc.), or a
+         *                                          UserInterface instance or an object implementing a __toString method
+     * @param mixed                    $credentials This usually is the password of the user
+     * @param string                   $providerKey The provider key
+     * @param (RoleInterface|string)[] $roles       An array of roles
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function __construct($user, $credentials, $providerKey, array $roles = array())
+    {
+        @trigger_error(
+            'The ' . __NAMESPACE__ . '\UsernamePasswordToken class is deprecated since version 1.4, to be removed '
+            . 'in 1.5. Use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken instead.',
+            E_USER_DEPRECATED
+        );
+
+        parent::__construct($user, $credentials, $providerKey, $roles);
+    }
 }

@@ -22,14 +22,29 @@
 namespace BackBee\Security\Token;
 
 use Symfony\Component\Security\Core\Authentication\Token\RememberMeToken as sfRememberToken;
-
-@trigger_error('The ' . __NAMESPACE__ . '\RememberMeToken class is deprecated since version 1.4, '
-    . 'to be removed in 1.5. '
-    . 'Use Symfony\Component\Security\Core\Authentication\Token\RememberMeToken instead.', E_USER_DEPRECATED);
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
 class RememberMeToken extends sfRememberToken
 {
+
+    /**
+     * @param UserInterface $user
+     * @param string        $providerKey
+     * @param string        $secret      A secret used to make sure the token is created by
+     *                                   the app and not by a malicious client
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function __construct(UserInterface $user, $providerKey, $secret)
+    {
+        @trigger_error('The ' . __NAMESPACE__ . '\RememberMeToken class is deprecated since version 1.4, '
+            . 'to be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Core\Authentication\Token\RememberMeToken instead.', E_USER_DEPRECATED);
+
+        parent::__construct($user, $providerKey, $secret);
+    }
 }

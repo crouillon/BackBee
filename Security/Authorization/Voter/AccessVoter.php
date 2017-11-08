@@ -27,12 +27,10 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 use BackBee\BBApplication;
 use BackBee\Security\Authorization\Adaptator\RoleReaderAdapterInterface;
 
-@trigger_error('The '.__NAMESPACE__.'\Yml class is deprecated since version 1.4, '
-        . 'to be removed in 1.5.', E_USER_DEPRECATED);
-
 /**
  * @author Nicolas Dufreche <nicolas.dufreche@lp-digital.fr>
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class AccessVoter implements VoterInterface
 {
@@ -53,6 +51,9 @@ class AccessVoter implements VoterInterface
         $class,
         $prefix = 'BB_'
     ) {
+        @trigger_error('The '.__NAMESPACE__.'\Yml class is deprecated since version 1.4, '
+            . 'to be removed in 1.5.', E_USER_DEPRECATED);
+
         $this->adapter = $adapter;
         $this->prefix = $prefix;
         $this->class = $class;

@@ -26,16 +26,20 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Http\Logout\LogoutHandlerInterface;
 
-@trigger_error('The '.__NAMESPACE__.'\SessionLogoutHandler class is deprecated since '
-        . 'version 1.4, to be removed in 1.5. '
-        . 'Use Symfony\Component\Security\Http\Logout\SessionLogoutHandler instead.', E_USER_DEPRECATED);
-
 /**
  * @author Nicolas Brémont
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class SessionLogoutHandler implements LogoutHandlerInterface
 {
+
+    public function __construct()
+    {
+        @trigger_error('The '.__NAMESPACE__.'\SessionLogoutHandler class is deprecated since '
+            . 'version 1.4, to be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Http\Logout\SessionLogoutHandler instead.', E_USER_DEPRECATED);
+    }
 
     /**
      * Invalidate the current session.

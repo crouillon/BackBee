@@ -23,15 +23,25 @@ namespace BackBee\Security\Authentication;
 
 use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver;
 
-@trigger_error('The ' . __NAMESPACE__ . '\TrustResolver class is deprecated since '
-        . 'version 1.4, to be removed in 1.5. '
-        . 'Use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver'
-        . ' instead.', E_USER_DEPRECATED);
-
 /**
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class TrustResolver extends AuthenticationTrustResolver
 {
+
+    /**
+     * @param string $anonymousClass
+     * @param string $rememberMeClass
+     */
+    public function __construct($anonymousClass, $rememberMeClass)
+    {
+        @trigger_error('The ' . __NAMESPACE__ . '\TrustResolver class is deprecated since '
+            . 'version 1.4, to be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver'
+            . ' instead.', E_USER_DEPRECATED);
+
+        parent::__construct($anonymousClass, $rememberMeClass);
+    }
 }

@@ -23,13 +23,26 @@ namespace BackBee\Security\Token;
 
 use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken as sfAnonymousToken;
 
-@trigger_error('The ' . __NAMESPACE__ . '\AnonymousToken class is deprecated since version 1.4, '
-    . 'to be removed in 1.5. '
-    . 'Use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken instead.', E_USER_DEPRECATED);
-
 /**
  * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
 class AnonymousToken extends sfAnonymousToken
 {
+
+    /**
+     * @param string          $secret A secret used to make sure the token is created by the app and not
+     *                                by a malicious client
+     * @param string|object   $user   The user can be a UserInterface instance, or an object implementing
+     *                                a __toString method or the username as a regular string
+     * @param RoleInterface[] $roles  An array of roles
+     */
+    public function __construct($secret, $user, array $roles = array())
+    {
+        @trigger_error('The ' . __NAMESPACE__ . '\AnonymousToken class is deprecated since version 1.4, '
+            . 'to be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken instead.', E_USER_DEPRECATED);
+
+        parent::__construct($secret, $user, $roles);
+    }
 }

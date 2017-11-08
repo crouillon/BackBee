@@ -21,13 +21,13 @@
 
 namespace BackBee\Security\Tests\Authorization;
 
+use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver;
 use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken;
 
-use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver;
 use BackBee\Security\Authorization\ExpressionLanguage;
+use BackBee\Security\SecurityContext;
 use BackBee\Tests\Traits\InvokeMethodTrait;
 use BackBee\Tests\Traits\InvokePropertyTrait;
-use BackBee\Security\SecurityContext;
 
 /**
  * Test suite for class ExpressionLanguage

@@ -28,11 +28,6 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener as sfAnonymousAuthenticationListener;
 
-@trigger_error('The '.__NAMESPACE__.'\AnonymousAuthenticationListener class is deprecated '
-        . 'since version 1.4 and will be removed in 1.5. '
-        . 'Use Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener '
-        . 'instead.', E_USER_DEPRECATED);
-
 /**
  * @deprecated since version 1.4, to be removed in 1.5.
  * @codeCoverageIgnore
@@ -54,6 +49,11 @@ class AnonymousAuthenticationListener extends sfAnonymousAuthenticationListener
         LoggerInterface $logger = null,
         AuthenticationManagerInterface $authenticationManager = null
     ) {
+        @trigger_error('The '.__NAMESPACE__.'\AnonymousAuthenticationListener class is deprecated '
+            . 'since version 1.4 and will be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener '
+            . 'instead.', E_USER_DEPRECATED);
+
         if ($tokenStorage instanceof SecurityContextInterface) {
             $tokenStorage = new TokenStorage();
         }

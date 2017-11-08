@@ -238,7 +238,7 @@ class BBUserToken extends AbstractToken
         return serialize([
             is_object($this->getUser()) ? clone $this->getUser() : $this->getUser(),
             $this->isAuthenticated(),
-            array_map(function ($role) {return clone $role;}, $this->getRoles()),
+            array_map(function ($role) { return clone $role; }, $this->getRoles()),
             $this->getAttributes(),
             $this->nonce,
             $this->created,

@@ -25,15 +25,12 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Http\HttpUtils;
 use Symfony\Component\Security\Http\Logout\LogoutSuccessHandlerInterface;
 
-@trigger_error('The '.__NAMESPACE__.'\LogoutSuccessHandler class is deprecated since version 1.4, '
-        . 'to be removed in 1.5. '
-        . 'Use Symfony\Component\Security\Http\Logout\DefaultLogoutSuccessHandler instead.', E_USER_DEPRECATED);
-
 /**
  * Default logout success handler will redirect users to a configured path.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class LogoutSuccessHandler implements LogoutSuccessHandlerInterface
 {
@@ -49,6 +46,10 @@ class LogoutSuccessHandler implements LogoutSuccessHandlerInterface
      */
     public function __construct(HttpUtils $httpUtils, $targetUrl = '/')
     {
+        @trigger_error('The '.__NAMESPACE__.'\LogoutSuccessHandler class is deprecated since version 1.4, '
+            . 'to be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Http\Logout\DefaultLogoutSuccessHandler instead.', E_USER_DEPRECATED);
+
         $this->httpUtils = $httpUtils;
         $this->targetUrl = $targetUrl;
     }

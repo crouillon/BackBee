@@ -36,11 +36,6 @@ use Symfony\Component\Security\Http\SecurityEvents;
 
 use BackBee\Security\Token\UsernamePasswordToken;
 
-@trigger_error('The '.__NAMESPACE__.'\UsernamePasswordAuthenticationListener class is '
-        . 'deprecated since version 1.4 and will be removed in 1.5. '
-        . 'Use Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener '
-        . 'instead.', E_USER_DEPRECATED);
-
 /**
  * @deprecated since version 1.4, to be removed in 1.5.
  * @codeCoverageIgnore
@@ -60,6 +55,11 @@ class UsernamePasswordAuthenticationListener implements ListenerInterface
         $check_path = null,
         LoggerInterface $logger = null
     ) {
+        @trigger_error('The '.__NAMESPACE__.'\UsernamePasswordAuthenticationListener class is '
+            . 'deprecated since version 1.4 and will be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener '
+            . 'instead.', E_USER_DEPRECATED);
+
         $this->context = $context;
         $this->authenticationManager = $authManager;
         $this->login_path = $login_path;

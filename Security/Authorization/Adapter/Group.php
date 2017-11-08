@@ -25,12 +25,10 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
 use BackBee\BBApplication;
 
-@trigger_error('The '.__NAMESPACE__.'\Group class is deprecated since version 1.4, '
-        . 'to be removed in 1.5.', E_USER_DEPRECATED);
-
 /**
  * @author Nicolas Dufreche
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class Group implements RoleReaderAdapterInterface
 {
@@ -40,6 +38,8 @@ class Group implements RoleReaderAdapterInterface
      */
     public function __construct(BBApplication $application)
     {
+        @trigger_error('The '.__NAMESPACE__.'\Group class is deprecated since version 1.4, '
+            . 'to be removed in 1.5.', E_USER_DEPRECATED);
     }
 
     /**

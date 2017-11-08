@@ -26,12 +26,10 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use BackBee\BBApplication;
 use BackBee\Security\Role\Role;
 
-@trigger_error('The '.__NAMESPACE__.'\Yml class is deprecated since version 1.4, '
-        . 'to be removed in 1.5.', E_USER_DEPRECATED);
-
 /**
  * @author Nicolas Dufreche
  * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class Yml implements RoleReaderAdapterInterface
 {
@@ -46,6 +44,9 @@ class Yml implements RoleReaderAdapterInterface
      */
     public function __construct(BBApplication $application, $section = 'roles')
     {
+        @trigger_error('The '.__NAMESPACE__.'\Yml class is deprecated since version 1.4, '
+            . 'to be removed in 1.5.', E_USER_DEPRECATED);
+
         $this->roles = $application->getConfig()->getSecurityConfig($section) ?: array();
     }
 

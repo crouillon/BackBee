@@ -23,15 +23,25 @@ namespace BackBee\Security\Role;
 
 use Symfony\Component\Security\Core\Role\Role as sfRole;
 
-@trigger_error('The ' . __NAMESPACE__ . '\Role class is deprecated since version 1.4, to be removed in 1.5. '
-                . 'Use Symfony\Component\Security\Core\Role\Role instead.', E_USER_DEPRECATED);
-
 /**
  * Role is a simple implementation of a RoleInterface where the role is a
  * string.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class Role extends sfRole
 {
+
+    /**
+     * @param string $role The role name
+     */
+    public function __construct($role)
+    {
+        @trigger_error('The ' . __NAMESPACE__ . '\Role class is deprecated since version 1.4, to be removed in 1.5. '
+            . 'Use Symfony\Component\Security\Core\Role\Role instead.', E_USER_DEPRECATED);
+
+        parent::__construct($role);
+    }
 }
