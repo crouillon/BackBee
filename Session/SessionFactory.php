@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,37 +17,64 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Session;
 
-use BackBee\Config\Config;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
 use Symfony\Component\HttpFoundation\Session\Storage\SessionStorageInterface;
-use \SessionHandlerInterface;
+
+use BackBee\Config\Config;
 
 /**
- * Allow to configure the session regarding the environment
+ * Allow to configure the session regarding the environment.
  *
- * @author      Mickaël Andrieu <mickael.andrieu@lp-digital.fr>
+ * @author Mickaël Andrieu
  */
 class SessionFactory
 {
+    /**
+     * An array of session storage options.
+     *
+     * @var array
+     */
     protected $sessionConfig;
+
+    /**
+     * A session storage.
+     *
+     * @var SessionStorageInterface
+     */
     protected $sessionStorage;
+
+    /**
+     * A session handler.
+     *
+     * @var \SessionHandlerInterface
+     */
     protected $sessionHandler;
 
-    public function __construct(Config $config, SessionStorageInterface $sessionStorage, SessionHandlerInterface $sessionHandler = null)
-    {
+    /**
+     * Factory construtor.
+     *
+     * @param Config                        $config         A BackBee config instance.
+     * @param SessionStorageInterface       $sessionStorage A session storage
+     * @param \SessionHandlerInterface|null $sessionHandler An optional session handler.
+     */
+    public function __construct(
+        Config $config,
+        SessionStorageInterface $sessionStorage,
+        \SessionHandlerInterface $sessionHandler = null
+    ) {
         $this->sessionConfig = is_array($config->getSessionConfig()) ? $config->getSessionConfig() : [];
         $this->sessionStorage = $sessionStorage;
         $this->sessionHandler = $sessionHandler;
     }
 
     /**
+     * Creates and start a new session.
+     *
      * @return Session
      */
     public function createSession()
@@ -55,7 +82,7 @@ class SessionFactory
         if ($this->sessionStorage instanceof NativeSessionStorage) {
             $this->sessionStorage->setOptions($this->sessionConfig);
 
-            if($this->sessionHandler !== null) {
+            if ($this->sessionHandler !== null) {
                 $this->sessionStorage->setSaveHandler($this->sessionHandler);
             }
         }

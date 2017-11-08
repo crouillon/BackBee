@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,25 +17,42 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Session;
 
+use Doctrine\DBAL\Driver\Connection;
 use Doctrine\ORM\EntityManager;
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
 
 /**
- * Allow to configure the session regarding the environment
+ * Allow to configure a PDO session handler regarding the environment.
  *
- * @author      Mickaël Andrieu <mickael.andrieu@lp-digital.fr>
+ * @author Mickaël Andrieu
  */
 class PdoSessionHandlerFactory
 {
+
+    /**
+     * The current driver connection.
+     *
+     * @var Connection
+     */
     private $pdo;
+
+    /**
+     * An array of handler options.
+     *
+     * @var type
+     */
     private $config;
 
+    /**
+     * Factory constructor.
+     *
+     * @param EntityManager $entityManager
+     * @param array         $config
+     */
     public function __construct(EntityManager $entityManager, array $config)
     {
         $this->pdo = $entityManager->getConnection()
@@ -45,12 +62,14 @@ class PdoSessionHandlerFactory
     }
 
     /**
+     * Creates a PDO session handler.
+     *
      * @return PdoSessionHandler
-     * @link https://github.com/symfony/symfony/blob/2.8/UPGRADE-2.6.md#httpfoundation PdoSessionHandler BC notes
      */
     public function createPdoHandler()
     {
         $this->config = array_merge($this->config, ['lock_mode' => PdoSessionHandler::LOCK_NONE]);
+        
         return new PdoSessionHandler($this->pdo, $this->config);
     }
 }
