@@ -23,21 +23,23 @@
 
 namespace BackBee\Rest\Controller;
 
+use Doctrine\ORM\Tools\Pagination\Paginator;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Validator\Constraints as Assert;
+
 use BackBee\ClassContent\AbstractClassContent;
+use BackBee\ClassContent\Category;
 use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\Rest\Controller\Annotations as Rest;
 use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
 use BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException;
 use BackBee\Rest\Patcher\OperationSyntaxValidator;
 use BackBee\Rest\Patcher\PatcherInterface;
-
-use Doctrine\ORM\Tools\Pagination\Paginator;
-
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
  * ClassContent API Controller.
@@ -46,6 +48,7 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  *
  * @copyright   Lp digital system
  * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author      d.bensid <djoudi.bensid@lp-digital.fr>
  */
 class ClassContentController extends AbstractRestController
 {
@@ -795,5 +798,113 @@ class ClassContentController extends AbstractRestController
         $response->headers->set('Content-Range', "$start-$lastResult/".$total);
 
         return $response;
+    }
+
+    /**
+     * @api {get} /classcontent/:group/permissions Get permissions (ACL)
+     * @apiName getPermissionsAction
+     * @apiGroup ClassContent
+     * @apiVersion 0.2.0
+     *
+     * @apiPermission ROLE_API_USER
+     *
+     * @apiError NoAccessRight Invalid authentication information.
+     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>.
+     *
+     * @apiHeader {String} X-API-KEY User's public key.
+     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
+     *
+     * @apiParam {Number} group Group id.
+     *
+     * @apiSuccess {String} id Id of category.
+     * @apiSuccess {String} name  Name of category.
+     * @apiSuccess {Array} contents Contains every blocks which has current category name.
+     *
+     * @apiSuccessExample Success-Response:
+     * HTTP/1.1 200 OK
+     * {
+     *      "id": "article",
+     *      "name": "Article",
+     *      "contents": [
+     *          {
+     *              "visible": true,
+     *              "label": "Article",
+     *              "description": "An article contains a title, an author, an abstract, a primary image and a body",
+     *              "type": "Article/Article",
+     *              "thumbnail": "http://backbee-cms.local/resources/img/contents/Article/Article.png",
+     *              "rights": {
+     *                  "total": 0,
+     *                  "view": 0,
+     *                  "create": 0,
+     *                  "edit": 0,
+     *                  "delete": 0,
+     *                  "commit": 0,
+     *                  "publish": 0
+     *              }
+     *          }
+     *      ]
+     * }
+     */
+
+    /**
+     * Get permissions (ACL)
+     *
+     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getPermissionsAction(Request $request)
+    {
+        $group = $request->attributes->get('group');
+        $aclManager = $this->getContainer()->get('security.acl_manager');
+        $parentClass = 'BackBee\ClassContent\AbstractClassContent';
+
+        $categories['parent'] = [
+            'class' => $parentClass,
+            'rights' => $aclManager->getPermissions($parentClass, $group)
+        ];
+
+        $allClassContentClassNames = $this->getClassContentManager()->getAllClassContentClassnames();
+
+        foreach ($this->getCategoryManager()->getCategories() as $id => $category) {
+
+            foreach($category->getBlocks() as $key => $block){
+
+                $className = AbstractClassContent::getClassnameByContentType($block->type);
+                $block->rights = $aclManager->getPermissions($className, $group);
+                $block->type = $className;
+
+                $allClassContentClassNames = array_diff($allClassContentClassNames, [$className]);
+            }
+
+            if(false === empty($category->getBlocks())) {
+
+                $categories['objects'][] = array_merge(['id' => $id], $category->jsonSerialize());
+            }
+        }
+
+        $otherCategory = new Category('Other');
+
+        foreach ($allClassContentClassNames as $class) {
+
+            $content = new $class();
+
+            if(false === $content->isElementContent()){
+
+                if(null === $content->getProperty('name')){
+
+                    $content->setProperty('name', $content->getContentType());
+                }
+
+                $otherCategory->addBlock($content);
+            }
+        }
+
+        $categories['objects'][] = array_merge(['id' => 'other'], $otherCategory->jsonSerialize());
+
+        return $this->createJsonResponse($categories, 200);
     }
 }

@@ -23,13 +23,14 @@
 
 namespace BackBee\Rest\Controller;
 
-use BackBee\Rest\Controller\Annotations as Rest;
-use BackBee\Rest\Controller\Event\ValidateFileUploadEvent;
-use BackBee\Utils\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+use BackBee\Rest\Controller\Annotations as Rest;
+use BackBee\Rest\Controller\Event\ValidateFileUploadEvent;
+use BackBee\Utils\File\File;
 
 /**
  * REST API for Resources

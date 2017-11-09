@@ -104,6 +104,16 @@ class Category implements \JsonSerializable
     }
 
     /**
+     * Category's blocks setter.
+     *
+     * @param $blocks
+     */
+    public function setBlocks($blocks)
+    {
+        $this->blocks = $blocks;
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function jsonSerialize()

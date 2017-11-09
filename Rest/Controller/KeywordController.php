@@ -23,19 +23,20 @@
 
 namespace BackBee\Rest\Controller;
 
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Validator\Constraints as Assert;
-use Doctrine\ORM\Tools\Pagination\Paginator;
-use BackBee\Rest\Controller\Annotations as Rest;
+
 use BackBee\NestedNode\KeyWord;
+use BackBee\Rest\Controller\Annotations as Rest;
 use BackBee\Rest\Patcher\EntityPatcher;
 use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
 use BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException;
-use BackBee\Rest\Patcher\RightManager;
 use BackBee\Rest\Patcher\OperationSyntaxValidator;
+use BackBee\Rest\Patcher\RightManager;
 
 /**
  * ClassContent API Controller.

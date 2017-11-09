@@ -23,43 +23,64 @@
 
 namespace BackBee\Security\Acl;
 
+use InvalidArgumentException;
+use Symfony\Component\Security\Acl\Domain\Acl;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Acl\Exception\AclAlreadyExistsException;
+use Symfony\Component\Security\Acl\Exception\AclNotFoundException;
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
 use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 use Symfony\Component\Security\Acl\Model\SecurityIdentityInterface;
 use Symfony\Component\Security\Acl\Permission\PermissionMapInterface;
 use Symfony\Component\Security\Core\SecurityContextInterface;
+use Symfony\Component\Security\Core\Util\ClassUtils;
 
+use BackBee\NestedNode\Page;
+use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 use BackBee\Security\Acl\Permission\InvalidPermissionException;
 use BackBee\Security\Acl\Permission\MaskBuilder;
+use BackBee\Standard\Application;
 
+/**
+ * Class AclManager
+ *
+ * @package BackBee\Security\Acl
+ */
 class AclManager
 {
     /**
-     * @var \Symfony\Component\Security\Core\SecurityContextInterface
+     * @var SecurityContextInterface
      */
     protected $securityContext;
 
     /**
-     * @var Symfony\Component\Security\Acl\Permission\PermissionMapInterface
+     * @var PermissionMapInterface
      */
     protected $permissionMap;
+
     /**
-     * @param \Symfony\Component\Security\Core\SecurityContextInterface $securityContext
+     * @var EntityManager
+     */
+    protected $em;
+
+    /**
+     * @param SecurityContextInterface $securityContext
+     * @param PermissionMapInterface $permissionMap
      */
     public function __construct(SecurityContextInterface $securityContext, PermissionMapInterface $permissionMap)
     {
         $this->securityContext = $securityContext;
         $this->permissionMap = $permissionMap;
+        $this->em = $this->securityContext->getApplication()->getEntityManager();
     }
 
     /**
      * Get ACL for the given domain object.
      *
-     * @param  \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @return \Symfony\Component\Security\Acl\Domain\Acl
+     * @param  ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @return Acl
      */
     public function getAcl($objectIdentity)
     {
@@ -67,7 +88,7 @@ class AclManager
 
         try {
             $acl = $this->securityContext->getACLProvider()->createAcl($objectIdentity);
-        } catch (\Symfony\Component\Security\Acl\Exception\AclAlreadyExistsException $e) {
+        } catch (AclAlreadyExistsException $e) {
             $acl = $this->securityContext->getACLProvider()->findAcl($objectIdentity);
         }
 
@@ -77,10 +98,10 @@ class AclManager
     /**
      * Updates an existing object ACE.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
-     * @param int                                                                                                            $mask
-     * @param type                                                                                                           $strategy
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
+     * @param int  $mask
+     * @param string|null $strategy
      */
     public function updateObjectAce($objectIdentity, $sid, $mask, $strategy = null)
     {
@@ -100,7 +121,7 @@ class AclManager
         }
 
         if (false === $found) {
-            throw new \InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
         }
 
         $this->securityContext->getACLProvider()->updateAcl($acl);
@@ -109,10 +130,10 @@ class AclManager
     /**
      * Updates an existing object ACE.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
-     * @param int                                                                                                            $mask
-     * @param string|null                                                                                                    $strategy
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
+     * @param int $mask
+     * @param string|null $strategy
      */
     public function updateClassAce($objectIdentity, $sid, $mask, $strategy = null)
     {
@@ -132,7 +153,7 @@ class AclManager
         }
 
         if (false === $found) {
-            throw new \InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
         }
 
         $this->securityContext->getACLProvider()->updateAcl($acl);
@@ -141,10 +162,11 @@ class AclManager
     /**
      * Updates an existing Object ACE, Inserts if it doesnt exist.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
-     * @param int                                                                                                            $mask
-     * @param string|null                                                                                                    $strategy
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
+     * @param int $mask
+     * @param string|null $strategy
+     * @return $this
      */
     public function insertOrUpdateObjectAce($objectIdentity, $sid, $mask, $strategy = null)
     {
@@ -159,6 +181,7 @@ class AclManager
         foreach ($acl->getObjectAces() as $index => $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
                 $acl->updateObjectAce($index, $mask, $strategy);
+                $found = true;
                 break;
             }
         }
@@ -173,12 +196,13 @@ class AclManager
     }
 
     /**
-     * Updates an existing Class ACE, Inserts if it doesnt exist.
+     * Updates an existing Class ACE, Inserts if it doesn't exist.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
-     * @param int                                                                                                            $mask
-     * @param string|null                                                                                                    $strategy
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
+     * @param int $mask
+     * @param string|null $strategy
+     * @return $this
      */
     public function insertOrUpdateClassAce($objectIdentity, $sid, $mask, $strategy = null)
     {
@@ -210,8 +234,8 @@ class AclManager
     /**
      * Deletes a class-scope ACE.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
      */
     public function deleteClassAce($objectIdentity, $sid)
     {
@@ -231,7 +255,7 @@ class AclManager
         }
 
         if (false === $found) {
-            throw new \InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
         }
 
         $this->securityContext->getACLProvider()->updateAcl($acl);
@@ -240,8 +264,8 @@ class AclManager
     /**
      * Deletes an object-scope ACE.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
      */
     public function deleteObjectAce($objectIdentity, $sid)
     {
@@ -261,7 +285,7 @@ class AclManager
         }
 
         if (false === $found) {
-            throw new \InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+            throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
         }
 
         $this->securityContext->getACLProvider()->updateAcl($acl);
@@ -270,15 +294,15 @@ class AclManager
     /**
      * Get a class-scope ACE.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
      */
     public function getClassAce($objectIdentity, $sid)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
 
-        $acl = $this->getAcl($objectIdentity);
+        $acl = $this->securityContext->getACLProvider()->findAcl($objectIdentity);
 
         foreach ($acl->getClassAces() as $index => $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
@@ -286,28 +310,28 @@ class AclManager
             }
         }
 
-        throw new \InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+        throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
     }
 
     /**
      * Get an object-scope ACE.
      *
-     * @param \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity     $sid
+     * @param ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @param SecurityIdentityInterface|UserSecurityIdentity     $sid
      */
     public function getObjectAce($objectIdentity, $sid)
     {
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
 
-        $acl = $this->getAcl($objectIdentity);
+        $acl = $this->securityContext->getACLProvider()->findAcl($objectIdentity);
 
         foreach ($acl->getObjectAces() as $index => $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
                 return $ace;
             }
         }
-        throw new \InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
+        throw new InvalidArgumentException('ACE not found for the supplied combination of ObjectIdentity and SecurityIdentity');
     }
 
     /**
@@ -326,7 +350,7 @@ class AclManager
         foreach ($permissions as $permission) {
             try {
                 $maskBuilder->add($permission);
-            } catch (\InvalidArgumentException $e) {
+            } catch (InvalidArgumentException $e) {
                 throw new InvalidPermissionException('Invalid permission mask: '.$permission, $permission, $e);
             }
         }
@@ -353,14 +377,15 @@ class AclManager
             'iddqd' => MaskBuilder::MASK_IDDQD,
             'commit' => MaskBuilder::MASK_COMMIT,
             'publish' => MaskBuilder::MASK_PUBLISH,
+            'none' => MaskBuilder::CODE_NONE
         ];
 
         return $permissions;
     }
 
     /**
-     * @param  \Symfony\Component\Security\Acl\Model\ObjectIdentityInterface|\BackBee\Security\Acl\Domain\AbstractObjectIdentifiable $objectIdentity
-     * @throws \InvalidArgumentException
+     * @param  ObjectIdentityInterface|AbstractObjectIdentifiable $objectIdentity
+     * @throws InvalidArgumentException
      */
     private function enforceObjectIdentity(&$objectIdentity)
     {
@@ -369,14 +394,14 @@ class AclManager
         ) {
             $objectIdentity = new ObjectIdentity($objectIdentity->getObjectIdentifier(), get_class($objectIdentity));
         } elseif (! ($objectIdentity instanceof ObjectIdentityInterface)) {
-            throw new \InvalidArgumentException('Object must implement ObjectIdentifiableInterface');
+            throw new InvalidArgumentException('Object must implement ObjectIdentifiableInterface');
         }
     }
 
     /**
-     * @param \BackBee\Security\Acl\SecurityIdentityInterface|\Symfony\Component\Security\Acl\Model\UserSecurityIdentity $sid
+     * @param SecurityIdentityInterface|UserSecurityIdentity $sid
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     private function enforceSecurityIdentity(&$sid)
     {
@@ -385,7 +410,7 @@ class AclManager
         ) {
             $sid = new UserSecurityIdentity($sid->getObjectIdentifier(), get_class($sid));
         } elseif (! ($sid instanceof SecurityIdentityInterface)) {
-            throw new \InvalidArgumentException('Object must implement ObjectIdentifiableInterface');
+            throw new InvalidArgumentException('Object must implement ObjectIdentifiableInterface');
         }
     }
 
@@ -394,7 +419,8 @@ class AclManager
      *
      * @param string|int|array $masks
      *
-     * @return type
+     * @param $object
+     * @return int
      */
     private function resolveMask($masks, $object)
     {
@@ -414,5 +440,127 @@ class AclManager
         }
 
         return $integerMask;
+    }
+
+    /**
+     * Get permissions
+     *
+     * @param $objectIdentity
+     * @param $sid
+     * @return array
+     */
+    public function getPermissions($objectIdentity, $sid)
+    {
+        $objectIdentity = $this->getClassScopeObjectIdentity($objectIdentity);
+        $exceptedClass = [
+            'BackBee\NestedNode\MediaFolder'
+        ];
+
+        try{
+
+            $ace = $this->getObjectAce($objectIdentity, $sid);
+        }
+        catch (\Exception $e){
+
+            if(in_array($objectIdentity->getType(), $exceptedClass)) return [];
+
+            try {
+
+                $ace = $this->getClassAce($this->getClassScopeObjectIdentity($objectIdentity->getType()), $sid);
+            }
+            catch (\Exception $e){
+
+                $parentClass = get_parent_class($objectIdentity->getType());
+
+                if (false !== $parentClass) {
+
+                    return $this->getPermissions($parentClass, $sid);
+                }
+                else{
+                    return [];
+                }
+            }
+        }
+
+        return $this->getAccessGranted($ace);
+    }
+
+    /**
+     * Get permissions by page
+     *
+     * @param $page Page
+     * @param $sid
+     * @return array
+     */
+    public function getPermissionsByPage($page, $sid)
+    {
+        $objectIdentity = $this->getClassScopeObjectIdentity($page);
+
+        try{
+
+            $ace = $this->getObjectAce($objectIdentity, $sid);
+        }
+        catch (\Exception $e){
+
+            if (null !== $page->getParent()) {
+
+                return $this->getPermissionsByPage($page->getParent(), $sid);
+            }
+            elseif ($page->isRoot()){
+
+                try{
+                    $ace = $this->getClassAce($this->getClassScopeObjectIdentity(ClassUtils::getRealClass($page)), $sid);
+                }
+                catch (\Exception $e){
+                    return [];
+                }
+            }
+            else{
+                return [];
+            }
+        }
+
+        return $this->getAccessGranted($ace);
+    }
+
+    /**
+     * Returns the class-scope object identity for $object.
+     *
+     * @param $object
+     * @return ObjectIdentity
+     */
+    public function getClassScopeObjectIdentity($object)
+    {
+        $className = ClassUtils::getRealClass($object);
+        $identifier = 'all';
+
+        if($object instanceof ObjectIdentifiableInterface) {
+            $identifier = $object->getObjectIdentifier();
+            $className = $object->getType();
+        }
+
+        return new ObjectIdentity($identifier, $className);
+    }
+
+    /**
+     * Determines whether access is granted.
+     *
+     * @param $ace
+     * @return array
+     */
+    private function getAccessGranted($ace)
+    {
+        $access = [
+            'total' => $ace->getMask()
+        ];
+
+        foreach ($this->getPermissionCodes() as $permission => $code){
+            $access[$permission] = (0 !== ($ace->getMask() & $code)) ? 1 : 0;
+        }
+
+        $access['none'] = (0 === $ace->getMask()) ? 1 : 0;
+        $access['view'] = (1 === $access['edit'] && 0 === $access['view']) ? 1 : $access['view'];
+
+        return $access;
     }
 }

@@ -23,6 +23,7 @@
 
 namespace BackBee\Rest\Controller;
 
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -48,6 +49,7 @@ use BackBee\Rest\Patcher\RightManager;
  * @copyright   Lp digital system
  * @author      e.chau <eric.chau@lp-digital.fr>
  * @author      Mickaël Andrieu <mickael.andrieu@lp-digital.fr>
+ * @author      Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 class BundleController extends AbstractRestController
 {
@@ -59,25 +61,15 @@ class BundleController extends AbstractRestController
     public function getCollectionAction()
     {
         $application = $this->getApplication();
-        $cache = $application->getContainer()->get('cache.control');
-        $cacheId = md5(
-                'bundle_list_'.
-                $application->getContext().'_'.
-                $application->getEnvironment().'_'.
-                $this->getApplication()->getBBUserToken()->getUser()->getUsername()
-        );
 
-        if (!$application->isDebugMode() && false !== $value = $cache->load($cacheId)) {
-            $bundles = json_decode($value, true);
-        } else {
-            $bundles = [];
-            foreach ($this->getApplication()->getBundles() as $bundle) {
-                if ($this->isGranted('EDIT', $bundle) || ($bundle->isEnabled() && $this->isGranted('VIEW', $bundle))) {
-                    $bundles[] = $bundle;
-                }
+        $bundles = [];
+        
+        foreach ($this->getApplication()->getBundles() as $bundle) {
+            if ($this->isGranted('EDIT', $bundle) || ($bundle->isEnabled() && $this->isGranted('VIEW', $bundle))) {
+                $bundles[] = $bundle;
             }
-            $cache->save($cacheId, json_encode($bundles));
         }
+
         return $this->createJsonResponse($bundles, 200, array(
             'Content-Range' => '0-'.(count($bundles) - 1).'/'.count($bundles),
         ));
@@ -222,5 +214,76 @@ class BundleController extends AbstractRestController
         }
 
         return $bundle;
+    }
+
+    /**
+     * @api {get} /bundle/:group/permissions Get permissions (ACL)
+     * @apiName getPermissionsAction
+     * @apiGroup Bundle
+     * @apiVersion 0.2.0
+     *
+     * @apiPermission ROLE_API_USER
+     *
+     * @apiError NoAccessRight Invalid authentication information.
+     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>.
+     *
+     * @apiHeader {String} X-API-KEY User's public key.
+     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
+     *
+     * @apiParam {Number} group Group id.
+     *
+     * @apiSuccess {String} uid Id of layout.
+     * @apiSuccess {String} label Label of layout.
+     * @apiSuccess {String} class Classname of layout.
+     * @apiSuccess {Array} rights Contains rights for the current group.
+     *
+     * @apiSuccessExample Success-Response:
+     * HTTP/1.1 200 OK
+     * {
+     *      "uid": "demo",
+     *      "label": "DemoBundle",
+     *      "class": "BackBee\\Bundle\\DemoBundle\\Demo",
+     *      "rights": {
+     *          "total": 527,
+     *          "view": 1,
+     *          "create": 1,
+     *          "edit": 1,
+     *          "delete": 1,
+     *          "commit": 0,
+     *          "publish": 1
+     *      }
+     * }
+     */
+
+    /**
+     * Get permissions (ACL)
+     *
+     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getPermissionsAction(Request $request)
+    {
+        $data = [];
+        $group = $request->attributes->get('group');
+        $aclManager = $this->getContainer()->get('security.acl_manager');
+
+        foreach ($this->getApplication()->getBundles() as $bundle) {
+
+            if ($bundle->isEnabled() && true === array_key_exists('admin_entry_point', $bundle->getProperty())) {
+
+                $data[] = [
+                    'uid' => $bundle->getId(),
+                    'label' => $bundle->getProperty()['name'],
+                    'class' => $bundle->getType(),
+                    'rights' => $aclManager->getPermissions($bundle->getType(), $group)
+                ];
+            }
+        }
+
+        return $this->createJsonResponse($data, 200);
     }
 }

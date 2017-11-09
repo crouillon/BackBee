@@ -239,6 +239,48 @@ bb.rest.acl.get_classes:
         version: \d+
         _method: GET
 
+bb.rest.acl.page.post:
+    pattern: /rest/{version}/acl/{group}/page/{uid}
+    defaults:
+        _action:     postPermissionsPageAction
+        _controller: BackBee\Rest\Controller\AclController
+    requirements:
+        version: \d+
+        group: \d+
+        uid: \w{32}
+        _method: POST
+
+bb.rest.acl.clear_permissions_classes:
+    pattern: /rest/{version}/acl/{group}/clear/classes
+    defaults:
+        _action: clearPermissionsClassesAction
+        _controller: BackBee\Rest\Controller\AclController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: POST
+
+bb.rest.acl.clear_permissions_objects:
+    pattern: /rest/{version}/acl/{group}/clear/objects
+    defaults:
+        _action: clearPermissionsObjectsAction
+        _controller: BackBee\Rest\Controller\AclController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: POST
+
+bb.rest.acl.clear_permissions_page:
+    pattern: /rest/{version}/acl/{group}/page/clear/{uid}
+    defaults:
+        _action: clearPermissionsPageAction
+        _controller: BackBee\Rest\Controller\AclController
+    requirements:
+        version: \d+
+        group: \d+
+        uid: \w{32}
+        _method: DELETE
+
 bb.rest.page.get_available_status:
     pattern: /rest/{version}/page/status
     defaults:
@@ -351,6 +393,17 @@ bb.rest.page.delete:
         uid: \w{32}
         _method: DELETE
 
+bb.rest.page.get_permissions:
+    pattern: /rest/{version}/page/{group}/permissions/{uid}
+    defaults:
+        _action: getPermissionsAction
+        _controller: BackBee\Rest\Controller\PageController
+    requirements:
+        version: \d+
+        uid: \w{32}
+        group: \d+
+        _method: GET
+
 bb.rest.page.delete_collection:
     pattern: /rest/{version}/page
     defaults:
@@ -413,6 +466,26 @@ bb.rest.layout.delete:
     requirements:
         version: \d+
         _method: DELETE
+
+bb.rest.layout.get_permissions:
+    pattern: /rest/{version}/layout/{group}/permissions
+    defaults:
+        _action: getPermissionsAction
+        _controller: BackBee\Rest\Controller\LayoutController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: GET
+
+bb.rest.layout.get_permissions:
+    pattern: /rest/{version}/layout/{group}/permissions
+    defaults:
+        _action: getPermissionsAction
+        _controller: BackBee\Rest\Controller\LayoutController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: GET
 
 bb.rest.site.get_collection:
     pattern: /rest/{version}/site
@@ -564,6 +637,16 @@ bb.rest.classcontent.put_draft_collection:
         version: \d+
         _method: PUT
 
+bb.rest.classcontent.get_permissions:
+    pattern: /rest/{version}/classcontent/{group}/permissions
+    defaults:
+        _action: getPermissionsAction
+        _controller: BackBee\Rest\Controller\ClassContentController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: GET
+
 bb.rest.bundle.get_collection:
     pattern: /rest/{version}/bundle
     defaults:
@@ -602,6 +685,16 @@ bb.rest.bundle.exposed_actions:
         controllerName: "[a-zA-Z]+"
         actionName: "[a-zA-Z]+"
         parameters: "^\/.+|"
+
+bb.rest.bundle.get_permissions:
+    pattern: /rest/{version}/bundle/{group}/permissions
+    defaults:
+        _action: getPermissionsAction
+        _controller: BackBee\Rest\Controller\BundleController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: GET
 
 bb.rest.media_folder.get_collection:
     pattern: /rest/{version}/media-folder
@@ -658,13 +751,23 @@ bb.rest.media_folder.delete:
         _method: DELETE
 
 bb.rest.media_folder.get_ancestors:
-  pattern: /rest/{version}/media-folder/{uid}/ancestors
-  defaults:
-    _action: getAncestorsAction
-    _controller: BackBee\Rest\Controller\MediaFolderController
-  requirements:
-    version: \d+
-    _method: GET
+    pattern: /rest/{version}/media-folder/{uid}/ancestors
+    defaults:
+        _action: getAncestorsAction
+        _controller: BackBee\Rest\Controller\MediaFolderController
+    requirements:
+        version: \d+
+        _method: GET
+
+bb.rest.media_folder.get_permissions:
+    pattern: /rest/{version}/media-folder/{group}/permissions
+    defaults:
+        _action: getPermissionsAction
+        _controller: BackBee\Rest\Controller\MediaFolderController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: GET
 
 # Media
 bb.media.get_collection:
@@ -759,6 +862,16 @@ bb.rest.keyword.patch:
         version: \d+
         _method: PATCH
 
+bb.rest.workflow.get_permissions:
+    pattern: /rest/{version}/workflow/{group}/permissions
+    defaults:
+        _action: getPermissionsAction
+        _controller: BackBee\Rest\Controller\WorkflowController
+    requirements:
+        version: \d+
+        group: \d+
+        _method: GET
+
 # API Rest Revision
 bb.rest.revision.get:
     pattern: /rest/{version}/revision/{uid}
@@ -770,15 +883,15 @@ bb.rest.revision.get:
         _method: GET
 
 bb.rest.revision.get_collection_by_content:
-  pattern: /rest/{version}/revision/{type}/{uid}
-  defaults:
-    _action: getCollectionByContentAction
-    _controller: BackBee\Rest\Controller\RevisionController
-  requirements:
-    version: \d+
-    uid: \w{32}
-    type: "[a-zA-Z_\/]+"
-    _method: GET
+    pattern: /rest/{version}/revision/{type}/{uid}
+    defaults:
+        _action: getCollectionByContentAction
+        _controller: BackBee\Rest\Controller\RevisionController
+    requirements:
+        version: \d+
+        uid: \w{32}
+        type: "[a-zA-Z_\/]+"
+        _method: GET
 
 # BackBee rss
 bb.rss:

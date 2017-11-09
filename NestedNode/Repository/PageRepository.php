@@ -370,7 +370,7 @@ class PageRepository extends EntityRepository
                 ->andIsDescendantOf($page, !$includeNode, $depth, $this->getOrderingDescendants($depth, $order), (true === $paginate) ? $limit : null, $start, $limitToSection);
 
         switch ($state) {
-            case 'onine':
+            case 'online':
                 $query->andIsOnline();
                 break;
             case 'visible':

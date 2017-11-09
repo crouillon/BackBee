@@ -24,10 +24,12 @@
 namespace BackBee\Rest\Controller;
 
 use Doctrine\ORM\Tools\Pagination\Paginator;
-
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Security\Acl\Domain\Entry;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\InsufficientAuthenticationException;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -43,6 +45,7 @@ use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
 use BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException;
 use BackBee\Rest\Patcher\OperationSyntaxValidator;
 use BackBee\Rest\Patcher\RightManager;
+use BackBee\Security\Acl\Permission\MaskBuilder;
 use BackBee\Site\Layout;
 use BackBee\Workflow\State;
 
@@ -53,6 +56,7 @@ use BackBee\Workflow\State;
  *
  * @copyright   Lp digital system
  * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author      Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 class PageController extends AbstractRestController
 {
@@ -1152,5 +1156,77 @@ class PageController extends AbstractRestController
         }
 
         return $page;
+    }
+
+    /**
+     * @api {get} /page/:group/permissions/:uid Get permissions (ACL)
+     * @apiName getPermissionsAction
+     * @apiGroup Page
+     * @apiVersion 0.2.0
+     *
+     * @apiPermission ROLE_API_USER
+     *
+     * @apiError NoAccessRight Invalid authentication information.
+     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>
+     * @apiError PageNotFound No <strong>BackBee\\NestedNode\\Page</strong> exists with uid <code>uid</code>.
+     *
+     * @apiHeader {String} X-API-KEY User's public key.
+     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
+     *
+     * @apiParam {Number} group Group id.
+     * @apiParam {Number} uid Page uid.
+     *
+     * @apiSuccess {String} uid Id of page.
+     * @apiSuccess {Array} rights Contains rights for the current group.
+     *
+     * @apiSuccessExample Success-Response:
+     * HTTP/1.1 200 OK
+     * {
+     *      "uid": "e2c62ba6eddbb9ce14b589c0b46fd43d",
+     *      "rights": {
+     *          "total": 15,
+     *          "view": 1,
+     *          "create": 1,
+     *          "edit": 1,
+     *          "delete": 1,
+     *          "commit": 0,
+     *          "publish": 0
+     *      }
+     * }
+     */
+
+    /**
+     * Get permissions (ACL)
+     *
+     * @Rest\ParamConverter(name="uid", class="BackBee\NestedNode\Page")
+     *
+     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getPermissionsAction(Request $request)
+    {
+        $group = $request->attributes->get('group');
+        $page = $request->attributes->get('uid');
+
+        $aclManager = $this->getContainer()->get('security.acl_manager');
+        $rights = $aclManager->getPermissionsByPage($page, $group);
+
+        $data = [
+            'uid' => $page->getUid(),
+            'url' => $page->getUrl(),
+            'class' => $page->getType(),
+            'rights' => $rights,
+        ];
+
+        if(false === $page->isRoot()){
+            $rightsRoot = $aclManager->getPermissionsByPage($page->getRoot(), $group);
+            $data['isEditable'] = (empty($rightsRoot)) ? 0 : 1;
+        }
+
+        return $this->createJsonResponse($data, 200);
     }
 }

@@ -31,7 +31,7 @@ use Symfony\Component\ExpressionLanguage\ExpressionLanguage as BaseExpressionLan
  * @category    BackBee
  *
  * @copyright   Lp digital system
- * @author      e.chau <eric.chau@lp-digital.fr>, k.golovin
+ * @author      e.chau <eric.chau@lp-digital.fr>, k.golovin, d.bensid <djoudi.bensid@lp-digital.fr>
  */
 class ExpressionLanguage extends BaseExpressionLanguage
 {
@@ -73,6 +73,14 @@ class ExpressionLanguage extends BaseExpressionLanguage
             return sprintf('$security_context->isGranted(%s, %s)', $attributes, $object);
         }, function (array $variables, $attributes, $object = null) {
             return $variables['security_context']->isGranted($attributes, $object);
+        });
+
+        $this->register('is_sudoer', function () {
+            $securityConf = $security_context->getApplication()->getConfig()->getSecurityConfig();
+            return sprintf('array_key_exists(%s, %s)', $token->getUser()->getLogin(), $securityConf);
+        }, function (array $variables) {
+            $securityConf = $variables['security_context']->getApplication()->getConfig()->getSecurityConfig();
+            return array_key_exists($variables['token']->getUser()->getLogin(), $securityConf['sudoers']);
         });
     }
 }
