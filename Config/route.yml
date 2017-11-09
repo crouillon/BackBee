@@ -404,6 +404,15 @@ bb.rest.page.get_permissions:
         group: \d+
         _method: GET
 
+bb.rest.page.delete_collection:
+    pattern: /rest/{version}/page
+    defaults:
+        _action:     deleteCollectionAction
+        _controller: BackBee\Rest\Controller\PageController
+    requirements:
+        version: \d+
+        _method: DELETE
+
 bb.rest.layout.get_workflow_state:
     pattern: /rest/{version}/layout/{uid}/workflow_state
     defaults:
@@ -608,6 +617,17 @@ bb.rest.classcontent.put_draft:
         type: "[a-zA-Z_\/]+"
         _method: PUT
 
+bb.rest.classcontent.patch_draft:
+    pattern: /rest/{version}/classcontent-draft/{type}/{uid}
+    defaults:
+        _action: patchDraftAction
+        _controller: BackBee\Rest\Controller\ClassContentController
+    requirements:
+        version: \d+
+        uid: \w{32}
+        type: "[a-zA-Z_\/]+"
+        _method: PATCH
+
 bb.rest.classcontent.put_draft_collection:
     pattern: /rest/{version}/classcontent-draft
     defaults:
@@ -730,6 +750,15 @@ bb.rest.media_folder.delete:
         version: \d+
         _method: DELETE
 
+bb.rest.media_folder.get_ancestors:
+    pattern: /rest/{version}/media-folder/{uid}/ancestors
+    defaults:
+        _action: getAncestorsAction
+        _controller: BackBee\Rest\Controller\MediaFolderController
+    requirements:
+        version: \d+
+        _method: GET
+
 bb.rest.media_folder.get_permissions:
     pattern: /rest/{version}/media-folder/{group}/permissions
     defaults:
@@ -841,6 +870,27 @@ bb.rest.workflow.get_permissions:
     requirements:
         version: \d+
         group: \d+
+        _method: GET
+
+# API Rest Revision
+bb.rest.revision.get:
+    pattern: /rest/{version}/revision/{uid}
+    defaults:
+        _action: getAction
+        _controller: BackBee\Rest\Controller\RevisionController
+    requirements:
+        version: \d+
+        _method: GET
+
+bb.rest.revision.get_collection_by_content:
+    pattern: /rest/{version}/revision/{type}/{uid}
+    defaults:
+        _action: getCollectionByContentAction
+        _controller: BackBee\Rest\Controller\RevisionController
+    requirements:
+        version: \d+
+        uid: \w{32}
+        type: "[a-zA-Z_\/]+"
         _method: GET
 
 # BackBee rss
