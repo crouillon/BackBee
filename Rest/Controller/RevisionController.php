@@ -23,13 +23,12 @@
 
 namespace BackBee\Rest\Controller;
 
+use Doctrine\ORM\Tools\Pagination\Paginator;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
 use BackBee\ClassContent\Exception\InvalidContentTypeException;
 use BackBee\ClassContent\Revision;
 use BackBee\Rest\Controller\Annotations as Rest;
-
-use Doctrine\ORM\Tools\Pagination\Paginator;
-
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Revision API Controller.

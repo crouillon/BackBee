@@ -27,6 +27,7 @@ use Symfony\Component\DependencyInjection\ContainerAware;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Yaml\Yaml;
+
 use BackBee\Security\Acl\Permission\MaskBuilder;
 use BackBee\Security\Acl\Permission\PermissionMap;
 

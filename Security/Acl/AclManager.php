@@ -23,26 +23,25 @@
 
 namespace BackBee\Security\Acl;
 
-use BackBee\NestedNode\Page;
-use BackBee\Standard\Application;
 use InvalidArgumentException;
-
-use Symfony\Component\Security\Acl\Domain\Acl,
-    Symfony\Component\Security\Acl\Domain\ObjectIdentity,
-    Symfony\Component\Security\Acl\Domain\UserSecurityIdentity,
-    Symfony\Component\Security\Acl\Model\DomainObjectInterface,
-    Symfony\Component\Security\Acl\Model\ObjectIdentityInterface,
-    Symfony\Component\Security\Acl\Model\SecurityIdentityInterface,
-    Symfony\Component\Security\Acl\Permission\PermissionMapInterface,
-    Symfony\Component\Security\Core\SecurityContextInterface,
-    Symfony\Component\Security\Acl\Exception\AclNotFoundException,
-    Symfony\Component\Security\Acl\Exception\AclAlreadyExistsException;
-
-use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface,
-    BackBee\Security\Acl\Domain\AbstractObjectIdentifiable,
-    BackBee\Security\Acl\Permission\InvalidPermissionException,
-    BackBee\Security\Acl\Permission\MaskBuilder;
+use Symfony\Component\Security\Acl\Domain\Acl;
+use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Acl\Exception\AclAlreadyExistsException;
+use Symfony\Component\Security\Acl\Exception\AclNotFoundException;
+use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
+use Symfony\Component\Security\Acl\Model\SecurityIdentityInterface;
+use Symfony\Component\Security\Acl\Permission\PermissionMapInterface;
+use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Core\Util\ClassUtils;
+
+use BackBee\NestedNode\Page;
+use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
+use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
+use BackBee\Security\Acl\Permission\InvalidPermissionException;
+use BackBee\Security\Acl\Permission\MaskBuilder;
+use BackBee\Standard\Application;
 
 /**
  * Class AclManager

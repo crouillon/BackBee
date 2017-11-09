@@ -2,8 +2,9 @@
 
 namespace BackBee\Rest\Controller\Event;
 
-use BackBee\Event\Event;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+
+use BackBee\Event\Event;
 
 /**
  * @author Eric Chau <eric.chau@lp-digital.fr>

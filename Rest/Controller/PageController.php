@@ -24,31 +24,30 @@
 namespace BackBee\Rest\Controller;
 
 use Doctrine\ORM\Tools\Pagination\Paginator;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Security\Acl\Domain\Entry;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Core\Exception\InsufficientAuthenticationException;
+use Symfony\Component\Validator\Constraints as Assert;
 
-use Symfony\Component\HttpFoundation\JsonResponse,
-    Symfony\Component\HttpFoundation\Request,
-    Symfony\Component\HttpKernel\Exception\BadRequestHttpException,
-    Symfony\Component\HttpKernel\Exception\NotFoundHttpException,
-    Symfony\Component\Security\Acl\Domain\Entry,
-    Symfony\Component\Security\Acl\Domain\UserSecurityIdentity,
-    Symfony\Component\Security\Core\Exception\AccessDeniedException,
-    Symfony\Component\Security\Core\Exception\InsufficientAuthenticationException,
-    Symfony\Component\Validator\Constraints as Assert;
-
-use BackBee\AutoLoader\Exception\ClassNotFoundException,
-    BackBee\ClassContent\AbstractClassContent,
-    BackBee\Exception\InvalidArgumentException,
-    BackBee\NestedNode\Page,
-    BackBee\Rest\Controller\Annotations as Rest,
-    BackBee\Rest\Exception\NotModifiedException,
-    BackBee\Rest\Patcher\EntityPatcher,
-    BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException,
-    BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException,
-    BackBee\Rest\Patcher\OperationSyntaxValidator,
-    BackBee\Rest\Patcher\RightManager,
-    BackBee\Site\Layout,
-    BackBee\Workflow\State,
-    BackBee\Security\Acl\Permission\MaskBuilder;
+use BackBee\AutoLoader\Exception\ClassNotFoundException;
+use BackBee\ClassContent\AbstractClassContent;
+use BackBee\Exception\InvalidArgumentException;
+use BackBee\NestedNode\Page;
+use BackBee\Rest\Controller\Annotations as Rest;
+use BackBee\Rest\Exception\NotModifiedException;
+use BackBee\Rest\Patcher\EntityPatcher;
+use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
+use BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException;
+use BackBee\Rest\Patcher\OperationSyntaxValidator;
+use BackBee\Rest\Patcher\RightManager;
+use BackBee\Security\Acl\Permission\MaskBuilder;
+use BackBee\Site\Layout;
+use BackBee\Workflow\State;
 
 /**
  * Page Controller.

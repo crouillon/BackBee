@@ -23,18 +23,18 @@
 
 namespace BackBee\Rest\Controller;
 
-use BackBee\Rest\Exception\ValidationException,
-    BackBee\Rest\Controller\Annotations as Rest;
-
-use Symfony\Component\HttpFoundation\JsonResponse,
-    Symfony\Component\HttpFoundation\Request,
-    Symfony\Component\HttpFoundation\Response,
-    Symfony\Component\Security\Acl\Domain\ObjectIdentity,
-    Symfony\Component\Security\Acl\Domain\UserSecurityIdentity,
-    Symfony\Component\Validator\ConstraintViolation,
-    Symfony\Component\Validator\ConstraintViolationList,
-    Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Acl\Exception\Exception;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\ConstraintViolation;
+use Symfony\Component\Validator\ConstraintViolationList;
+
+use BackBee\Rest\Controller\Annotations as Rest;
+use BackBee\Rest\Exception\ValidationException;
 
 /**
  * User Controller.

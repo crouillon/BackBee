@@ -23,16 +23,16 @@
 
 namespace BackBee\Rest\Controller;
 
-use BackBee\Rest\Controller\Annotations as Rest;
-use BackBee\Security\Token\BBUserToken;
-
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Security\Core\Exception\DisabledException;
+use Symfony\Component\Validator\Constraints as Assert;
+
+use BackBee\Rest\Controller\Annotations as Rest;
+use BackBee\Security\Token\BBUserToken;
 
 /**
  * Auth Controller.
