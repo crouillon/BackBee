@@ -117,7 +117,7 @@ class AclControllerTest extends TestCase
 
         $res = json_decode($response->getContent(), true);
 
-        $this->assertCount(11, $res);
+        $this->assertCount(12, $res);
 
         $this->assertArrayHasKey('view', $res);
         $this->assertEquals(1, $res['view']);
@@ -133,7 +133,7 @@ class AclControllerTest extends TestCase
         $data = [[
             'object_id' => $this->site->getObjectIdentifier(),
             'object_class' => 'Class\That\Doesnt\Exist',
-            'permissions' => ['view' => 1],
+            'mask' => 1,
         ]];
 
         $response = $this->getBBApp()->getController()->handle(new Request([], $data, [
@@ -157,7 +157,7 @@ class AclControllerTest extends TestCase
         $data = [[
             'object_id' => $this->site->getObjectIdentifier(),
             'object_class' => get_class($this->site),
-            'permissions' => ['view' => 1],
+            'mask' => 1
         ]];
 
         $response = $this->getBBApp()->getController()->handle(new Request([], $data, [
@@ -174,7 +174,7 @@ class AclControllerTest extends TestCase
 
         $data = [[
             'sid' => $this->groupEditor->getId(),
-            'permissions' => ['view' => 1],
+            'mask' => 1
         ]];
 
         $response = $this->getBBApp()->getController()->handle(new Request([], $data, [
@@ -200,30 +200,13 @@ class AclControllerTest extends TestCase
                 'sid' => $this->groupEditor->getId(),
                 'object_id' => $this->site->getObjectIdentifier(),
                 'object_class' => get_class($this->site),
-                'permissions' => [
-                    'view' => 1,
-                    'create' => 1,
-                    'edit' => 1,
-                    'delete' => 1,
-                    'undelete' => 'off',
-                    'commit' => '0',
-                    'publish' => 1,
-                    'operator' => 1,
-                    'master' => 'false',
-                    'owner' => 1,
-                ],
+                'mask' => 14
             ],
             [
                 // class scope
                 'sid' => $this->groupEditor->getId(),
                 'object_class' => 'BackBee\Site\Layout',
-                'permissions' => [
-                    'view' => 'true',
-                    'create' => '1',
-                    'edit' => 1,
-                    'commit' => '0',
-                    'publish' => 'off',
-                ],
+                'mask' => 1
             ],
         ];
 
@@ -240,41 +223,14 @@ class AclControllerTest extends TestCase
 
         $objectIdentity = new ObjectIdentity($this->site->getObjectIdentifier(), get_class($this->site));
         $ace = $aclManager->getObjectAce($objectIdentity, $securityIdentity);
-        $this->assertInstanceOf('Symfony\Component\Security\Acl\Domain\Entry', $ace);
-        $this->assertEquals(687, $ace->getMask());
 
-        $objectIdentity = new ObjectIdentity('class', 'BackBee\Site\Layout');
+        $this->assertInstanceOf('Symfony\Component\Security\Acl\Domain\Entry', $ace);
+        $this->assertEquals(14, $ace->getMask());
+
+        $objectIdentity = new ObjectIdentity('all', 'BackBee\Site\Layout');
         $ace = $aclManager->getClassAce($objectIdentity, $securityIdentity);
         $this->assertInstanceOf('Symfony\Component\Security\Acl\Domain\Entry', $ace);
-        $this->assertEquals(7, $ace->getMask());
-    }
-
-    /**
-     * @covers ::postPermissionMapAction
-     */
-    public function test_postPermissionMapAction_invalidPermission()
-    {
-        $data = [[
-            'sid' => $this->groupEditor->getId(),
-            'object_class' => get_class($this->site),
-            'permissions' => ['permissionThatDoesnExist' => 1],
-        ]];
-
-        $response = $this->getBBApp()->getController()->handle(new Request([], $data, [
-            '_action' => 'postPermissionMapAction',
-            '_controller' =>  $this->getController(),
-        ], [], [], ['REQUEST_URI' => '/rest/1/acl/', 'REQUEST_METHOD' => 'POST']));
-
-        $res = json_decode($response->getContent(), true);
-
-        $this->assertEquals(400, $response->getStatusCode());
-
-        $res = json_decode($response->getContent(), true);
-
-        $this->assertInternalType('array', $res);
-        $this->assertArrayHasKey('errors', $res);
-
-        $this->assertEquals('Invalid permission mask: permissionThatDoesnExist', $res['errors'][0]['permissions'][0]);
+        $this->assertEquals(1, $ace->getMask());
     }
 
     /**
