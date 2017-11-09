@@ -25,26 +25,29 @@ namespace BackBee\Rest\Controller;
 
 use Doctrine\ORM\Tools\Pagination\Paginator;
 
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\HttpFoundation\JsonResponse,
+    Symfony\Component\HttpFoundation\Request,
+    Symfony\Component\HttpFoundation\Response,
+    Symfony\Component\HttpKernel\Exception\BadRequestHttpException,
+    Symfony\Component\HttpKernel\Exception\NotFoundHttpException,
+    Symfony\Component\Validator\Constraints as Assert,
+    Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
-use BackBee\Exception\InvalidArgumentException;
-use BackBee\NestedNode\MediaFolder;
-use BackBee\Rest\Controller\Annotations as Rest;
-use BackBee\Rest\Patcher\EntityPatcher;
-use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
-use BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException;
-use BackBee\Rest\Patcher\RightManager;
-use BackBee\Rest\Patcher\OperationSyntaxValidator;
-use BackBee\Utils\StringUtils;
+use BackBee\Exception\InvalidArgumentException,
+    BackBee\NestedNode\MediaFolder,
+    BackBee\Rest\Controller\Annotations as Rest,
+    BackBee\Rest\Patcher\EntityPatcher,
+    BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException,
+    BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException,
+    BackBee\Rest\Patcher\RightManager,
+    BackBee\Rest\Patcher\OperationSyntaxValidator,
+    BackBee\Utils\StringUtils;
 
 /**
  * Description of MediaFolderController
  *
- * @author h.baptiste <harris.baptiste@lp-digital.fr>
+ * @author      h.baptiste <harris.baptiste@lp-digital.fr>
+ * @author      Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 class MediaFolderController extends AbstractRestController
 {
@@ -58,16 +61,26 @@ class MediaFolderController extends AbstractRestController
      * @Rest\ParamConverter(
      *   name="parent", id_name="parent_uid", id_source="query", class="BackBee\NestedNode\MediaFolder", required=false
      * )
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('VIEW','BackBee\\NestedNode\\MediaFolder')")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function getCollectionAction($start, MediaFolder $parent = null)
     {
+        $mediaFolders = [];
+
         $results = $this->getMediaFolderRepository()->getMediaFolders($parent, [
             'field' => '_leftnode',
             'dir'   => 'asc',
         ]);
 
-        return $this->addRangeToContent($this->createJsonResponse($results), $results, $start);
+        foreach ($results as $folder) {
+
+            if($this->isGranted('VIEW', $folder) || true === $folder->isRoot()){
+
+                $mediaFolders[] = $folder;
+            }
+        }
+
+        return $this->addRangeToContent($this->createJsonResponse($mediaFolders), $mediaFolders, $start);
     }
 
     /**
@@ -75,10 +88,14 @@ class MediaFolderController extends AbstractRestController
      * @return Response
      *
      * @Rest\ParamConverter(name="mediaFolder", class="BackBee\NestedNode\MediaFolder")
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('VIEW', mediaFolder)")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function getAction(MediaFolder $mediaFolder)
     {
+        if (!$this->isGranted('VIEW', $mediaFolder)) {
+            throw new AccessDeniedHttpException(sprintf('You are not authorized to view %s MediaFolder.', $mediaFolder->getTitle()));
+        }
+
         return $this->createJsonResponse($mediaFolder);
     }
 
@@ -89,10 +106,14 @@ class MediaFolderController extends AbstractRestController
      *      @Assert\NotBlank()
      * })
      * @Rest\ParamConverter(name="mediaFolder", class="BackBee\NestedNode\MediaFolder")
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('EDIT', mediaFolder)")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function putAction(MediaFolder $mediaFolder, Request $request)
     {
+        if (!$this->isGranted('EDIT', $mediaFolder)) {
+            throw new AccessDeniedHttpException(sprintf('You are not authorized to edit %s MediaFolder.', $mediaFolder->getTitle()));
+        }
+
         $parentId = $request->get('parent_uid', null);
         if (null === $parentId) {
             $parent = $this->getMediaFolderRepository()->getRoot();
@@ -118,10 +139,14 @@ class MediaFolderController extends AbstractRestController
      * @return Response
      *
      * @Rest\ParamConverter(name="mediaFolder", class="BackBee\NestedNode\MediaFolder")
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('DELETE', mediaFolder)")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function deleteAction(MediaFolder $mediaFolder)
     {
+        if (!$this->isGranted('DELETE', $mediaFolder)) {
+            throw new AccessDeniedHttpException(sprintf('You are not authorized to delete %s MediaFolder.', $mediaFolder->getTitle()));
+        }
+
         if ($mediaFolder->isRoot()) {
             throw new BadRequestHttpException('Cannot remove the root node of the MediaFolder.');
         }
@@ -148,12 +173,17 @@ class MediaFolderController extends AbstractRestController
      * @Rest\ParamConverter(
      *   name="parent", id_name="parent_uid", id_source="request", class="BackBee\NestedNode\MediaFolder", required=false
      * )
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('CREATE', 'BackBee\\NestedNode\\MediaFolder')")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function postAction(Request $request, $parent = null)
     {
+        $title = trim($request->request->get('title'));
+
+        if (!$this->isGranted('CREATE', $parent)) {
+            throw new AccessDeniedHttpException(sprintf('You are not authorized to create %s MediaFolder.', $title));
+        }
+
         try {
-            $title = trim($request->request->get('title'));
             $uid = $request->request->get('uid', null);
             if (null !== $uid) {
                 $mediaFolder = $this->getMediaFolderRepository()->find($uid);
@@ -206,10 +236,14 @@ class MediaFolderController extends AbstractRestController
      * @return Response
      *
      * @Rest\ParamConverter(name="mediaFolder", class="BackBee\NestedNode\MediaFolder")
-     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER') & is_granted('EDIT', mediaFolder)")
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
      */
     public function patchAction(MediaFolder $mediaFolder, Request $request)
     {
+        if (!$this->isGranted('EDIT', $mediaFolder)) {
+            throw new AccessDeniedHttpException(sprintf('You are not authorized to edit %s MediaFolder.', $mediaFolder->getTitle()));
+        }
+
         $operations = $request->request->all();
         try {
             (new OperationSyntaxValidator())->validate($operations);
@@ -324,5 +358,78 @@ class MediaFolderController extends AbstractRestController
         $ancestors = $this->getMediaFolderRepository()->getAncestors($folder);
 
         return $this->createJsonResponse($ancestors);
+    }
+
+    /**
+     * @api {get} /media-folder/:group/permissions Get permissions (ACL)
+     * @apiName getPermissionsAction
+     * @apiGroup Media Folder
+     * @apiVersion 0.2.0
+     *
+     * @apiPermission ROLE_API_USER
+     *
+     * @apiError NoAccessRight Invalid authentication information.
+     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>
+     *
+     * @apiHeader {String} X-API-KEY User's public key.
+     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
+     *
+     * @apiParam {Number} group Group id.
+     *
+     * @apiSuccess {String} uid Id of media folder.
+     * @apiSuccess {String} label Label of media folder.
+     * @apiSuccess {String} class Classname of media folder.
+     * @apiSuccess {Array} rights Contains rights for the current group.
+     *
+     * @apiSuccessExample Success-Response:
+     * HTTP/1.1 200 OK
+     * {
+     *      "uid": "62933a2951ef01f4eafd9bdf4d3cd2f0",
+     *      "label": "Mediacenter",
+     *      "class": "BackBee\\NestedNode\\MediaFolder",
+     *      "rights": {
+     *          "total": 3,
+     *          "view": 1,
+     *          "create": 1,
+     *          "edit": 0,
+     *          "delete": 0,
+     *          "commit": 0,
+     *          "publish": 0
+     *      }
+     * }
+     */
+
+    /**
+     * Get permissions (ACL)
+     *
+     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getPermissionsAction(Request $request)
+    {
+        $group = $request->attributes->get('group');
+        $aclManager = $this->getContainer()->get('security.acl_manager');
+        $parentClass = 'BackBee\NestedNode\MediaFolder';
+
+        $mediaFolders = $this->getMediaFolderRepository()->getMediaFolderByLevels([1]);
+
+        $data['parent'] = [
+            'class' => $parentClass,
+        ];
+
+        foreach ($mediaFolders as $folder){
+
+            $data['objects'][] = [
+                'uid' => (false === $folder->isRoot()) ? $folder->getUid() : '',
+                'label' => $folder->getTitle(),
+                'rights' => $aclManager->getPermissions($folder, $group)
+            ];
+        }
+
+        return $this->createJsonResponse($data, 200);
     }
 }

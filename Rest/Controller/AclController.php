@@ -23,16 +23,18 @@
 
 namespace BackBee\Rest\Controller;
 
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
-use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
-use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Validator\ConstraintViolation;
-use Symfony\Component\Validator\ConstraintViolationList;
+use BackBee\Rest\Exception\ValidationException,
+    BackBee\Rest\Controller\Annotations as Rest;
 
-use BackBee\Rest\Controller\Annotations as Rest;
-use BackBee\Rest\Exception\ValidationException;
+use Symfony\Component\HttpFoundation\JsonResponse,
+    Symfony\Component\HttpFoundation\Request,
+    Symfony\Component\HttpFoundation\Response,
+    Symfony\Component\Security\Acl\Domain\ObjectIdentity,
+    Symfony\Component\Security\Acl\Domain\UserSecurityIdentity,
+    Symfony\Component\Validator\ConstraintViolation,
+    Symfony\Component\Validator\ConstraintViolationList,
+    Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Security\Acl\Exception\Exception;
 
 /**
  * User Controller.
@@ -41,6 +43,7 @@ use BackBee\Rest\Exception\ValidationException;
  *
  * @copyright   Lp digital system
  * @author      k.golovin
+ * @author      Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 class AclController extends AbstractRestController
 {
@@ -172,11 +175,13 @@ class AclController extends AbstractRestController
      * })
      *
      * @Rest\RequestParam(name = "mask", description="Permission Mask", requirements = {
-     *  @Assert\NotBlank(message="Mask must be provided"),
-     *  @Assert\Type(type="integer", message="Mask must be an integer"),
+     *  @Assert\NotBlank(message="Mask must be provided")
      * })
      *
      * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return Response
      */
     public function postObjectAceAction(Request $request)
     {
@@ -190,7 +195,7 @@ class AclController extends AbstractRestController
         $securityIdentity = new UserSecurityIdentity($request->request->get('group_id'), 'BackBee\Security\Group');
 
         // grant owner access
-        $acl->insertObjectAce($securityIdentity, $request->request->get('mask'));
+        $acl->insertObjectAce($securityIdentity, intval($request->request->get('mask')));
 
         $aclProvider->updateAcl($acl);
 
@@ -213,8 +218,9 @@ class AclController extends AbstractRestController
     /**
      * Bulk permissions create/update.
      *
-     *
      * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     * @param Request $request
+     * @return Response
      */
     public function postPermissionMapAction(Request $request)
     {
@@ -222,15 +228,16 @@ class AclController extends AbstractRestController
         $aclManager = $this->getContainer()->get("security.acl_manager");
 
         $violations = new ConstraintViolationList();
-
+        
+        // Bulk permissions
         foreach ($permissionMap as $i => $objectMap) {
-            $permissions = $objectMap['permissions'];
 
+            // Create object identity with id and class
             if (!isset($objectMap['object_class'])) {
                 $violations->add(
                     new ConstraintViolation(
-                        "Object class not supllied",
-                        "Object class not supllied",
+                        "Object class not supplied",
+                        "Object class not supplied",
                         [],
                         sprintf('%s[object_class]', $i),
                         sprintf('%s[object_class]', $i),
@@ -265,14 +272,15 @@ class AclController extends AbstractRestController
                 $objectIdentity = new ObjectIdentity($objectId, $objectClass);
             } else {
                 // class scope
-                $objectIdentity = new ObjectIdentity('class', $objectClass);
+                $objectIdentity = new ObjectIdentity('all', $objectClass);
             }
 
+            // Create user security identity
             if (!isset($objectMap['sid'])) {
                 $violations->add(
                     new ConstraintViolation(
-                        "Security ID not supllied",
-                        "Security ID not supllied",
+                        "Security ID not supplied",
+                        "Security ID not supplied",
                         [],
                         sprintf('%s[sid]', $i),
                         sprintf('%s[sid]', $i),
@@ -285,36 +293,33 @@ class AclController extends AbstractRestController
             $sid = $objectMap['sid'];
             $securityIdentity = new UserSecurityIdentity($sid, 'BackBee\Security\Group');
 
-            // convert values to booleans
-            $permissions = array_map(function ($val) {
-                return \BackBee\Utils\StringUtils::toBoolean((string) $val);
-            }, $permissions);
+            // Clean aces.
+            if ($objectId) {
 
-            // remove false values
-            $permissions = array_filter($permissions);
-            $permissions = array_keys($permissions);
-            $permissions = array_unique($permissions);
+                try{
+                    $aclManager->deleteObjectAce($objectIdentity, $securityIdentity);
+                }
+                catch (\Exception $e) { /* Do nothing */ }
 
-            try {
-                $mask = $aclManager->getMask($permissions);
-            } catch (\BackBee\Security\Acl\Permission\InvalidPermissionException $e) {
-                $violations->add(
-                    new ConstraintViolation(
-                        $e->getMessage(),
-                        $e->getMessage(),
-                        [],
-                        sprintf('%s[permissions]', $i),
-                        sprintf('%s[permissions]', $i),
-                        $e->getPermission()
-                    )
-                );
-                continue;
+            } else {
+
+                try{
+                    $aclManager->deleteClassAce($objectIdentity, $securityIdentity);
+                }
+                catch (\Exception $e) { /* Do nothing */ }
             }
 
+            // Mask
+            if (!isset($objectMap['mask'])) continue;
+
+            // Grant
             if ($objectId) {
-                $aclManager->insertOrUpdateObjectAce($objectIdentity, $securityIdentity, $mask);
+
+                $aclManager->insertOrUpdateObjectAce($objectIdentity, $securityIdentity, intval($objectMap['mask']));
+
             } else {
-                $aclManager->insertOrUpdateClassAce($objectIdentity, $securityIdentity, $mask);
+
+                $aclManager->insertOrUpdateClassAce($objectIdentity, $securityIdentity, intval($objectMap['mask']));
             }
         }
 
@@ -333,6 +338,7 @@ class AclController extends AbstractRestController
      * @param string|int $sid
      *
      * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     * @return Response
      */
     public function deleteClassAceAction($sid, Request $request)
     {
@@ -365,6 +371,7 @@ class AclController extends AbstractRestController
      * @param string|int $sid
      *
      * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     * @return Response
      */
     public function deleteObjectAceAction($sid, Request $request)
     {
@@ -397,5 +404,140 @@ class AclController extends AbstractRestController
         $data = $aclManager->getPermissionCodes();
 
         return new Response(json_encode($data), 200);
+    }
+
+    /**
+     * @api {post} /acl/:group/page/:uid Update permissions page
+     * @apiName postPermissionsPageAction
+     * @apiGroup Acl
+     * @apiVersion 0.2.0
+     *
+     * @apiPermission ROLE_API_USER
+     *
+     * @apiError NoAccessRight Invalid authentication information.
+     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>.
+     * @apiError PageNotFound No <strong>BackBee\\NestedNode\\Page</strong> exists with uid <code>uid</code>.
+     *
+     * @apiHeader {String} X-API-KEY User's public key.
+     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
+     *
+     * @apiParam {Number} group Group id.
+     * @apiParam {Number} uid Page uid.
+     *
+     * @apiSuccessExample Success-Response:
+     * HTTP/1.1 200 OK
+     */
+
+    /**
+     * Update permission
+     *
+     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
+     * @Rest\ParamConverter(name="uid", class="BackBee\NestedNode\Page")
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function postPermissionsPageAction(Request $request)
+    {
+        $em = $this->getApplication()->getEntityManager();
+        $page = $request->attributes->get('uid');
+        $group = $request->attributes->get('group');
+        $aclManager = $this->getContainer()->get('security.acl_manager');
+
+        if(true === $page->isRoot()) {
+
+            $objectIdentity = new ObjectIdentity('all', $page->getType());
+
+            try{
+                $aclManager->deleteClassAce($objectIdentity, $group);
+            }
+            catch(\Exception $e){ /* do nothing */ }
+
+            if($request->request->has('mask')) {
+
+                $aclManager->insertOrUpdateClassAce($objectIdentity, $group, $request->request->get('mask'));
+            }
+
+        } else {
+
+            $pages = $em->getRepository('BackBee\NestedNode\Page')->findBy(array('_url' => $page->getUrl()));
+
+            foreach ($pages as $page) {
+
+                try{
+                    $aclManager->deleteObjectAce($page, $group);
+                }
+                catch(\Exception $e){ /* do nothing */ }
+
+                if($request->request->has('mask')) {
+
+                    $aclManager->insertOrUpdateObjectAce($page, $group, $request->request->get('mask'));
+                }
+            }
+        }
+
+        return $this->createJsonResponse([], 200);
+    }
+
+    /**
+     * @api {delete} /acl/:group/clear/:uid Clear permissions for an page
+     * @apiName clearPermissionsPageAction
+     * @apiGroup Acl
+     * @apiVersion 0.2.0
+     *
+     * @apiPermission ROLE_API_USER
+     *
+     * @apiError NoAccessRight Invalid authentication information.
+     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>.
+     * @apiError PageNotFound No <strong>BackBee\\NestedNode\\Page</strong> exists with uid <code>uid</code>.
+     *
+     * @apiHeader {String} X-API-KEY User's public key.
+     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
+     *
+     * @apiParam {Number} group Group id.
+     *
+     * @apiSuccessExample Success-Response:
+     * HTTP/1.1 200 OK
+     */
+    /**
+     * Clear permissions for an page
+     *
+     * @Rest\ParamConverter(name="uid", class="BackBee\NestedNode\Page")
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function clearPermissionsPageAction(Request $request)
+    {
+        $page = $request->attributes->get('uid');
+        $group = $request->attributes->get('group');
+
+        $aclManager = $this->getContainer()->get('security.acl_manager');
+        $securityIdentity = new UserSecurityIdentity($group, 'BackBee\Security\Group');
+
+        try{
+
+            if(true === $page->isRoot()){
+
+                try{
+                    $aclManager->deleteClassAce(new ObjectIdentity('all', $page->getType()), $securityIdentity);
+                }
+                catch(\Exception $e){
+                    // do nothing
+                }
+            }
+            else{
+                $aclManager->deleteObjectAce($page, $securityIdentity);
+            }
+        }
+        catch (\Exception $e){
+            // do nothing
+        }
+
+        return $this->createJsonResponse([], 200);
     }
 }

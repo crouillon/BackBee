@@ -23,16 +23,20 @@
 
 namespace BackBee\Rest\Controller;
 
-use Symfony\Component\HttpFoundation\Request;
+use BackBee\Rest\Controller\Annotations as Rest,
+    BackBee\Site\Layout,
+    BackBee\Site\Site;
 
-use BackBee\Rest\Controller\Annotations as Rest;
-use BackBee\Site\Layout;
+use Symfony\Component\HttpFoundation\Request,
+    Symfony\Component\HttpFoundation\JsonResponse,
+    Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @category    BackBee
  *
  * @copyright   Lp digital system
  * @author      e.chau <eric.chau@lp-digital.fr>
+ * @author      Djoudi Bensid <djoudi.bensid@lp-digital.fr>
  */
 class LayoutController extends AbstractRestController
 {
@@ -41,7 +45,7 @@ class LayoutController extends AbstractRestController
      *
      * @param Layout $layout
      *
-     * @return Symfony\Component\HttpFoundation\Response
+     * @return JsonResponse
      *
      * @Rest\ParamConverter(name="layout", class="BackBee\Site\Layout")
      */
@@ -132,5 +136,85 @@ class LayoutController extends AbstractRestController
         $response->setContent($this->formatItem($layout));
 
         return $response;
+    }
+
+    /**
+     * @api {get} /layout/:group/permissions Get permissions (ACL)
+     * @apiName getPermissionsAction
+     * @apiGroup Layout
+     * @apiVersion 0.2.0
+     *
+     * @apiPermission ROLE_API_USER
+     *
+     * @apiError NoAccessRight Invalid authentication information.
+     * @apiError SiteNotFound No <strong>BackBee\\Site\\Site</strong> exists with uid <code>site_uid</code>.
+     * @apiError GroupNotFound No <strong>BackBee\\Security\\Group</strong> exists with uid <code>group</code>
+     *
+     * @apiHeader {String} X-API-KEY User's public key.
+     * @apiHeader {String} X-API-SIGNATURE Api signature generated for the request.
+     *
+     * @apiParam {Number} group Group id.
+     * @apiParam {Number} site_uid Site uid.
+     *
+     * @apiSuccess {String} uid Id of layout.
+     * @apiSuccess {String} label Label of layout.
+     * @apiSuccess {String} class Classname of layout.
+     * @apiSuccess {Array} rights Contains rights for the current group.
+     *
+     * @apiSuccessExample Success-Response:
+     * HTTP/1.1 200 OK
+     * {
+     *      "uid": "e2c62ba6eddbb9ce14b589c0b46fd43d",
+     *      "label": "Article",
+     *      "class": "BackBee\\Site\\Layout",
+     *      "rights": {
+     *          "total": 15,
+     *          "view": 1,
+     *          "create": 1,
+     *          "edit": 1,
+     *          "delete": 1,
+     *          "commit": 0,
+     *          "publish": 0
+     *      }
+     * }
+     */
+
+    /**
+     * Get permissions (ACL)
+     *
+     * @Rest\ParamConverter(name="site", id_name="site_uid", id_source="query", class="BackBee\Site\Site")
+     * @Rest\ParamConverter(name="group", id_name = "group", class="BackBee\Security\Group")
+     *
+     * @Rest\Security("is_fully_authenticated() & has_role('ROLE_API_USER')")
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getPermissionsAction(Request $request)
+    {
+        $group = $request->attributes->get('group');
+        $site = $request->query->get('site_uid');
+        $aclManager = $this->getContainer()->get('security.acl_manager');
+
+        $parentClass = 'BackBee\Site\Layout';
+
+        $data['parent'] = [
+            'class' => $parentClass,
+            'rights' => $aclManager->getPermissions($parentClass, $group)
+        ];
+
+        $params = ($site instanceof Site) ? array('_site' => $site) : [];
+        $objects = $this->getEntityManager()->getRepository($parentClass)->findBy($params, ['_label' => 'ASC']);
+
+        foreach ($objects as $object){
+
+            $data['objects'][] = [
+                'uid' => $object->getUid(),
+                'label' => $object->getLabel(),
+                'rights' => $aclManager->getPermissions($object, $group)
+            ];
+        }
+
+        return $this->createJsonResponse($data, 200);
     }
 }

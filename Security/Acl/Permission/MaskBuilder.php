@@ -66,6 +66,8 @@ class MaskBuilder extends sfMaskBuilder
 {
     const MASK_COMMIT = 256;        // 1 << 8
     const MASK_PUBLISH = 512;        // 1 << 9
+    const MASK_NONE = 0;
     const CODE_COMMIT = 'S';
     const CODE_PUBLISH = 'P';
+    const CODE_NONE = 'N';
 }

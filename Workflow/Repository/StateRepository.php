@@ -58,4 +58,17 @@ class StateRepository extends EntityRepository
 
         return $states;
     }
+
+    /**
+     * Returns an array of available workflow states associated layout.
+     *
+     * @return array
+     */
+    public function getWorkflowStatesWithLayout()
+    {
+        $query = $this->createQueryBuilder('w')
+                      ->andWhere('w._layout IS NOT NULL');
+
+        return $query->getQuery()->getResult();
+    }
 }

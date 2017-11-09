@@ -77,4 +77,20 @@ class MediaFolderRepository extends NestedNodeRepository
        }
        return $result;
     }
+
+    /**
+     * Get media folder by levels.
+     *
+     * @param $levels
+     * @return array
+     */
+    public function getMediaFolderByLevels($levels)
+    {
+        $qb = $this->createQueryBuilder('mf')
+                   ->andWhere('mf._level IN (:levels)')
+                   ->setParameter('levels', $levels)
+                   ->orderBy('mf._leftnode', 'asc');
+
+        return $qb->getQuery()->getResult();
+    }
 }
