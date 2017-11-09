@@ -24,24 +24,23 @@
 namespace BackBee\Rest\Controller;
 
 use Doctrine\ORM\Tools\Pagination\Paginator;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Validator\Constraints as Assert;
 
-use Symfony\Component\HttpFoundation\JsonResponse,
-    Symfony\Component\HttpFoundation\Request,
-    Symfony\Component\HttpFoundation\Response,
-    Symfony\Component\HttpKernel\Exception\BadRequestHttpException,
-    Symfony\Component\HttpKernel\Exception\NotFoundHttpException,
-    Symfony\Component\Validator\Constraints as Assert,
-    Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-
-use BackBee\Exception\InvalidArgumentException,
-    BackBee\NestedNode\MediaFolder,
-    BackBee\Rest\Controller\Annotations as Rest,
-    BackBee\Rest\Patcher\EntityPatcher,
-    BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException,
-    BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException,
-    BackBee\Rest\Patcher\RightManager,
-    BackBee\Rest\Patcher\OperationSyntaxValidator,
-    BackBee\Utils\StringUtils;
+use BackBee\Exception\InvalidArgumentException;
+use BackBee\NestedNode\MediaFolder;
+use BackBee\Rest\Controller\Annotations as Rest;
+use BackBee\Rest\Patcher\EntityPatcher;
+use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
+use BackBee\Rest\Patcher\Exception\UnauthorizedPatchOperationException;
+use BackBee\Rest\Patcher\OperationSyntaxValidator;
+use BackBee\Rest\Patcher\RightManager;
+use BackBee\Utils\StringUtils;
 
 /**
  * Description of MediaFolderController

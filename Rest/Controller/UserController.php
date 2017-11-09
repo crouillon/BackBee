@@ -40,8 +40,8 @@ use BackBee\Rest\Patcher\EntityPatcher;
 use BackBee\Rest\Patcher\Exception\InvalidOperationSyntaxException;
 use BackBee\Rest\Patcher\OperationSyntaxValidator;
 use BackBee\Rest\Patcher\RightManager;
-use BackBee\Security\User;
 use BackBee\Security\Token\BBUserToken;
+use BackBee\Security\User;
 
 /**
  * User Controller.

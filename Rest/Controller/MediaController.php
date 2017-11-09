@@ -23,20 +23,19 @@
 
 namespace BackBee\Rest\Controller;
 
-use BackBee\NestedNode\Media;
-use BackBee\NestedNode\MediaFolder;
-use BackBee\ClassContent\AbstractClassContent;
-use BackBee\ClassContent\Exception\InvalidContentTypeException;
-use BackBee\Rest\Controller\Annotations as Rest;
-
-use Doctrine\ORM\EntityRepository,
-    Doctrine\ORM\Tools\Pagination\Paginator;
-
+use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+use BackBee\ClassContent\AbstractClassContent;
+use BackBee\ClassContent\Exception\InvalidContentTypeException;
+use BackBee\NestedNode\Media;
+use BackBee\NestedNode\MediaFolder;
+use BackBee\Rest\Controller\Annotations as Rest;
 
 /**
  * Description of MediaController
