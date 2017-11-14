@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Event\Listener;
@@ -28,19 +26,21 @@ use BackBee\ClassContent\AbstractClassContent;
 use BackBee\Event\Event;
 use BackBee\NestedNode\Page;
 
+@trigger_error('The '.__NAMESPACE__.'\RewritingListener class is deprecated since version 1.4, '
+        . 'to be removed in 1.5. Use BackBee\Rewriting\Listener\RewritingListener instead.', E_USER_DEPRECATED);
+
 /**
  * Listener to rewriting events.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4
+ * @codeCoverageIgnore
  */
 class RewritingListener
 {
     /**
      * Stores uids of the pages already computed.
-     * 
+     *
      * @var string[]
      */
     static private $alreadyDone = [];
@@ -48,7 +48,7 @@ class RewritingListener
     /**
      * Occur on classcontent.onflush events.
      *
-     * @param \BackBee\Event\Event $event
+     * @param Event $event
      */
     public static function onFlushContent(Event $event)
     {
@@ -75,7 +75,7 @@ class RewritingListener
     /**
      * Occur on nestednode.page.onflush events.
      *
-     * @param \BackBee\Event\Event $event
+     * @param Event $event
      */
     public static function onFlushPage(Event $event)
     {

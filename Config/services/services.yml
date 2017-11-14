@@ -114,7 +114,9 @@ services:
 
     rewriting.urlgenerator:
         class:      %bbapp.urlgenerator.class%
-        arguments:  ["@bbapp"]
+        calls:
+            - method: setContainer
+              arguments: ["@service_container"]
 
     translator:
         class:      %bbapp.translator.class%

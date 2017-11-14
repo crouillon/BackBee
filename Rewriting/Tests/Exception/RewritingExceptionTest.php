@@ -19,17 +19,27 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Rewriting\Exception;
+namespace BackBee\Rewriting\Tests\Exception;
 
-use BackBee\Exception\BBException;
+use BackBee\Rewriting\Exception\RewritingException;
 
 /**
+ * Tests suite for class RewritingException.
+ *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass BackBee\Rewriting\Exception\RewritingException
  */
-class RewritingException extends BBException
+class RewritingExceptionTest extends \PHPUnit_Framework_TestCase
 {
-    const UNKNOWN_ERROR = 15000;
-    const MISSING_SCHEME = 15001;
 
-    protected $code = self::UNKNOWN_ERROR;
+    /**
+     */
+    public function testCode()
+    {
+        $exception = new RewritingException();
+        $this->assertEquals(
+            RewritingException::UNKNOWN_ERROR,
+            $exception->getCode()
+        );
+    }
 }

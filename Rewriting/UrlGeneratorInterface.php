@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Rewriting;
@@ -29,14 +27,34 @@ use BackBee\NestedNode\Page;
 /**
  * Interface for the rewriting url generation.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 interface UrlGeneratorInterface
 {
+
+    /**
+     * Returns the list of class content names used by one of schemes
+     * Dynamically add a listener on descrimator.onflush event to RewritingListener.
+     *
+     * @return array
+     */
     public function getDiscriminators();
 
+    /**
+     * Generates and returns url for the provided page.
+     *
+     * @param Page                 $page    The page to generate its url
+     * @param AbstractClassContent $content The optional main content of the page
+     *
+     * @return string
+     */
     public function generate(Page $page, AbstractClassContent $content = null, $exceptionOnMissingScheme = true);
+
+    /**
+     * Call on page entity flush.
+     * Generates a new URL according to the generator.
+     *
+     * @param Page $page
+     */
+    public function onPageFlush(Page $page);
 }

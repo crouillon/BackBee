@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,11 +17,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Rewriting;
+
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 use BackBee\BBApplication;
 use BackBee\ClassContent\AbstractClassContent;
@@ -34,8 +34,8 @@ use BackBee\Utils\StringUtils;
  * Utility class to generate page URL according config rules.
  *
  * Available options are:
- *    * preserve-online  : if true, forbid the URL updating for online page
- *    * preserve-unicity : if true check for unique computed URL
+ *    * preserve-online  : if true, avoid the URL updating for online page
+ *    * preserve-unicity : if true check for unique computed URL (-%d will be add as discriminator)
  *
  * Available rules are:
  *    * _root_      : scheme for root node
@@ -43,28 +43,26 @@ use BackBee\Utils\StringUtils;
  *    * _content_   : array of schemes indexed by content classname
  *
  * Available params are:
- *    * $parent     : page parent url
- *    * $uid        : page uid
+ *    * $parent     : the page parent url
+ *    * $uid        : the page uid
  *    * $title      : the urlized form of the title
  *    * $date       : the creation date formated to YYYYMMDD
  *    * $datetime   : the creation date formated to YYYYMMDDHHII
  *    * $time       : the creation date formated to HHIISS
  *    * $content->x : the urlized form of the 'x' property of content
- *    * $ancestor[x]: the ancestor of level x url
+ *    * $ancestor[x]: the url of the ancestor at level x
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class UrlGenerator implements UrlGeneratorInterface
 {
+
     /**
-     * Current BackBee application.
+     * An dependency container.
      *
-     * @var BackBee\BBApplication
+     * @var ContainerInterface
      */
-    private $application;
+    protected $container;
 
     /**
      * if true, forbid the URL updating for online page.
@@ -95,27 +93,92 @@ class UrlGenerator implements UrlGeneratorInterface
     private $descriminators;
 
     /**
+     * Stores uids of the pages already computed.
+     *
+     * @var string[]
+     */
+    private $alreadyDone = [];
+
+    /**
      * Class constructor.
      *
-     * @param \BackBee\BBApplication $application
+     * @param BBApplication|null $application
      */
-    public function __construct(BBApplication $application)
+    public function __construct(BBApplication $application = null)
     {
-        $this->application = $application;
+        if (null !== $application) {
+            @trigger_error('The '.__CLASS__.'(BBApplication) definition is deprecated since version 1.4, to be '
+               . 'removed in 1.5. Use '.__CLASS__.'::setContainer(ContainerInterface) instead.', E_USER_DEPRECATED);
 
-        if (null !== $rewritingConfig = $this->application->getConfig()->getRewritingConfig()) {
-            if (array_key_exists('preserve-online', $rewritingConfig)) {
-                $this->setPreserveOnline(true === $rewritingConfig['preserve-online']);
-            }
-
-            if (array_key_exists('preserve-unicity', $rewritingConfig)) {
-                $this->setPreserveUnicity(true === $rewritingConfig['preserve-unicity']);
-            }
-
-            if (isset($rewritingConfig['scheme']) && is_array($rewritingConfig['scheme'])) {
-                $this->schemes = $rewritingConfig['scheme'];
-            }
+            $this->setContainer($application->getContainer());
         }
+    }
+
+    /**
+     * Returns a service if exists.
+     *
+     * @param  string $serviceId The service id to be returned.
+     *
+     * @return mixed|null        The service if found, null elsewhere.
+     *
+     * @throws \RuntimeException
+     */
+    protected function getService($serviceId)
+    {
+        if (null === $this->container) {
+            throw new \RuntimeException('A container has to be set.');
+        }
+
+        if (!$this->container->has($serviceId)) {
+            return null;
+        }
+
+        return $this->container->get($serviceId);
+    }
+
+    /**
+     * Sets the container.
+     *
+     * @param ContainerInterface|null $container A ContainerInterface instance or null
+     */
+    public function setContainer(ContainerInterface $container = null)
+    {
+        $this->container = $container;
+
+        if (
+            null !== $this->container
+            && (null !== $config = $this->getService('config'))
+            && (null !== $rewriting = $config->getRewritingConfig())
+        ) {
+            $this
+                ->setSchemes(isset($rewriting['scheme']) ? $rewriting['scheme'] : [])
+                ->setPreserveOnline(isset($rewriting['preserve-online']) && true === $rewriting['preserve-online'])
+                ->setPreserveUnicity(isset($rewriting['preserve-unicity']) && true === $rewriting['preserve-unicity']);
+        }
+    }
+
+    /**
+     * Returns the current schemes.
+     *
+     * @return array
+     */
+    public function getSchemes()
+    {
+        return $this->schemes;
+    }
+
+    /**
+     * Sets the genrator schemes.
+     *
+     * @param  array $schemes
+     *
+     * @return UrlGenerator
+     */
+    public function setSchemes($schemes)
+    {
+        $this->schemes = (array) $schemes;
+
+        return $this;
     }
 
     /**
@@ -131,11 +194,15 @@ class UrlGenerator implements UrlGeneratorInterface
     /**
      * Setter for UrlGenerator's preserve online option.
      *
-     * @param boolean $preserveOnline
+     * @param  boolean $preserveOnline
+     *
+     * @return UrlGenerator
      */
     public function setPreserveOnline($preserveOnline)
     {
         $this->preserveOnline = (boolean) $preserveOnline;
+
+        return $this;
     }
 
     /**
@@ -151,11 +218,14 @@ class UrlGenerator implements UrlGeneratorInterface
     /**
      * Setter for UrlGenerator's preserve online option.
      *
-     * @param boolean $preserveUnicity
+     * @param  boolean $preserveUnicity
+     *
+     * @return UrlGenerator
      */
     public function setPreserveUnicity($preserveUnicity)
     {
         $this->preserveUnicity = (boolean) $preserveUnicity;
+        return $this;
     }
 
     /**
@@ -169,21 +239,9 @@ class UrlGenerator implements UrlGeneratorInterface
         if (null === $this->descriminators) {
             $this->descriminators = [];
 
-            if (array_key_exists('_content_', $this->schemes)) {
-                foreach (array_keys($this->schemes['_content_']) as $descriminator) {
-                    $this->descriminators[] = 'BackBee\ClassContent\\'.$descriminator;
-
-                    if (null !== $this->application->getEventDispatcher()) {
-                        $this
-                            ->application
-                            ->getEventDispatcher()
-                            ->addListener(
-                                str_replace(NAMESPACE_SEPARATOR, '.', $descriminator).'.onflush',
-                                ['BackBee\Event\Listener\RewritingListener', 'onFlushContent']
-                            )
-                        ;
-                    }
-                }
+            $keys = array_keys(isset($this->schemes['_content_']) ? (array) $this->schemes['_content_'] : []);
+            foreach ($keys as $descriminator) {
+                $this->descriminators[] = AbstractClassContent::CLASSCONTENT_BASE_NAMESPACE . $descriminator;
             }
         }
 
@@ -197,51 +255,44 @@ class UrlGenerator implements UrlGeneratorInterface
      * @param AbstractClassContent $content The optional main content of the page
      * @return string
      */
-    public function generate(Page $page, AbstractClassContent $content = null, $force = false, $exceptionOnMissingScheme = true)
-    {
-        if (!is_bool($force)) {
-            throw new \InvalidArgumentException(sprintf(
-                '%s method expect `force parameter` to be type of boolean, %s given',
-                __METHOD__,
-                gettype($force)
-            ));
-        }
+    public function generate(
+        Page $page,
+        AbstractClassContent $content = null,
+        $force = false,
+        $exceptionOnMissingScheme = true
+    ) {
+        $pageUrl =  $page->getUrl(false);
+        $shortClassname = str_replace(AbstractContent::CLASSCONTENT_BASE_NAMESPACE, '', get_class($content));
 
         if (
-            null !== $page->getUrl(false)
+            null !== $pageUrl
             && $page->getState() & Page::STATE_ONLINE
-            && (!$force && $this->preserveOnline)
+            && (true !== $force && $this->preserveOnline)
         ) {
-            return $page->getUrl(false);
-        }
-
-        if ($page->isRoot() && array_key_exists('_root_', $this->schemes)) {
+            return $pageUrl;
+        } elseif (
+            $page->isRoot()
+            && isset($this->schemes['_root_'])
+        ) {
             return $this->doGenerate($this->schemes['_root_'], $page, $content);
-        }
-
-        if (isset($this->schemes['_layout_']) && is_array($this->schemes['_layout_'])) {
-            if (array_key_exists($page->getLayout()->getUid(), $this->schemes['_layout_'])) {
-                return $this->doGenerate($this->schemes['_layout_'][$page->getLayout()->getUid()], $page);
-            }
-        }
-
-        if (null !== $content && array_key_exists('_content_', $this->schemes)) {
-            $shortClassname = str_replace(AbstractContent::CLASSCONTENT_BASE_NAMESPACE, '', get_class($content));
-            if (array_key_exists($shortClassname, $this->schemes['_content_'])) {
-                return $this->doGenerate($this->schemes['_content_'][$shortClassname], $page, $content);
-            }
-        }
-
-        if (array_key_exists('_default_', $this->schemes)) {
+        } elseif (
+            isset($this->schemes['_layout_'])
+            && is_array($this->schemes['_layout_'])
+            && isset($this->schemes['_layout_'][$page->getLayout()->getUid()])
+        ) {
+            return $this->doGenerate($this->schemes['_layout_'][$page->getLayout()->getUid()], $page);
+        } elseif (
+            null !== $content
+            && isset($this->schemes['_content_'])
+            && is_array($this->schemes['_content_'])
+            && isset($this->schemes['_content_'][$shortClassname])
+        ) {
+            return $this->doGenerate($this->schemes['_content_'][$shortClassname], $page, $content);
+        } elseif (isset($this->schemes['_default_'])) {
             return $this->doGenerate($this->schemes['_default_'], $page, $content);
-        }
-
-        $url = $page->getUrl(false);
-        if (!empty($url)) {
-            return $url;
-        }
-
-        if (true === $exceptionOnMissingScheme) {
+        } elseif (!empty($pageUrl)) {
+            return $pageUrl;
+        } elseif (true === $exceptionOnMissingScheme) {
             throw new RewritingException(
                 sprintf('No rewriting scheme found for Page (#%s)', $page->getUid()),
                 RewritingException::MISSING_SCHEME
@@ -254,64 +305,126 @@ class UrlGenerator implements UrlGeneratorInterface
     /**
      * Checks for the uniqueness of the URL and postfixe it if need.
      *
-     * @param \BackBee\NestedNode\Page $page The page
-     * @param string                   &$url The reference of the generated URL
+     * @param Page   $page The page
+     * @param string &$url The reference of the generated URL
      */
     public function getUniqueness(Page $page, $url)
     {
-        if (!$this->preserveUnicity) {
+        if (!$this->preserveUnicity || null === $entityMng = $this->getService('em')) {
             return $url;
         }
 
-        $pageRepository = $this->application->getEntityManager()->getRepository('BackBee\NestedNode\Page');
-        if (null === $pageRepository->findOneBy(['_url' => $url, '_root' => $page->getRoot(), '_state' => $page->getUndeletedStates()])) {
+        $pageRepository = $entityMng->getRepository(Page::class);
+        if (null === $pageRepository->findOneBy([
+            '_url' => $url,
+            '_root' => $page->getRoot(),
+            '_state' => $page->getUndeletedStates()])
+        ) {
             return $url;
         }
 
-        $baseUrl = $url.'-%d';
+        $patternSql = '/' === substr($url, -1)
+            ? substr($url, 0, -1) . '-%/'
+            : $url . '-%';
 
-        $matches = [];
-        $existings = [];
-        if (preg_match('#(.*)\/$#', $baseUrl, $matches)) {
-            $baseUrl = $matches[1].'-%d/';
-            $existings = $pageRepository->createQueryBuilder('p')
-                    ->andRootIs($page->getRoot())
-                    ->andWhere('p._url LIKE :url')
-                    ->setParameter('url', $matches[1] . '%/')
-                    ->getQuery()
-                    ->getResult()
-            ;
-        } else {
-            $existings = $this->application->getEntityManager()->getConnection()->executeQuery(
-                'SELECT p.uid FROM page p LEFT JOIN section s ON s.uid = p.section_uid WHERE s.root_uid = :root AND p.url REGEXP :regex',
-                [
-                    'regex' => str_replace(['+'], ['[+]'], $url).'(-[0-9]+)?$',
-                    'root'  => $page->getRoot()->getUid(),
-                ]
-            )->fetchAll();
+        $patternPcre = sprintf('#%s$#', str_replace('%', '([0-9]+)', $patternSql));
+        $patternPrint = str_replace('%', '%d', $patternSql);
 
-            $uids = [];
+        $existings = $pageRepository->createQueryBuilder('p')
+            ->andRootIs($page->getRoot())
+            ->andIsNotDeleted()
+            ->andWhere('p._uid != :uid')
+            ->andWhere('p._url LIKE :url')
+            ->setParameter('uid', $page->getUid())
+            ->setParameter('url', $patternSql)
+            ->getQuery()
+            ->getResult();
 
-            foreach ($existings as $existing) {
-                $uids[] = $existing['uid'];
-            }
-
-            $existings = $pageRepository->findBy(['_uid' => $uids]);
-        }
-
-        $existingUrls = [];
+        $max = 0;
         foreach ($existings as $existing) {
-            if (!$existing->isDeleted() && $existing->getUid() !== $page->getUid()) {
-                $existingUrls[] = $existing->getUrl(false);
+            $matches = [];
+            if (preg_match($patternPcre, $existing->getUrl(false), $matches)) {
+                $max = max([$max, $matches[1]]);
             }
         }
 
-        $count = 1;
-        while (in_array($url, $existingUrls)) {
-            $url = sprintf($baseUrl, $count++);
+        return sprintf($patternPrint, $max + 1);
+    }
+
+    /**
+     * Call on page entity flush. Generates a new URL according to the generator.
+     *
+     * @param  Page $page
+     */
+    public function onPageFlush(Page $page)
+    {
+        if (in_array($page->getUid(), $this->alreadyDone)) {
+            return;
         }
 
-        return $url;
+        $url = $page->getUrl(false);
+
+        if (null !== $entityMng = $this->getService('em')) {
+            $unitOfWork = $entityMng->getUnitOfWork();
+            $changeSet = $unitOfWork->getEntityChangeSet($page);
+
+            if (isset($changeSet['_url']) && !empty($url)) {
+                $url = $this->getUniqueness($page, $page->getUrl());
+            } else {
+                $force = isset($changeSet['_state']) && !($changeSet['_state'][0] & Page::STATE_ONLINE);
+                $url = $this->generate($page, $this->getMaincontent($page), $force);
+            }
+        }
+
+        if ($page->getUrl(false) !== $url) {
+            $page->setUrl($url);
+
+            $classMetadata = $entityMng->getClassMetadata(Page::class);
+            if (
+                $unitOfWork->isScheduledForInsert($page)
+                || $unitOfWork->isScheduledForUpdate($page)
+            ) {
+                $unitOfWork->recomputeSingleEntityChangeSet($classMetadata, $page);
+            } elseif (!$unitOfWork->isScheduledForDelete($page)) {
+                $unitOfWork->computeChangeSet($classMetadata, $page);
+            }
+
+            $descendants = $entityMng->getRepository(Page::class)->getDescendants($page, 1);
+            foreach ($descendants as $descendant) {
+                $this->onPageFlush($descendant);
+            }
+        }
+
+        $this->alreadyDone[] = $page->getUid();
+    }
+
+    /**
+     * Looks for a main classcontent entity for $page.
+     *
+     * @param  Page $page
+     *
+     * @return AbstractClassContent|null
+     */
+    private function getMaincontent(Page $page)
+    {
+        $maincontent = null;
+        $entityMng = $this->getService('em');
+        $unitOfWork = $entityMng->getUnitOfWork();
+
+        if ($unitOfWork->isScheduledForInsert($page)) {
+            foreach ($unitOfWork->getScheduledEntityInsertions() as $entity) {
+                if ($entity instanceof AbstractClassContent && $entity->getMainNode() === $page) {
+                    $maincontent = $entity;
+                    break;
+                }
+            }
+        } else {
+            $maincontent = $entityMng
+                ->getRepository(AbstractClassContent::class)
+                ->getLastByMainnode($page, $this->getDiscriminators());
+        }
+
+        return $maincontent;
     }
 
     /**
@@ -327,9 +440,10 @@ class UrlGenerator implements UrlGeneratorInterface
         $replacement = [
             '$parent'   => $page->isRoot() ? '' : $page->getParent()->getUrl(false),
             '$title'    => StringUtils::urlize($page->getTitle()),
-            '$datetime' => $page->getCreated()->format('ymdHis'),
-            '$date'     => $page->getCreated()->format('ymd'),
+            '$datetime' => $page->getCreated()->format('YmdHis'),
+            '$date'     => $page->getCreated()->format('Ymd'),
             '$time'     => $page->getCreated()->format('His'),
+            '$uid'      => $page->getUid()
         ];
 
         $matches = [];
@@ -347,13 +461,13 @@ class UrlGenerator implements UrlGeneratorInterface
         }
 
         $matches = [];
-        if (preg_match_all('/(\$ancestor\[([0-9]+)\])/i', $scheme, $matches)) {
+        $entityMng = $this->getService('em');
+        if (null !== $entityMng && preg_match_all('/(\$ancestor\[([0-9]+)\])/i', $scheme, $matches)) {
             foreach ($matches[2] as $level) {
-                $ancestor = $this->application
-                    ->getEntityManager()
+                $ancestor = $entityMng
                     ->getRepository('BackBee\NestedNode\Page')
-                    ->getAncestor($page, $level)
-                ;
+                    ->getAncestor($page, $level);
+
                 if (null !== $ancestor && $page->getLevel() > $level) {
                     $replacement['$ancestor['.$level.']'] = $ancestor->getUrl(false);
                 } else {
