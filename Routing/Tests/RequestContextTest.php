@@ -19,46 +19,31 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Routing;
+namespace BackBee\Routing\Tests;
 
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\RequestContext as sfRequestContext;
+
+use BackBee\Routing\RequestContext;
 
 /**
- * Holds information about the current request.
- * This class implements a fluent interface.
+ * Test suite for class RequestContext
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass \BackBee\Routing\RequestContext
  */
-class RequestContext extends sfRequestContext
+class RequestContextTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * @var Request
+     * @covers ::fromRequest()
+     * @covers ::getRequest()
      */
-    private $request;
-
-    /**
-     * Updates the RequestContext information based on a HttpFoundation Request.
-     *
-     * @param  Request $request A Request instance
-     *
-     * @return RequestContext
-     */
-    public function fromRequest(Request $request)
+    public function test()
     {
-        $this->request = $request;
+        $context = new RequestContext();
+        $request = new Request();
 
-        return parent::fromRequest($request);
-    }
-
-    /**
-     * Returns the request.
-     *
-     * @return Request
-     */
-    public function getRequest()
-    {
-        return $this->request;
+        $context->fromRequest($request);
+        $this->assertEquals($request, $context->getRequest());
     }
 }

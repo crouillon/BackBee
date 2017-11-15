@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Routing;
@@ -26,49 +24,49 @@ namespace BackBee\Routing;
 use Symfony\Component\Routing\Route as sfRoute;
 
 /**
- * @category    BackBee
+ * A Route describes a route and its parameters.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class Route extends sfRoute
 {
+
     /**
      * Part of requirements related to headers.
      *
      * @var array
      */
-    private $_headerRequirements;
+    private $headerRequirements;
 
     /**
      * Constructor.
      *
      * Available requirements:
-     *  - HTTP_<<headername>> : HTTP header value required
+     *  - HTTP-<<headername>> : HTTP header value required
      *
      * @param string $pattern      The pattern to match
      * @param array  $defaults     An array of default parameter values
      * @param array  $requirements An array of requirements for parameters (regexes)
      * @param array  $options      An array of options
      */
-    public function __construct($pattern, array $defaults = array(), array $requirements = array(), array $options = array())
+    public function __construct($pattern, array $defaults = [], array $requirements = [], array $options = [])
     {
         parent::__construct($pattern, $defaults, $requirements, $options);
 
-        $this->_addHeaderRequirements();
+        $this->addHeaderRequirements();
     }
 
     /**
-     * Extract header requirements.
+     * Extracts header requirements.
      *
      * @return Route The current Route instance
      */
-    private function _addHeaderRequirements()
+    private function addHeaderRequirements()
     {
-        $this->_headerRequirements = array();
+        $this->headerRequirements = [];
         foreach ($this->getRequirements() as $key => $value) {
             if (0 === strpos($key, 'HTTP-')) {
-                $this->_headerRequirements[substr($key, 5)] = $value;
+                $this->headerRequirements[$key] = $value;
             }
         }
 
@@ -77,7 +75,6 @@ class Route extends sfRoute
 
     /**
      * Adds requirements.
-     *
      * This method implements a fluent interface.
      *
      * @param array $requirements The requirements
@@ -87,7 +84,7 @@ class Route extends sfRoute
     public function addRequirements(array $requirements)
     {
         parent::addRequirements($requirements);
-        $this->_addHeaderRequirements();
+        $this->addHeaderRequirements();
 
         return $this;
     }
@@ -103,6 +100,6 @@ class Route extends sfRoute
             return parent::getRequirements();
         }
 
-        return ('HTTP-' == $startingWith) ? $this->_headerRequirements : array();
+        return ('HTTP-' === $startingWith) ? $this->headerRequirements : [];
     }
 }

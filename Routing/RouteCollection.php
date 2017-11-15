@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,11 +17,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Routing;
+
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Routing\RouteCollection as sfRouteCollection;
 
 use BackBee\ApplicationInterface;
 use BackBee\DependencyInjection\ContainerInterface;
@@ -30,10 +31,6 @@ use BackBee\DependencyInjection\Dumper\DumpableServiceProxyInterface;
 use BackBee\Site\Site;
 use BackBee\Utils\File\File;
 
-use Psr\Log\LoggerInterface;
-
-use Symfony\Component\Routing\RouteCollection as sfRouteCollection;
-
 /**
  * A RouteCollection represents a set of Route instances.
  *
@@ -41,13 +38,11 @@ use Symfony\Component\Routing\RouteCollection as sfRouteCollection;
  * with the same name is removed first. So there can only be one route
  * with a given name.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class RouteCollection extends sfRouteCollection implements DumpableServiceInterface, DumpableServiceProxyInterface
 {
+
     const DEFAULT_URL = 0;
     const IMAGE_URL = 1;
     const MEDIA_URL = 2;
@@ -110,8 +105,8 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
         $this->defaultScheme = '';
 
         if (
-                null !== $this->application &&
-                null !== $container = $this->application->getContainer()
+            null !== $this->application &&
+            null !== $container = $this->application->getContainer()
         ) {
             $this->readFromContainer($container);
         }
@@ -124,10 +119,23 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
      */
     private function readFromContainer(ContainerInterface $container)
     {
-        $this->setValueIfParameterExists($container, $this->uriPrefixes[self::IMAGE_URL], 'bbapp.routing.image_uri_prefix')
-                ->setValueIfParameterExists($container, $this->uriPrefixes[self::MEDIA_URL], 'bbapp.routing.media_uri_prefix')
-                ->setValueIfParameterExists($container, $this->uriPrefixes[self::RESOURCE_URL], 'bbapp.routing.resource_uri_prefix')
-                ->setValueIfParameterExists($container, $this->defaultScheme, 'bbapp.routing.default_protocol');
+        $this->setValueIfParameterExists(
+            $container,
+            $this->uriPrefixes[self::IMAGE_URL],
+            'bbapp.routing.image_uri_prefix'
+        )->setValueIfParameterExists(
+            $container,
+            $this->uriPrefixes[self::MEDIA_URL],
+            'bbapp.routing.media_uri_prefix'
+        )->setValueIfParameterExists(
+            $container,
+            $this->uriPrefixes[self::RESOURCE_URL],
+            'bbapp.routing.resource_uri_prefix'
+        )->setValueIfParameterExists(
+            $container,
+            $this->defaultScheme,
+            'bbapp.routing.default_protocol'
+        );
 
         if (null === $this->logger && $container->has('logging')) {
             $this->logger = $container->get('logging');
@@ -214,13 +222,19 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
      *
      * @return string                  The computed URL.
      */
-    public function getUrlByRouteName($name, array $params = null, $baseUrl = null, $addExt = true, Site $site = null, $buildQuery = false)
-    {
+    public function getUrlByRouteName(
+        $name,
+        array $params = null,
+        $baseUrl = null,
+        $addExt = true,
+        Site $site = null,
+        $buildQuery = false
+    ) {
         $paramsToAdd = [];
         $uri = $this->applyRouteParameters(
-                $this->getRoutePath($name),
-                (array) $params,
-                $paramsToAdd
+            $this->getRoutePath($name),
+            (array) $params,
+            $paramsToAdd
         );
 
         $path = $this->getUri($baseUrl.$uri, null, $site);
@@ -244,7 +258,7 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
      *
      * @return string                   The route uri modified.
      */
-    private function applyRouteParameters($uri, array $parameters, array &$additionalParams = array())
+    private function applyRouteParameters($uri, array $parameters, array &$additionalParams = [])
     {
         $result = $uri;
 
@@ -298,7 +312,7 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
     }
 
     /**
-     * @see BackBee\DependencyInjection\Dumper\DumpableServiceInterface::getClassProxy
+     * @see DumpableServiceInterface::getClassProxy()
      */
     public function getClassProxy()
     {
@@ -306,7 +320,7 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
     }
 
     /**
-     * @see BackBee\DependencyInjection\Dumper\DumpableServiceInterface::dump
+     * @see DumpableServiceInterface::dump()
      */
     public function dump(array $options = array())
     {
@@ -314,7 +328,7 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
     }
 
     /**
-     * @see BackBee\DependencyInjection\Dumper\DumpableServiceProxyInterface::restore
+     * @see DumpableServiceProxyInterface::restore()
      */
     public function restore(ContainerInterface $container, array $dump)
     {
@@ -333,7 +347,7 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
     }
 
     /**
-     * @see BackBee\DependencyInjection\Dumper\DumpableServiceInterface::isRestored
+     * @see DumpableServiceInterface::isRestored()
      */
     public function isRestored()
     {
@@ -351,9 +365,9 @@ class RouteCollection extends sfRouteCollection implements DumpableServiceInterf
         $this->rawRoutes[$name] = $route;
 
         $newRoute = new Route(
-                $route['pattern'],
-                $route['defaults'],
-                array_key_exists('requirements', $route) ? $route['requirements'] : []
+            $route['pattern'],
+            $route['defaults'],
+            array_key_exists('requirements', $route) ? $route['requirements'] : []
         );
 
         $this->add($name, $newRoute);

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,8 +17,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Routing\Matcher;
@@ -27,24 +25,42 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestMatcher as sfRequestMatcher;
 
 /**
- * @category    BackBee
+ * RequestMatcher compares a pre-defined set of checks against a Request instance.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class RequestMatcher extends sfRequestMatcher
 {
+
     /**
      * Headers attributes.
      *
      * @var array
      */
-    private $_headers;
+    private $headers;
 
-    public function __construct($path = null, $host = null, $methods = null, $ip = null, array $attributes = array(), array $headers = array())
-    {
-        parent::__construct($path, $host, $methods, $ip, $attributes);
-        $this->_headers = $headers;
+    /**
+     * Constructor.
+     *
+     * @param string|null          $path
+     * @param string|null          $host
+     * @param string|string[]|null $methods
+     * @param string|string[]|null $ips
+     * @param array                $attributes
+     * @param array                $headers
+     * @param string|string[]|null $schemes
+     */
+    public function __construct(
+        $path = null,
+        $host = null,
+        $methods = null,
+        $ips = null,
+        array $attributes = [],
+        array $headers = [],
+        $schemes = null
+    ) {
+        $this->headers = $headers;
+        parent::__construct($path, $host, $methods, $ips, $attributes, $schemes);
     }
 
     /**
@@ -55,25 +71,31 @@ class RequestMatcher extends sfRequestMatcher
      */
     public function matchHeader($key, $regexp)
     {
-        $this->_headers[$key] = $regexp;
+        $this->headers[$key] = $regexp;
     }
 
     /**
      * Adds checks for header attributes.
      *
-     * @param array    the header attributes to check array(attribute1 => regexp1, ettribute2 => regexp2, ...)
+     * @param array The header attributes to check [attribute1 => regexp1, ettribute2 => regexp2, ...]
      */
     public function matchHeaders($attributes)
     {
-        $attributes = (array) $attributes;
-        foreach ($attributes as $key => $regexp) {
+        foreach ((array) $attributes as $key => $regexp) {
             $this->matchHeader($key, $regexp);
         }
     }
 
+    /**
+     * Decides whether the rule(s) implemented by the strategy matches the supplied request.
+     *
+     * @param Request $request The request to check for a match
+     *
+     * @return bool true if the request matches, false otherwise
+     */
     public function matches(Request $request)
     {
-        foreach ($this->_headers as $key => $pattern) {
+        foreach ($this->headers as $key => $pattern) {
             if (!preg_match('#'.str_replace('#', '\\#', $pattern).'#', $request->headers->get($key))) {
                 return false;
             }

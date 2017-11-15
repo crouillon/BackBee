@@ -19,46 +19,32 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Routing;
+namespace BackBee\Routing\Tests\Matcher;
 
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\RequestContext as sfRequestContext;
+
+use BackBee\Routing\Matcher\RequestMatcher;
 
 /**
- * Holds information about the current request.
- * This class implements a fluent interface.
+ * Test suite for class RequestMatcher
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass \BackBee\Routing\Matcher\RequestMatcher
  */
-class RequestContext extends sfRequestContext
+class RequestMatcherTest extends \PHPUnit_Framework_TestCase
 {
-
-    /**
-     * @var Request
-     */
-    private $request;
-
-    /**
-     * Updates the RequestContext information based on a HttpFoundation Request.
-     *
-     * @param  Request $request A Request instance
-     *
-     * @return RequestContext
-     */
-    public function fromRequest(Request $request)
+    public function test()
     {
-        $this->request = $request;
+        $matcher = new RequestMatcher();
+        $matcher->matchHeaders(['header1' => '[0-9]+', 'header2' => '[a-z]+']);
 
-        return parent::fromRequest($request);
-    }
+        $request = new Request();
+        $this->assertFalse($matcher->matches($request));
 
-    /**
-     * Returns the request.
-     *
-     * @return Request
-     */
-    public function getRequest()
-    {
-        return $this->request;
+        $request->headers->set('header1', 1);
+        $this->assertFalse($matcher->matches($request));
+
+        $request->headers->set('header2', 'a');
+        $this->assertTrue($matcher->matches($request));
     }
 }

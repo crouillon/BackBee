@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2017 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -17,24 +17,25 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 
 namespace BackBee\Routing\Matcher;
 
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Matcher\UrlMatcher as sfUrlMatcher;
 use Symfony\Component\Routing\Route;
+
+use BackBee\Routing\RequestContext;
 use BackBee\Utils\File\File;
 
 /**
- * @category    BackBee
+ * UrlMatcher matches URL based on a set of routes.
  *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class UrlMatcher extends sfUrlMatcher
 {
+
     /**
      * Handles specific route requirements.
      *
@@ -46,16 +47,22 @@ class UrlMatcher extends sfUrlMatcher
      */
     protected function handleRouteRequirements($pathinfo, $name, Route $route)
     {
-        $pathinfo = File::normalizePath($pathinfo, '/', false);
-        $status = parent::handleRouteRequirements($pathinfo, $name, $route);
+        $path = File::normalizePath($pathinfo, '/', false);
+        $status = parent::handleRouteRequirements($path, $name, $route);
 
-        if (self::REQUIREMENT_MATCH == $status[0] && 0 < count($route->getRequirements('HTTP-'))) {
+        $headerRequirements = $route->getRequirements('HTTP-');
+        if (self::REQUIREMENT_MATCH == $status[0] && 0 < count($headerRequirements)) {
             if (null === $request = $this->getContext()->getRequest()) {
-                return array(self::REQUIREMENT_MISMATCH, null);
+                return [self::REQUIREMENT_MISMATCH, null];
             }
 
-            $requestMatcher = new RequestMatcher(null, null, null, null, array(), $route->getRequirements('HTTP-'));
-            $status = array($requestMatcher->matches($request) ? self::REQUIREMENT_MATCH : self::REQUIREMENT_MISMATCH, null);
+            $requestMatcher = new RequestMatcher();
+            $requestMatcher->matchHeaders($headerRequirements);
+
+            return [
+                $requestMatcher->matches($request) ? self::REQUIREMENT_MATCH : self::REQUIREMENT_MISMATCH,
+                null
+            ];
         }
 
         return $status;
@@ -67,14 +74,30 @@ class UrlMatcher extends sfUrlMatcher
      * @param string $pathinfo The path info to be parsed (raw format, i.e. not urldecoded)
      *
      * @return array An array of parameters
-     *
-     * @throws ResourceNotFoundException If the resource could not be found
-     * @throws MethodNotAllowedException If the resource was found but the request method is not allowed
      */
     public function match($pathinfo)
     {
-        $pathinfo = File::normalizePath($pathinfo, '/', false);
+        $path = File::normalizePath($pathinfo, '/', false);
 
-        return parent::match($pathinfo);
+        return parent::match($path);
+    }
+
+    /**
+     * Tries to match a request with a set of routes.
+     *
+     * If the matcher can not find information, it must throw one of the exceptions documented
+     * below.
+     *
+     * @param Request $request The request to match
+     *
+     * @return array An array of parameters
+     */
+    public function matchRequest(Request $request)
+    {
+        $context = new RequestContext();
+        $context->fromRequest($request);
+        $this->setContext($context);
+
+        return parent::matchRequest($request);
     }
 }
