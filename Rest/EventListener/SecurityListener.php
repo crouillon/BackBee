@@ -24,14 +24,14 @@
 namespace BackBee\Rest\EventListener;
 
 use BackBee\Security\Authorization\ExpressionLanguage;
-use Symfony\Component\Security\Core\Role\Role;
-
+use BackBee\Security\Token\AnonymousToken;
 use Metadata\MetadataFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
+use Symfony\Component\Security\Core\Role\Role;
 use Symfony\Component\Security\Core\Role\RoleHierarchyInterface;
 use Symfony\Component\Security\Core\SecurityContextInterface;
 
@@ -66,12 +66,6 @@ class SecurityListener
 
     public function onKernelController(FilterControllerEvent $event)
     {
-        $token = $this->securityContext->getToken();
-
-        if (null === $token) {
-            throw new AuthenticationCredentialsNotFoundException('The security context contains no authentication token. One possible reason may be that there is no firewall configured for this URL.');
-        }
-
         $request = $event->getRequest();
         $controller = $event->getController();
         $metadata = $this->getControllerActionMetadata($controller);
@@ -81,7 +75,10 @@ class SecurityListener
 
         foreach ($metadata->security as $annotation) {
             if (!$this->language->evaluate($annotation->expression, $this->getVariables($request))) {
-                throw new AccessDeniedHttpException(sprintf('Expression "%s" denied access.', $annotation->expression));
+                throw new AccessDeniedHttpException(sprintf(
+                    'Expression "%s" denied access.',
+                    $annotation->expression
+                ));
             }
         }
     }
@@ -90,6 +87,9 @@ class SecurityListener
     private function getVariables(Request $request)
     {
         $token = $this->securityContext->getToken();
+        if (!$token) {
+            $token = new AnonymousToken('anon.', 'anon.', []);
+        }
 
         if (null !== $this->roleHierarchy) {
             $roles = $this->roleHierarchy->getReachableRoles($token->getRoles());
@@ -97,15 +97,17 @@ class SecurityListener
             $roles = $token->getRoles();
         }
 
-        $variables = array(
-            'token' => $token,
-            'user' => $token->getUser(),
-            'object' => $request,
-            'request' => $request,
-            'roles' => array_map(function (Role $role) { return $role->getRole(); }, $roles),
-            'trust_resolver' => $this->trustResolver,
+        $variables = [
+            'token'            => $token,
+            'user'             => $token->getUser(),
+            'object'           => $request,
+            'request'          => $request,
+            'roles'            => array_map(function (Role $role) {
+                return $role->getRole();
+            }, $roles),
+            'trust_resolver'   => $this->trustResolver,
             'security_context' => $this->securityContext,
-        );
+        ];
 
         // controller variables should also be accessible
         return array_merge($request->attributes->all(), $variables);
