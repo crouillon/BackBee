@@ -1,9 +1,13 @@
 File:
   repository: \BackBee\ClassContent\Repository\Element\FileRepository
-  traits: [BackBee\ClassContent\Traits\Element\FileJsonSerializeTrait]
+  implements: \BackBee\ClassContent\MediaInterface
+  traits:
+    - BackBee\ClassContent\Traits\Element\FileJsonSerializeTrait
+    - BackBee\ClassContent\Traits\Element\FileMediaTrait
   properties:
     name: File
     description: An attached file
+    mime-types-supported: []
   elements:
     path: !!scalar
     originalname: !!scalar

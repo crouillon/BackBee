@@ -6,6 +6,7 @@ Image:
     name: Image
     description: An inline image
     iconized-by: path
+    mime-types-supported: ['image/gif', 'image/jpeg', 'image/png']
   parameters:
     width: 50
     height: ~
