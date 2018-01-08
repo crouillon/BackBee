@@ -32,8 +32,8 @@ BackBee CMS offers what we like to call WYSIWYRG, What You See Is What You Reall
 
 :book: Documentation for api is available, and you can also follow BlogBee, a tutorial to help you make a complete website with BackBee CMS.
 
- - **[Developer PHP Api docs](http://developers.backbee.com/api)**
- - **[Developper Documentation](http://developers.backbee.com/docs)**
+ - **[Developer PHP Api docs](http://www.backbee.org/api)**
+ - **[Developper Documentation](http://www.backbee.org/docs)**
 
 ## Ask for help ##
 
