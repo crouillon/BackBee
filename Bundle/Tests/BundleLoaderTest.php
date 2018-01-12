@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Bundle\Tests;
@@ -33,14 +33,19 @@ use BackBee\Config\Config;
 use BackBee\Config\Configurator;
 use BackBee\Controller\FrontController;
 use BackBee\Renderer\Renderer;
+use BackBee\Tests\Traits\InvokeMethodTrait;
+use BackBee\Util\Doctrine\EntityManagerCreator;
 
 /**
  * Tests suite for class BundleLoader
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ *
+ * @coversDefaultClass BackBee\Bundle\BundleLoader
  */
 class BundleLoaderTest extends BundleTestCase
 {
+    use InvokeMethodTrait;
 
     /**
      * @var BundleLoader
@@ -56,6 +61,11 @@ class BundleLoaderTest extends BundleTestCase
 
         $this->loader = new BundleLoader($this->application);
 
+        $config = $this->getMockBuilder(Config::class)
+            ->disableOriginalConstructor()
+            ->setMethods([])
+            ->getMock();
+
         $controller = $this->getMockBuilder(FrontController::class)
                 ->disableOriginalConstructor()
                 ->setMethods(['registerRoutes'])
@@ -66,11 +76,16 @@ class BundleLoaderTest extends BundleTestCase
                 ->setMethods(['addScriptDir', 'addHelperDir'])
                 ->getMock();
 
+        $this->application
+                ->expects($this->any())
+                ->method('getRenderer')
+                ->willReturn($renderer);
+
         $dispatcher = $this->getMockBuilder(EventDispatcher::class)
                 ->setMethods(['dispatch', 'addListeners'])
                 ->getMock();
 
-        $this->container->set('config', self::$app->getConfig());
+        $this->container->set('config', $config);
         $this->container->set('renderer', $renderer);
         $this->container->set('controller', $controller);
         $this->container->set('event.dispatcher', $dispatcher);
@@ -84,10 +99,10 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::load()
-     * @covers BackBee\Bundle\BundleLoader::dump()
-     * @covers BackBee\Bundle\BundleLoader::getBundleIdByBaseDir()
-     * @covers BackBee\Bundle\BundleLoader::loadFullBundles()
+     * @covers ::load()
+     * @covers ::dump()
+     * @covers ::getBundleIdByBaseDir()
+     * @covers ::loadFullBundles()
      */
     public function testLoad()
     {
@@ -112,8 +127,8 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::__construct()
-     * @covers BackBee\Bundle\BundleLoader::buildBundleBaseDirectoryFromClassname()
+     * @covers ::__construct()
+     * @covers ::buildBundleBaseDirectoryFromClassname()
      */
     public function testBuildBundleBaseDirectoryFromClassname()
     {
@@ -127,7 +142,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::loadConfigDefinition()
+     * @covers ::loadConfigDefinition()
      */
     public function testLoadConfigDefinition()
     {
@@ -139,7 +154,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::installBundle()
+     * @covers ::installBundle()
      */
     public function testInstallBundle()
     {
@@ -152,7 +167,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::updateBundle()
+     * @covers ::updateBundle()
      */
     public function testUpdateBundle()
     {
@@ -165,16 +180,23 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::createEntitiesSchema()
+     * @covers ::createEntitiesSchema()
      */
     public function testCreateEntitiesSchema()
     {
         $bundle = $this->getBundle();
 
+        $entityMng = EntityManagerCreator::create([
+            'driver' => 'pdo_sqlite',
+            'memory' => true,
+            'proxy_dir' => vfsStream::url('MockBundle/Proxies'),
+            'proxy_ns' => '__TEST__'
+        ]);
+
         $this->application
             ->expects($this->once())
             ->method('getEntityManager')
-            ->will($this->returnValue(self::$em));
+            ->willReturn($entityMng);
 
         $this->assertEquals([], $this->invokeMethod($this->loader, 'createEntitiesSchema', [$bundle]));
 
@@ -183,16 +205,23 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::updateEntitiesSchema()
+     * @covers ::updateEntitiesSchema()
      */
     public function testUpdateEntitiesSchema()
     {
         $bundle = $this->getBundle();
 
+        $entityMng = EntityManagerCreator::create([
+            'driver' => 'pdo_sqlite',
+            'memory' => true,
+            'proxy_dir' => vfsStream::url('MockBundle/Proxies'),
+            'proxy_ns' => '__TEST__'
+        ]);
+
         $this->application
             ->expects($this->once())
             ->method('getEntityManager')
-            ->will($this->returnValue(self::$em));
+            ->willReturn($entityMng);
 
         $this->assertEquals([], $this->invokeMethod($this->loader, 'updateEntitiesSchema', [$bundle]));
 
@@ -201,7 +230,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::getBundleEntityDir()
+     * @covers ::getBundleEntityDir()
      */
     public function testGetBundleEntityDir()
     {
@@ -214,7 +243,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::generateBundleServiceId()
+     * @covers ::generateBundleServiceId()
      */
     public function testGenerateBundleServiceId()
     {
@@ -225,7 +254,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::buildBundleDefinition()
+     * @covers ::buildBundleDefinition()
      */
     public function testBuildBundleDefinition()
     {
@@ -241,7 +270,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers            BackBee\Bundle\BundleLoader::buildBundleDefinition()
+     * @covers            ::buildBundleDefinition()
      * @expectedException \BackBee\Exception\InvalidArgumentException
      */
     public function testBuildInvalidBundleDefinition()
@@ -254,7 +283,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::loadAndGetBundleConfigByBaseDir()
+     * @covers ::loadAndGetBundleConfigByBaseDir()
      */
     public function testLoadAndGetBundleConfigByBaseDir()
     {
@@ -274,7 +303,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::buildConfigDefinition()
+     * @covers ::buildConfigDefinition()
      */
     public function testBuildConfigDefinition()
     {
@@ -292,7 +321,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::getConfigDirByBundleBaseDir()
+     * @covers ::getConfigDirByBundleBaseDir()
      */
     public function testGetConfigDirByBundleBaseDir()
     {
@@ -320,7 +349,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::getLoaderRecipesByConfig()
+     * @covers ::getLoaderRecipesByConfig()
      */
     public function testGetLoaderRecipesByConfig()
     {
@@ -346,7 +375,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::getCallbackFromRecipes()
+     * @covers ::getCallbackFromRecipes()
      */
     public function testGetCallbackFromRecipes()
     {
@@ -363,7 +392,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::loadServices()
+     * @covers ::loadServices()
      */
     public function testLoadServices()
     {
@@ -377,7 +406,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::loadEvents()
+     * @covers ::loadEvents()
      */
     public function testLoadEvents()
     {
@@ -394,7 +423,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::addClassContentDir()
+     * @covers ::addClassContentDir()
      */
     public function testAddClassContentDir()
     {
@@ -408,7 +437,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::addTemplatesDir()
+     * @covers ::addTemplatesDir()
      */
     public function testAddTemplatesDir()
     {
@@ -424,7 +453,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::addHelpersDir()
+     * @covers ::addHelpersDir()
      */
     public function testAddHelpersDir()
     {
@@ -440,7 +469,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::loadRoutes()
+     * @covers ::loadRoutes()
      */
     public function testLoadRoutes()
     {
@@ -458,7 +487,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::addResourcesDir()
+     * @covers ::addResourcesDir()
      */
     public function testAddResourcesDir()
     {
@@ -474,7 +503,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::runRecipe()
+     * @covers ::runRecipe()
      */
     public function testRunRecipe()
     {
@@ -496,7 +525,7 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::getClassProxy()
+     * @covers ::getClassProxy()
      */
     public function testGetClassProxy()
     {
@@ -504,8 +533,8 @@ class BundleLoaderTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleLoader::restore()
-     * @covers BackBee\Bundle\BundleLoader::isRestored()
+     * @covers ::restore()
+     * @covers ::isRestored()
      */
     public function testRestore()
     {

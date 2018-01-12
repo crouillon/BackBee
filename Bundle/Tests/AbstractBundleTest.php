@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Bundle\Tests;
@@ -29,22 +29,26 @@ use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 use BackBee\Bundle\AbstractBundle;
 use BackBee\Bundle\BundleExposedControllerInterface;
 use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
+use BackBee\Tests\Traits\InvokeMethodTrait;
 
 /**
  * Tests suite for class AbstractBundle.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ *
+ * @coversDefaultClass BackBee\Bundle\AbstractBundle
  */
 class AbstractBundleTest extends BundleTestCase
 {
+    use InvokeMethodTrait;
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::__construct()
-     * @covers BackBee\Bundle\AbstractBundle::getApplication()
-     * @covers BackBee\Bundle\AbstractBundle::getBaseDirectory()
-     * @covers BackBee\Bundle\AbstractBundle::getId()
-     * @covers BackBee\Bundle\AbstractBundle::getExposedActionsMapping()
-     * @covers BackBee\Bundle\AbstractBundle::isStarted()
+     * @covers ::__construct()
+     * @covers ::getApplication()
+     * @covers ::getBaseDirectory()
+     * @covers ::getId()
+     * @covers ::getExposedActionsMapping()
+     * @covers ::isStarted()
      */
     public function testConstruct()
     {
@@ -58,9 +62,9 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::__construct()
-     * @covers BackBee\Bundle\AbstractBundle::getId()
-     * @covers BackBee\Bundle\AbstractBundle::getBaseDirectory()
+     * @covers ::__construct()
+     * @covers ::getId()
+     * @covers ::getBaseDirectory()
      */
     public function testConstructWithoutId()
     {
@@ -71,7 +75,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getResourcesDirectory()
+     * @covers ::getResourcesDirectory()
      */
     public function testGetResourcesDirectory()
     {
@@ -82,7 +86,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getProperty()
+     * @covers ::getProperty()
      */
     public function testGetProperty()
     {
@@ -94,7 +98,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getConfig()
+     * @covers ::getConfig()
      */
     public function testGetConfig()
     {
@@ -105,7 +109,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getConfigServiceId()
+     * @covers ::getConfigServiceId()
      */
     public function testGetConfigServiceId()
     {
@@ -116,7 +120,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getConfigDirectory()
+     * @covers ::getConfigDirectory()
      */
     public function testGetConfigDirectory()
     {
@@ -137,8 +141,8 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::isConfigPerSite()
-     * @covers BackBee\Bundle\AbstractBundle::setConfigPerSite()
+     * @covers ::isConfigPerSite()
+     * @covers ::setConfigPerSite()
      */
     public function testConfigPerSite()
     {
@@ -149,8 +153,8 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::started()
-     * @covers BackBee\Bundle\AbstractBundle::isStarted()
+     * @covers ::started()
+     * @covers ::isStarted()
      */
     public function testStarted()
     {
@@ -171,8 +175,8 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::isEnabled()
-     * @covers BackBee\Bundle\AbstractBundle::setEnable()
+     * @covers ::isEnabled()
+     * @covers ::setEnable()
      */
     public function testEnabled()
     {
@@ -183,8 +187,8 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getCategory()
-     * @covers BackBee\Bundle\AbstractBundle::setCategory()
+     * @covers ::getCategory()
+     * @covers ::setCategory()
      */
     public function testCategory()
     {
@@ -195,7 +199,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::jsonSerialize()
+     * @covers ::jsonSerialize()
      */
     public function testJsonSerialize()
     {
@@ -237,7 +241,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getObjectIdentifier()
+     * @covers ::getObjectIdentifier()
      */
     public function testGetObjectIdentifier()
     {
@@ -250,7 +254,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getIdentifier()
+     * @covers ::getIdentifier()
      */
     public function testGetIdentifier()
     {
@@ -263,7 +267,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::getType()
+     * @covers ::getType()
      */
     public function testGetType()
     {
@@ -276,7 +280,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::equals()
+     * @covers ::equals()
      */
     public function testEquals()
     {
@@ -296,7 +300,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::equals()
+     * @covers ::equals()
      */
     public function testNotEqualsType()
     {
@@ -316,7 +320,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::equals()
+     * @covers ::equals()
      */
     public function testNotEqualsIdentifier()
     {
@@ -336,7 +340,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers            BackBee\Bundle\AbstractBundle::initBundleExposedActions()
+     * @covers            ::initBundleExposedActions()
      * @expectedException \InvalidArgumentException
      */
     public function testInitBundleExposedActionsWithUnknownController()
@@ -351,7 +355,7 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::initBundleExposedActions()
+     * @covers ::initBundleExposedActions()
      */
     public function testInitBundleExposedActions()
     {
@@ -367,8 +371,8 @@ class AbstractBundleTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundle::formatAndInjectExposedAction()
-     * @covers BackBee\Bundle\AbstractBundle::getExposedActionCallback()
+     * @covers ::formatAndInjectExposedAction()
+     * @covers ::getExposedActionCallback()
      */
     public function testFormatAndInjectExposedAction()
     {

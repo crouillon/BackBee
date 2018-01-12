@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Bundle\Tests;
@@ -27,6 +27,8 @@ use BackBee\Bundle\BundleControllerResolver;
  * Tests suite for class BundleControllerResolver.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ *
+ * @coversDefaultClass BackBee\Bundle\BundleControllerResolver
  */
 class BundleControllerResolverTest extends BundleTestCase
 {
@@ -47,7 +49,7 @@ class BundleControllerResolverTest extends BundleTestCase
     }
 
     /**
-     * @covers            BackBee\Bundle\BundleControllerResolver::resolve()
+     * @covers            ::resolve()
      * @expectedException BackBee\Bundle\Exception\BundleConfigurationException
      * @expectedExceptionMessage unknown doesn't exist.
      */
@@ -57,7 +59,7 @@ class BundleControllerResolverTest extends BundleTestCase
     }
 
     /**
-     * @covers            BackBee\Bundle\BundleControllerResolver::resolve()
+     * @covers            ::resolve()
      * @expectedException BackBee\Bundle\Exception\BundleConfigurationException
      * @expectedExceptionMessage No controller definition in
      */
@@ -70,7 +72,7 @@ class BundleControllerResolverTest extends BundleTestCase
     }
 
     /**
-     * @covers            BackBee\Bundle\BundleControllerResolver::resolve()
+     * @covers            ::resolve()
      * @expectedException BackBee\Bundle\Exception\BundleConfigurationException
      * @expectedExceptionMessage controller controller is undefined
      */
@@ -84,9 +86,9 @@ class BundleControllerResolverTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleControllerResolver::__construct()
-     * @covers BackBee\Bundle\BundleControllerResolver::resolve()
-     * @covers BackBee\Bundle\BundleControllerResolver::computeBundleName()
+     * @covers ::__construct()
+     * @covers ::resolve()
+     * @covers ::computeBundleName()
      */
     public function testResolve()
     {
@@ -105,7 +107,7 @@ class BundleControllerResolverTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\BundleControllerResolver::resolveBaseAdminUrl()
+     * @covers ::resolveBaseAdminUrl()
      */
     public function testResolveBaseAdminUrl()
     {

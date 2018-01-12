@@ -1,24 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Bundle\Registry;
@@ -27,7 +25,11 @@ use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query\ResultSetMapping;
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
 
-@trigger_error('The '.__NAMESPACE__.'\Repository class is deprecated since version 1.4 and will be removed in 1.5. Use BackBee\Util\Registry\Repository instead.', E_USER_DEPRECATED);
+@trigger_error(
+    'The '.__NAMESPACE__.'\Repository class is deprecated since version 1.4 ' .
+    'and will be removed in 1.5. Use BackBee\Util\Registry\Repository instead.',
+    E_USER_DEPRECATED
+);
 
 /**
  * @deprecated since version 1.4, to be removed in 1.5.
@@ -92,8 +94,8 @@ class Repository extends EntityRepository
     {
         $result = $this->_em->getConnection()->executeQuery(sprintf(
             'SELECT `key`, `value`, `scope` FROM registry WHERE `key` = "%s" AND `scope` = "%s"',
-             $id,
-             $scope
+            $id,
+            $scope
         ))->fetch();
 
         $registry = null;
@@ -116,8 +118,10 @@ class Repository extends EntityRepository
     {
         $sql = 'SELECT * FROM registry AS r WHERE (r.type = :identifier OR r.scope = :identifier) AND ((r.key = "identifier" AND r.value = :id) OR (r.scope = :id))';
         $query = $this->_em->createNativeQuery($sql, $this->getResultSetMapping());
-        $query->setParameters(array('identifier' => $identifier,
-            'id' => $id,
+        $query->setParameters(
+            array(
+                'identifier' => $identifier,
+                'id' => $id,
             )
         );
 

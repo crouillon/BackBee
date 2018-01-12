@@ -1,40 +1,49 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Bundle\Tests;
 
+use Doctrine\ORM\EntityRepository;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Flash\FlashBag;
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 use BackBee\Bundle\AbstractBundleController;
 use BackBee\Site\Site;
+use BackBee\Tests\Traits\InvokeMethodTrait;
 
 /**
  * Tests suite for class AbstractBundleController.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ *
+ * @coversDefaultClass BackBee\Bundle\AbstractBundleController
  */
 class AbstractBundleControllerTest extends BundleTestCase
 {
+    use InvokeMethodTrait;
 
     /**
      * @var AbstractBundleController
@@ -48,9 +57,34 @@ class AbstractBundleControllerTest extends BundleTestCase
     {
         parent::setUp();
 
+        $renderer = $this->getMockRenderer();
+        $renderer->expects($this->any())
+            ->method('partial')
+            ->willReturn('ok');
+
+        $this->application
+            ->expects($this->any())
+            ->method('getRenderer')
+            ->willReturn($renderer);
+
+        $this->application
+            ->expects($this->any())
+            ->method('getEntityManager')
+            ->willReturn($this->getMockEntityManager());
+
+        $this->application
+            ->expects($this->any())
+            ->method('getSession')
+            ->willReturn(new Session(new MockArraySessionStorage()));
+
+        $this->application
+            ->expects($this->any())
+            ->method('getRequest')
+            ->willReturn(new Request());
+
         $this->controller = $this->getMockForAbstractClass(
             AbstractBundleController::class,
-            [self::$app],
+            [$this->application],
             '',
             true,
             true,
@@ -60,9 +94,9 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::__construct()
-     * @covers BackBee\Bundle\AbstractBundleController::getBundle()
-     * @covers BackBee\Bundle\AbstractBundleController::setBundle()
+     * @covers ::__construct()
+     * @covers ::getBundle()
+     * @covers ::setBundle()
      */
     public function testBundle()
     {
@@ -73,35 +107,52 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::__call()
-     * @covers BackBee\Bundle\AbstractBundleController::checkMethodExist()
+     * @covers ::__call()
+     * @covers ::checkMethodExist()
      */
     public function testCall()
     {
-        $this->controller->expects($this->once())->method('testAction')->will($this->returnValue('ok'));
+        $this->controller
+            ->expects($this->once())
+            ->method('testAction')
+            ->will($this->returnValue('ok'));
+
         $response = $this->controller->test();
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals('ok', $response->getContent());
-
-        self::$app->setDebugMode(true);
-        $badResponse = $this->controller->unknown();
-        $this->assertInstanceOf(Response::class, $badResponse);
-        $this->assertEquals(Response::HTTP_INTERNAL_SERVER_ERROR, $badResponse->getStatusCode());
-        self::$app->setDebugMode(false);
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::render()
+     * @covers ::__call()
+     * @covers ::checkMethodExist()
+     */
+    public function testUnknownMethod()
+    {
+        $this->application
+            ->expects($this->once())
+            ->method('isDebugMode')
+            ->willReturn(true);
+
+        $badResponse = $this->controller->unknown();
+        $this->assertInstanceOf(Response::class, $badResponse);
+        $this->assertEquals(
+            Response::HTTP_INTERNAL_SERVER_ERROR,
+            $badResponse->getStatusCode()
+        );
+    }
+
+    /**
+     * @covers ::render()
      */
     public function testRender()
     {
         $result = $this->controller->render('Element/Text.phtml', ['value' => 'value']);
-        $this->assertStringStartsWith('<div>', $result);
+        $this->assertEquals('ok', $result);
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::decorateResponse()
+     * @covers            ::decorateResponse()
      * @expectedException \InvalidArgumentException
      */
     public function testDecorateNotResponse()
@@ -110,7 +161,7 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::decorateResponse()
+     * @covers ::decorateResponse()
      */
     public function testDecorateResponse()
     {
@@ -120,7 +171,7 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::invockeAction()
+     * @covers ::invockeAction()
      */
     public function testInvockeAction()
     {
@@ -133,7 +184,7 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers            BackBee\Bundle\AbstractBundleController::checkMethodExist()
+     * @covers            ::checkMethodExist()
      * @expectedException \LogicException
      */
     public function testCheckUnknownMethodExist()
@@ -142,7 +193,7 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::checkMethodExist()
+     * @covers ::checkMethodExist()
      */
     public function testCheckMethodExist()
     {
@@ -150,7 +201,7 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::createResponse()
+     * @covers ::createResponse()
      */
     public function testCreateResponse()
     {
@@ -160,7 +211,7 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::redirect()
+     * @covers ::redirect()
      */
     public function testRedirect()
     {
@@ -170,9 +221,9 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::getFlashBag()
-     * @covers BackBee\Bundle\AbstractBundleController::addFlashSuccess()
-     * @covers BackBee\Bundle\AbstractBundleController::addFlashError()
+     * @covers ::getFlashBag()
+     * @covers ::addFlashSuccess()
+     * @covers ::addFlashError()
      */
     public function testFlashBag()
     {
@@ -186,26 +237,48 @@ class AbstractBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::throwsExceptionIfEntityNotFound()
+     * @covers            ::throwsExceptionIfEntityNotFound()
      * @expectedException \InvalidArgumentException
      */
     public function testThrowsExceptionEntityNotFound()
     {
-        self::$kernel->resetDatabase([self::$em->getClassMetaData(Site::class)]);
+        $repository = $this->getMockBuilder(EntityRepository::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['find'])
+            ->getMock();
+
+        $this->application
+            ->getEntityManager()
+            ->expects($this->once())
+            ->method('getRepository')
+            ->willReturn($repository);
+
         $this->invokeMethod($this->controller, 'throwsExceptionIfEntityNotFound', [Site::class, 'site_uid']);
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractBundleController::getRepository()
-     * @covers BackBee\Bundle\AbstractBundleController::throwsExceptionIfEntityNotFound()
+     * @covers ::getRepository()
+     * @covers ::throwsExceptionIfEntityNotFound()
      */
     public function testThrowsExceptionIfEntityNotFound()
     {
-        self::$kernel->resetDatabase([self::$em->getClassMetaData(Site::class)]);
         $site = new Site('site_uid', ['label' => 'site-test']);
-        self::$em->persist($site);
-        self::$em->flush();
 
+        $repository = $this->getMockBuilder(EntityRepository::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['find'])
+            ->getMock();
+
+        $repository->expects($this->once())
+            ->method('find')
+            ->willReturn($site);
+
+        $this->application
+            ->getEntityManager()
+            ->expects($this->once())
+            ->method('getRepository')
+            ->willReturn($repository);
+ 
         $this->assertEquals(
             $site,
             $this->invokeMethod($this->controller, 'throwsExceptionIfEntityNotFound', [Site::class, 'site_uid'])

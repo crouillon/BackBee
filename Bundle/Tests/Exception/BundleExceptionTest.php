@@ -19,14 +19,28 @@
  * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Bundle\Event;
+namespace BackBee\AutoLoader\Exception\Tests;
+
+use BackBee\Bundle\Exception\BundleException;
 
 /**
- * Event dispatch on bundle stop.
+ * Tests suite for class BundleException.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ *
+ * @coversDefaultClass BackBee\Bundle\Exception\BundleException
  */
-class BundleStopEvent extends AbstractBundleEvent
+class BundleExceptionTest extends \PHPUnit_Framework_TestCase
 {
 
+    /**
+     */
+    public function testCode()
+    {
+        $exception = new BundleException();
+        $this->assertEquals(
+            BundleException::UNKNOWN_ERROR,
+            $exception->getCode()
+        );
+    }
 }

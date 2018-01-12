@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Bundle\Tests;
@@ -24,15 +24,20 @@ namespace BackBee\Bundle\Tests;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
+use BackBee\BBApplication;
 use BackBee\Bundle\AbstractAdminBundleController;
+use BackBee\Tests\Traits\InvokeMethodTrait;
 
 /**
  * Tests suite for class AbstractAdminBundleController.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ *
+ * @coversDefaultClass BackBee\Bundle\AbstractAdminBundleController
  */
 class AbstractAdminBundleControllerTest extends BundleTestCase
 {
+    use InvokeMethodTrait;
 
     /**
      * @var AbstractAdminBundleController
@@ -46,9 +51,13 @@ class AbstractAdminBundleControllerTest extends BundleTestCase
     {
         parent::setUp();
 
+        $application = $this->getMockBuilder(BBApplication::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
         $this->controller = $this->getMockForAbstractClass(
             AbstractAdminBundleController::class,
-            [self::$app],
+            [$application],
             '',
             true,
             true,
@@ -58,7 +67,7 @@ class AbstractAdminBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractAdminBundleController::__call()
+     * @covers ::__call()
      */
     public function testCallNotPermitted()
     {
@@ -73,7 +82,7 @@ class AbstractAdminBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractAdminBundleController::__call()
+     * @covers ::__call()
      */
     public function testCallUnknown()
     {
@@ -88,7 +97,7 @@ class AbstractAdminBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractAdminBundleController::__call()
+     * @covers ::__call()
      */
     public function testCall()
     {
@@ -107,7 +116,7 @@ class AbstractAdminBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractAdminBundleController::notifyUser()
+     * @covers ::notifyUser()
      */
     public function testNotifyUser()
     {
@@ -126,7 +135,7 @@ class AbstractAdminBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractAdminBundleController::decorateResponse()
+     * @covers            ::decorateResponse()
      * @expectedException \InvalidArgumentException
      */
     public function testDecorateNotResponse()
@@ -135,7 +144,7 @@ class AbstractAdminBundleControllerTest extends BundleTestCase
     }
 
     /**
-     * @covers BackBee\Bundle\AbstractAdminBundleController::decorateResponse()
+     * @covers ::decorateResponse()
      */
     public function testDecorateResponse()
     {
