@@ -1,27 +1,28 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Workflow\Tests\Repository;
 
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\QueryBuilder;
 
 use BackBee\Site\Layout;
 use BackBee\Workflow\Repository\StateRepository;
@@ -31,6 +32,7 @@ use BackBee\Workflow\State;
  * Test suite for class StateRepository.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ *
  * @coversDefaultClass \BackBee\Workflow\Repository\StateRepository
  */
 class StateRepositoryTest extends \PHPUnit_Framework_TestCase
@@ -60,7 +62,7 @@ class StateRepositoryTest extends \PHPUnit_Framework_TestCase
 
         $this->repository = $this->getMockBuilder(StateRepository::class)
             ->disableOriginalConstructor()
-            ->setMethods(['findBy'])
+            ->setMethods(['findBy', 'createQueryBuilder'])
             ->getMock();
     }
 
@@ -86,5 +88,20 @@ class StateRepositoryTest extends \PHPUnit_Framework_TestCase
             [1 => $state1, 2 => $state2],
             $this->repository->getWorkflowStatesForLayout($layout)
         );
+    }
+
+    /**
+     * @covers ::getWorkflowStatesWithLayout()
+     */
+    public function testGetWorkflowStatesWithLayout()
+    {
+        $query = $this->getMock(\stdClass::class, ['getResult']);
+        $builder = $this->getMock(QueryBuilder::class, ['andWhere', 'getQuery'], [$this->entityMng]);
+
+        $builder->expects($this->once())->method('andWhere')->with('w._layout IS NOT NULL')->willReturn($builder);
+        $builder->expects($this->once())->method('getQuery')->willReturn($query);
+        $this->repository->expects($this->once())->method('createQueryBuilder')->willReturn($builder);
+
+        $this->repository->getWorkflowStatesWithLayout();
     }
 }
