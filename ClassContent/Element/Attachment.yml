@@ -3,6 +3,7 @@ Attachment:
   properties:
     name: Attachment
     description: An attachment
+    iconized-by: ~
   parameters:
     mimetype: ~
     authorized: ~

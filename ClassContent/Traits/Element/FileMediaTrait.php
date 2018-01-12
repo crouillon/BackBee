@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2017 Lp digital system
+ * Copyright (c) 2018 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -41,8 +41,8 @@ trait FileMediaTrait
     public function mimeTypeSupported($mimeType)
     {
         if ($this instanceof File) {
-            $supported = $this->getProperty('mime-types-supported');
-            return ($supported ? in_array($mimeType, $supported) : true);
+            $supported = (array) $this->getProperty('mime-types-supported');
+            return ($supported ? in_array($mimeType, $supported) : false);
         }
 
         return false;

@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2017 Lp digital system
+ * Copyright (c) 2018 Lp digital system
  *
  * This file is part of BackBee.
  *
@@ -25,7 +25,6 @@ namespace BackBee\ClassContent\Tests\Traits;
 
 use BackBee\ClassContent\Element\File;
 use BackBee\ClassContent\Element\Image;
-use BackBee\ClassContent\Element\Keyword;
 use BackBee\Tests\BackBeeTestCase;
 
 /**
@@ -38,34 +37,24 @@ use BackBee\Tests\BackBeeTestCase;
 class FileMediaTraitTest extends BackBeeTestCase
 {
     /**
-     * Test mime type supported for file element.
+     * Test mime type supported failed.
      */
-    public function testMimeTypeSupportedFile()
+    public function testMimeTypeSupportedFailed()
     {
         $file = new File();
         $this->assertNotNull($file->getProperty('mime-types-supported'));
-        $this->assertTrue($file->mimeTypeSupported('image/pdf'));
+        $this->assertFalse($file->mimeTypeSupported('image/pdf'));
     }
 
     /**
      * Test mime type supported for image element.
      */
-    public function testMimeTypeSupportedImage()
+    public function testMimeTypeSupported()
     {
         $image = new Image();
         $this->assertInstanceOf('\BackBee\ClassContent\Element\File', $image);
         $this->assertNotNull($image->getProperty('mime-types-supported'));
         $this->assertTrue($image->mimeTypeSupported('image/gif'));
         $this->assertFalse($image->mimeTypeSupported('image/fake'));
-    }
-
-    /**
-     * Test mime type supported failed.
-     */
-    public function testMimeTypeSupportedFailed()
-    {
-        $keyword = new Keyword();
-        $this->assertNotInstanceOf('\BackBee\ClassContent\Element\File', $keyword);
-        $this->assertNull($keyword->getProperty('mime-types-supported'));
     }
 }
