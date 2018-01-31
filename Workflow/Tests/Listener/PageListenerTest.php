@@ -105,7 +105,11 @@ class PageListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testPreUpdateInvalidEvent()
     {
-        $notaPage = $this->getMock(Event::class, ['getEventArgs'], ['target']);
+        $notaPage = $this->getMockBuilder(Event::class)
+            ->setMethods(['getEventArgs'])
+            ->setConstructorArgs(['target'])
+            ->getMock();
+
         $notaPage->expects($this->never())->method('getEventArgs');
         $this->assertNull($this->listener->onPreUpdate($notaPage));
 

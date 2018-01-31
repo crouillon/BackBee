@@ -95,8 +95,13 @@ class StateRepositoryTest extends \PHPUnit_Framework_TestCase
      */
     public function testGetWorkflowStatesWithLayout()
     {
-        $query = $this->getMock(\stdClass::class, ['getResult']);
-        $builder = $this->getMock(QueryBuilder::class, ['andWhere', 'getQuery'], [$this->entityMng]);
+        $query = $this->getMockBuilder(\stdClass::class)
+            ->setMethods(['getResult'])
+            ->getMock();
+        $builder = $this->getMockBuilder(QueryBuilder::class)
+            ->setMethods(['andWhere', 'getQuery'])
+            ->setConstructorArgs([$this->entityMng])
+            ->getMock();
 
         $builder->expects($this->once())->method('andWhere')->with('w._layout IS NOT NULL')->willReturn($builder);
         $builder->expects($this->once())->method('getQuery')->willReturn($query);
