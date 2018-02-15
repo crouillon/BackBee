@@ -819,7 +819,7 @@ class Page extends AbstractObjectIdentifiable implements RenderableInterface, Do
     {
         $this->_layout = $layout;
 
-        $count = count($layout->getZones());
+        $count = count((array) $layout->getZones());
         // Add as much ContentSet to the page main ContentSet than defined zones in layout
         for ($i = $this->getContentSet()->count(); $i < $count; $i++) {
             // Do this case really exists ?
