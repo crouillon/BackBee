@@ -23,8 +23,11 @@
 
 namespace BackBee\Installer;
 
+use Doctrine\DBAL\Event\SchemaAlterTableEventArgs;
+use Doctrine\DBAL\Events;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Tools\SchemaTool;
+
 use BackBee\BBApplication;
 
 /**
@@ -70,6 +73,9 @@ class Database
 
         $platform = $this->_em->getConnection()->getDatabasePlatform();
         $platform->registerDoctrineTypeMapping('enum', 'string');
+
+        // Insure the name of altered tables are quoted according to the platform
+        $this->_em->getEventManager()->addEventListener(Events::onSchemaAlterTable, $this);
 
         $this->_schemaTool = new SchemaTool($this->_em);
         $this->_entityFinder = new EntityFinder(dirname($this->_application->getBBDir()));
@@ -242,6 +248,7 @@ class Database
     private function getUpdateBackBeeSqlSchema()
     {
         $classes = $this->getBackBeeSchema();
+
         $sql = $this->_schemaTool->getUpdateSchemaSql($classes, true);
 
         return $sql;
@@ -286,5 +293,16 @@ class Database
         }
 
         return $classes;
+    }
+
+    /**
+     * Insures the name of the altered table is quoted according to the platform.
+     *
+     * @param SchemaAlterTableEventArgs $args
+     */
+    public function onSchemaAlterTable(SchemaAlterTableEventArgs $args)
+    {
+        $tableDiff = $args->getTableDiff();
+        $tableDiff->name = $tableDiff->fromTable->getQuotedName($args->getPlatform());
     }
 }
