@@ -23,7 +23,7 @@ namespace BackBee\Bundle\Registry;
 
 @trigger_error(
     'The '.__NAMESPACE__.'\RegistryEntityInterface class is deprecated since version 1.4 ' .
-    'and will be removed in 1.5. Use BackBee\Util\Registry\RegistryEntityInterface instead.',
+    'and will be removed in 1.5.',
     E_USER_DEPRECATED
 );
 

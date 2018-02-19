@@ -573,7 +573,7 @@ class BundleLoader implements DumpableServiceInterface, DumpableServiceProxyInte
     {
         if (!$this->runRecipe($config, $recipe)) {
             $events = $config->getRawSection('events');
-            if (true === is_array($events) && 0 < count($events)) {
+            if (is_array($events) && 0 < count($events)) {
                 $this->application->getEventDispatcher()->addListeners($events);
             }
         }

@@ -26,8 +26,8 @@ use Doctrine\ORM\Query\ResultSetMapping;
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
 
 @trigger_error(
-    'The '.__NAMESPACE__.'\Repository class is deprecated since version 1.4 ' .
-    'and will be removed in 1.5. Use BackBee\Util\Registry\Repository instead.',
+    'The '.__NAMESPACE__.'\Repository class is deprecated since version 1.4 and will be ' .
+    'removed in 1.5. Use BackBee\Util\Registry\Repository instead.',
     E_USER_DEPRECATED
 );
 
