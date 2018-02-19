@@ -109,7 +109,7 @@ class Memcached extends AbstractMemcache
      *
      * @link http://php.net/manual/en/memcached.setoption.php
      */
-    public function setOption($option, $value)
+    public function setOption($option, $value = null)
     {
         if (false === is_int($option)) {
             $this->log('warning', sprintf('Unknown memcached option: `%s`.', $option));

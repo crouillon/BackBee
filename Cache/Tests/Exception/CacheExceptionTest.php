@@ -19,25 +19,27 @@
  * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Cache\Exception;
+namespace BackBee\AutoLoader\Exception\Tests;
 
-use BackBee\Exception\BBException;
+use BackBee\Cache\Exception\CacheException;
 
 /**
- * Cache exception thrown if a cache adapter can not be initialized.
+ * Tests suite for class CacheException.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass BackBee\Cache\Exception\CacheException
  */
-class CacheException extends BBException
+class CacheExceptionTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
-     * Cache adapter can not be intialized.
      */
-    const CACHE_ERROR = 3001;
-
-    /**
-     * The default error code.
-     */
-    protected $code = self::CACHE_ERROR;
+    public function testCode()
+    {
+        $exception = new CacheException();
+        $this->assertEquals(
+            CacheException::CACHE_ERROR,
+            $exception->getCode()
+        );
+    }
 }
