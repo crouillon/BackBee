@@ -19,17 +19,27 @@
  * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
-namespace BackBee\Exception;
+namespace BackBee\Exception\Tests;
+
+use BackBee\Exception\MissingApplicationException;
 
 /**
- * Exception thrown if the the provided start context is not available.
+ * Tests suite for class MissingApplicationException.
  *
  * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * @coversDefaultClass BackBee\Exception\MissingApplicationException
  */
-class UnknownContextException extends BBException
+class MissingApplicationExceptionTest extends \PHPUnit_Framework_TestCase
 {
+
     /**
-     * The default error code.
      */
-    protected $code = self::UNKNOWN_CONTEXT;
+    public function testCode()
+    {
+        $exception = new MissingApplicationException();
+        $this->assertEquals(
+            MissingApplicationException::MISSING_APPLICATION,
+            $exception->getCode()
+        );
+    }
 }

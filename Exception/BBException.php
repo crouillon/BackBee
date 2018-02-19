@@ -1,24 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Exception;
@@ -26,97 +24,95 @@ namespace BackBee\Exception;
 /**
  * BackBee parent class exception.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class BBException extends \Exception
 {
+
     /**
      * Unknown error.
-     *
-     * @var int
      */
     const UNKNOWN_ERROR = 1000;
 
     /**
      * Invalid argument provided.
-     *
-     * @var int
      */
     const INVALID_ARGUMENT = 1001;
 
     /**
      * None BackBee application available.
-     *
-     * @var int
      */
     const MISSING_APPLICATION = 1002;
 
     /**
      * Invalid database connection.
-     *
-     * @var int
      */
     const INVALID_DB_CONNECTION = 1003;
 
     /**
      * Unknown context provided.
-     *
-     * @var int
      */
     const UNKNOWN_CONTEXT = 1004;
 
     /**
-     * The default error code.
+     * The initial message of the exception.
      *
-     * @var int
+     * @var string
      */
-    protected $_code = self::UNKNOWN_ERROR;
+    private $initialMessage;
 
     /**
      * The last source file before the exception thrown.
      *
      * @var string
      */
-    private $_source;
+    private $source;
 
     /**
      * The line of the source file where the exception thrown.
      *
      * @var int
      */
-    private $_seek;
-
-    /**
-     * The error message.
-     *
-     * @var type
-     */
-    private $_message;
+    private $seek;
 
     /**
      * Class constructor.
      *
-     * @param type       $message  The error message
-     * @param type       $code     The error code
-     * @param \Exception $previous Optional, the previous exception generated
-     * @param type       $source   Optional, the last source file before the exception thrown
-     * @param type       $seek     Optional, the line of the source file where the exception trown
+     * @param string          $message  The error message
+     * @param int             $code     The error code
+     * @param \Exception|null $previous Optional, the previous exception generated
+     * @param string|null     $source   Optional, the last source file before the exception thrown
+     * @param int|null        $seek     Optional, the line of the source file where the exception trown
      */
-    public function __construct($message = "", $code = 0, \Exception $previous = null, $source = null, $seek = null)
-    {
-        if (0 !== $code) {
-            $this->_code = $code;
+    public function __construct(
+        $message = "",
+        $code = 0,
+        \Exception $previous = null,
+        $source = null,
+        $seek = null
+    ) {
+        if (property_exists($this, '_code')) {
+            @trigger_error('The protected property ' . get_class($this) . '::_code is deprecated '
+                            . 'since 1.4 and will be removed in 1.5', E_USER_DEPRECATED);
+            $this->code = $this->_code;
         }
 
-        parent::__construct($message, $this->_code, $previous);
+        $this->initialMessage = $message;
 
-        $this->_message = $message;
+        if (empty($this->code)) {
+            $this->code = self::UNKNOWN_ERROR;
+        }
 
-        $this->setSource($source)
-                ->setSeek($seek);
+        if (!empty($code)) {
+            $this->code = $code;
+        }
+
+        parent::__construct($message, $this->code, $previous);
+
+        $this
+            ->setSource($source)
+            ->setSeek($seek)
+        ;
     }
 
     /**
@@ -126,7 +122,7 @@ class BBException extends \Exception
      */
     public function getSource()
     {
-        return $this->_source;
+        return $this->source;
     }
 
     /**
@@ -136,19 +132,19 @@ class BBException extends \Exception
      */
     public function getSeek()
     {
-        return $this->_seek;
+        return $this->seek;
     }
 
     /**
      * Sets the last source file before the exception thrown.
      *
-     * @param string $source
+     * @param  string $source
      *
-     * @return \BackBee\Exception\BBException
+     * @return BBException
      */
     public function setSource($source)
     {
-        $this->_source = $source;
+        $this->source = $source;
 
         return $this->updateMessage();
     }
@@ -156,13 +152,13 @@ class BBException extends \Exception
     /**
      * Sets the line of the source file where the exception thrown.
      *
-     * @param type $seek
+     * @param  integer $seek
      *
-     * @return \BackBee\Exception\BBException
+     * @return BBException
      */
     public function setSeek($seek)
     {
-        $this->_seek = $seek;
+        $this->seek = intval($seek);
 
         return $this->updateMessage();
     }
@@ -170,16 +166,13 @@ class BBException extends \Exception
     /**
      * Updates the error message according to the source and seek provided.
      *
-     * @return \BackBee\Exception\BBException
+     * @return BBException
      */
     private function updateMessage()
     {
-        $this->message = $this->_message;
-
-        if (null !== $this->_source && null !== $this->_seek) {
-            $this->message .= sprintf(' in %s at %d.', $this->_source, $this->_seek);
-        } elseif (null !== $this->_source) {
-            $this->message .= sprintf(' : %s.', $this->_source);
+        $this->message = $this->initialMessage;
+        if (null !== $this->getSource()) {
+            $this->message .= sprintf(' in %s at %d.', $this->getSource(), $this->getSeek());
         }
 
         return $this;
