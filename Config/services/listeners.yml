@@ -2,3 +2,26 @@ services:
     listener.bundlelistener:
         class: BackBee\Bundle\Listener\BundleListener
         arguments: ["@service_container", "@event.dispatcher"]
+    listener.classcontentlistener:
+        class: BackBee\ClassContent\Listener\ClassContentListener
+        calls:
+            - method: setContainer
+              arguments: ["@service_container"]
+    listener.indexationlistener:
+        class: BackBee\ClassContent\Listener\IndexationListener
+        calls:
+            - method: setContainer
+              arguments: ["@service_container"]
+    listener.revisionlistener:
+        class: BackBee\ClassContent\Listener\RevisionListener
+        calls:
+            - method: setContainer
+              arguments: ["@service_container"]
+    listener.workflowlistener:
+        class: BackBee\Workflow\Listener\PageListener
+        calls:
+            - method: setContainer
+              arguments: ["@service_container"]
+    listener.rewritinglitener:
+        class: BackBee\Rewriting\Listener\RewritingListener
+        arguments: ["@rewriting.urlgenerator"]
