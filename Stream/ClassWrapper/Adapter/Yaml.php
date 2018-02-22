@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Stream\ClassWrapper\Adapter;
@@ -35,10 +35,6 @@ use BackBee\Utils\File\File;
     . 'Use BackBee\Stream\Adapter\Yaml instead.', E_USER_DEPRECATED);
 
 /**
- * Stream wrapper to interprete yaml file as class content description
- * Extends AbstractClassWrapper
- *
- * @author     Charles Rouillon <charles.rouillon@lp-digital.fr>
  * @deprecated since version 1.4, to be removed in 1.5.
  * @codeCoverageIgnore
  */
@@ -340,7 +336,9 @@ class Yaml extends AbstractClassWrapper
         $this->classname = basename($path);
         if (dirname($path) && dirname($path) != DIRECTORY_SEPARATOR) {
             $this->namespace .= NAMESPACE_SEPARATOR.str_replace(
-                DIRECTORY_SEPARATOR, NAMESPACE_SEPARATOR, dirname($path)
+                DIRECTORY_SEPARATOR,
+                NAMESPACE_SEPARATOR,
+                dirname($path)
             );
         }
 
@@ -380,7 +378,7 @@ class Yaml extends AbstractClassWrapper
                         ->dispatch(
                             'classcontent.streamparsing',
                             $event
-                    );
+                        );
 
                     if ($event->hasArgument('data')) {
                         $yamlDatas = $event->getArgument('data');
