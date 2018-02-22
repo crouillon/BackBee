@@ -1,39 +1,43 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Util;
 
+@trigger_error(
+    'The '.__NAMESPACE__.'\Parameter class is deprecated ' .
+    'since version 1.4 and will be removed in 1.5.',
+    E_USER_DEPRECATED
+);
+
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      n.dufreche <nicolas.dufreche@lp-digital.fr>
+ * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
 class Parameter
 {
+
     /**
      * replaces the values of the first array with the same values from all the following arrays.
-     * If a key from the first array exists in the second array, its value will be replaced by the value from the second array.
+     * If a key from the first array exists in the second array, its value will be replaced by
+     * the value from the second array.
      * If the key exists in the second array, and not the first, it will be deleted.
      * Mutable specify the value of the first array can be overloaded.
      *
@@ -52,7 +56,9 @@ class Parameter
         }
 
         foreach ($array1 as $key => $value) {
-            $mutableFields = (is_array($value) && array_key_exists("_mutablefields", $value)) ? (array) $value["_mutablefields"] : $mutableField;
+            $mutableFields = (is_array($value) && array_key_exists("_mutablefields", $value))
+                ? (array) $value["_mutablefields"]
+                : $mutableField;
 
             if (array_key_exists($key, $array2)) {
                 if (is_array($value)) {

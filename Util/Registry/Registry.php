@@ -1,24 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Util\Registry;
@@ -26,10 +24,9 @@ namespace BackBee\Util\Registry;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * @category    BackBee
+ * Registry entity.
  *
- * @copyright   Lp digital system
- * @author e.chau <eric.chau@lp-digital.fr>
+ * @author Eric Chau <eric.chau@lp-digital.fr>
  *
  * @ORM\Table(
  *   name="registry",
@@ -43,6 +40,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class Registry
 {
+
     /**
      * @var integer
      *
@@ -103,9 +101,9 @@ class Registry
     /**
      * Sets the value of key.
      *
-     * @param string $key the key
+     * @param  string $key the key
      *
-     * @return self
+     * @return Registry
      */
     public function setType($type)
     {
@@ -127,9 +125,9 @@ class Registry
     /**
      * Sets the value of key.
      *
-     * @param string $key the key
+     * @param  string $key the key
      *
-     * @return self
+     * @return Registry
      */
     public function setKey($key)
     {
@@ -151,9 +149,9 @@ class Registry
     /**
      * Sets the value of value.
      *
-     * @param string $value the value
+     * @param  string $value the value
      *
-     * @return self
+     * @return Registry
      */
     public function setValue($value)
     {
@@ -175,9 +173,9 @@ class Registry
     /**
      * Sets the value of scope.
      *
-     * @param string $scope the scope
+     * @param  string $scope the scope
      *
-     * @return self
+     * @return Registry
      */
     public function setScope($scope)
     {

@@ -1,40 +1,42 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Util\Registry;
 
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query\ResultSetMapping;
+use Doctrine\ORM\UnitOfWork;
 use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
 
 /**
- * @category    BackBee
+ * Entity repository for Registry
  *
- * @copyright   Lp digital system
- * @author n.dufreche <nicolas.dufreche@lp-digital.fr>
+ * @author Nicolas Dufreche
  */
 class Repository extends EntityRepository
 {
+
+    /**
+     * @var integer
+     */
     private $last_inserted_id;
 
     /**
@@ -46,7 +48,7 @@ class Repository extends EntityRepository
      */
     public function save(Registry $registry)
     {
-        if (false === $this->getEntityManager()->contains($registry)) {
+        if (!$this->getEntityManager()->contains($registry)) {
             $this->getEntityManager()->persist($registry);
         }
 
@@ -60,11 +62,12 @@ class Repository extends EntityRepository
      *
      * @param  Registry $registry
      *
-     * @return Registry
+     * @return  Registry
      */
     public function remove(Registry $registry)
     {
-        if (\Doctrine\ORM\UnitOfWork::STATE_NEW !== $this->getEntityManager()->getUnitOfWork()->getEntityState($registry)) {
+        $state = $this->getEntityManager()->getUnitOfWork()->getEntityState($registry);
+        if (UnitOfWork::STATE_NEW !== $state) {
             $this->getEntityManager()->remove($registry);
             $this->getEntityManager()->flush($registry);
         }
@@ -73,11 +76,8 @@ class Repository extends EntityRepository
     }
 
     /**
-     * Removes the registry entry from DB.
-     *
-     * @param  Registry $registry
-     *
-     * @return Registry
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
      */
     public function removeEntity($entity)
     {
@@ -88,17 +88,21 @@ class Repository extends EntityRepository
         }
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     public function findRegistryEntityByIdAndScope($id, $scope)
     {
         $result = $this->_em->getConnection()->executeQuery(sprintf(
             'SELECT `key`, `value`, `scope` FROM registry WHERE `key` = "%s" AND `scope` = "%s"',
-             $id,
-             $scope
+            $id,
+            $scope
         ))->fetch();
 
         $registry = null;
         if (false !== $result) {
-            $registry = new Registry();
+            $registry = new \BackBee\Bundle\Registry();
             $registry->setKey($result['key']);
             $registry->setValue($result['value']);
             $registry->setScope($result['scope']);
@@ -108,42 +112,45 @@ class Repository extends EntityRepository
     }
 
     /**
-     * Find the entity by hes id.
-     *
-     * @param $classname
-     **/
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     public function findRegistriesEntityById($identifier, $id)
     {
-        $sql = 'SELECT * FROM registry AS r WHERE (r.type = :identifier OR r.scope = :identifier) AND ((r.key = "identifier" AND r.value = :id) OR (r.scope = :id))';
+        $sql = 'SELECT * FROM registry AS r ' .
+                'WHERE (r.type = :identifier OR r.scope = :identifier) ' .
+                'AND ((r.key = "identifier" AND r.value = :id) OR (r.scope = :id))';
         $query = $this->_em->createNativeQuery($sql, $this->getResultSetMapping());
-        $query->setParameters(array('identifier' => $identifier,
+        $query->setParameters([
+            'identifier' => $identifier,
             'id' => $id,
-            )
-        );
+        ]);
 
         return $query->getResult();
     }
 
     /**
-     * Find the entity by hes id.
-     *
-     * @param $classname
-     **/
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     public function findEntityById($identifier, $id)
     {
         return $this->buildEntity($identifier, $this->findRegistriesEntityById($identifier, $id));
     }
 
     /**
-     * Find the entity by hes id.
-     *
-     * @param $classname
-     **/
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     public function findEntity($id)
     {
         return $this->findEntityById($this->getEntityName(), $id);
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     public function count($descriminator = null)
     {
         if (null === $descriminator) {
@@ -161,16 +168,23 @@ class Repository extends EntityRepository
         return $count;
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     public function findAllEntities($identifier = null)
     {
         if (null === $identifier) {
             $identifier = $this->getEntityName();
         }
-        $sql = 'SELECT * FROM registry AS r WHERE r.key = "identifier" AND (r.type = :identifier OR r.scope = :identifier) ORDER BY r.id';
+        $sql = 'SELECT * FROM registry AS r WHERE ' .
+                'r.key = "identifier" ' .
+                'AND (r.type = :identifier OR r.scope = :identifier) ' .
+                'ORDER BY r.id';
         $query = $this->_em->createNativeQuery($sql, $this->getResultSetMapping());
         $query->setParameter('identifier', $identifier);
 
-        $entities = array();
+        $entities = [];
         foreach ($query->getResult() as $key => $value) {
             $entities[$key] = $this->findEntityById($identifier, $value->getValue());
         }
@@ -178,10 +192,14 @@ class Repository extends EntityRepository
         return $entities;
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     private function getResultSetMapping()
     {
         $rsm = new ResultSetMapping();
-        $rsm->addEntityResult('BackBee\Util\Registry', 'br');
+        $rsm->addEntityResult('BackBee\Bundle\Registry', 'br');
         $rsm->addFieldResult('br', 'id', 'id');
         $rsm->addFieldResult('br', 'type', 'type');
         $rsm->addMetaResult('br', 'key', 'key');
@@ -191,6 +209,10 @@ class Repository extends EntityRepository
         return $rsm;
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     private function countEntities($classname, $total)
     {
         $property_number = count((new $classname())->getObjectProperties());
@@ -204,9 +226,13 @@ class Repository extends EntityRepository
         return $count;
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     public function persist($entity)
     {
-        if ($entity instanceof DomainObjectInterface && $entity instanceof RegistryEntityInterface && null === $entity->getObjectIdentifier()) {
+        if ($entity instanceof DomainObjectInterface && null === $entity->getObjectIdentifier()) {
             if (!$this->last_inserted_id) {
                 $this->last_inserted_id = $this->getLastInsertedId();
             }
@@ -219,11 +245,19 @@ class Repository extends EntityRepository
         }
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     private function getLastInsertedId()
     {
         return $this->_em->getConnection()->lastInsertId('registry');
     }
 
+    /**
+     * @deprecated since version 1.4, will removed in 1.5.
+     * @codeCoverageIgnore
+     */
     private function buildEntity($classname, $contents)
     {
         return (new Builder())->setRegistries($contents, $classname)->getEntity();

@@ -1,35 +1,32 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Util\Transport;
 
+use BackBee\Util\Transport\Exception\ConnectionException;
+
 /**
  * Abstract class for transport.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 abstract class AbstractTransport
 {
@@ -38,70 +35,70 @@ abstract class AbstractTransport
      *
      * @var string
      */
-    protected $_protocol;
+    protected $protocol;
 
     /**
      * The remose host.
      *
      * @var string
      */
-    protected $_host;
+    protected $host;
 
     /**
      * The protocol port to be uses.
      *
      * @var int
      */
-    protected $_port;
+    protected $port;
 
     /**
      * The login indetifier.
      *
      * @var string
      */
-    protected $_username;
+    protected $username;
 
     /**
      * The passaword.
      *
      * @var string
      */
-    protected $_password;
+    protected $password;
 
     /**
      * The default remote path.
      *
      * @var string
      */
-    protected $_remotepath = '/';
+    protected $remotepath = '/';
 
     /**
      * The starting path e.g. the 'home' of the connection.
      *
      * @var string
      */
-    protected $_startingpath;
+    protected $startingpath;
 
     /**
      * The SSH public key.
      *
      * @var publickey
      */
-    protected $_ssh_key_pub;
+    protected $ssh_key_pub;
 
     /**
      * The SSH private key.
      *
      * @var privatekey
      */
-    protected $_ssh_key_priv;
+    protected $ssh_key_priv;
 
     /**
      * The SSH resource.
      *
      * @var passkey
      */
-    protected $_ssh_key_pass;
+    protected $ssh_key_pass;
 
     /**
      * Class constructor, config might overwrite following options:
@@ -110,7 +107,10 @@ abstract class AbstractTransport
      * * port
      * * username
      * * password
-     * * remotepath.
+     * * remotepath
+     * * ssh_key_pub
+     * * ssh_key_priv
+     * * ssh_key_pass
      *
      * Should throw a \BackBee\Util\Transport\Exception\MisconfigurationException
      * on failure
@@ -121,13 +121,43 @@ abstract class AbstractTransport
     {
         if (null !== $config) {
             foreach ($config as $key => $value) {
-                $property = '_'.$key;
-                if (true === property_exists($this, $property)) {
-                    $this->$property = $value;
+                if (true === property_exists($this, $key)) {
+                    $this->$key = $value;
                 }
             }
         }
-        $this->_startingpath = $this->_remotepath;
+        $this->startingpath = $this->remotepath;
+    }
+
+    /**
+     * Magic getter on old properties syntax.
+     *
+     * @param  string $property
+     *
+     * @return mixed
+     *
+     * @throws \InvalidArgumentException is $property doesn't exist.
+     */
+    public function __get($property)
+    {
+        if ('_' === substr($property, 0, 1)
+            && property_exists($this, substr($property, 1))
+        ) {
+            $property = substr($property, 1);
+            @trigger_error(
+                sprintf(
+                    'The property $_%s is deprecated since version 1.4 and ' .
+                    'will be removed in 1.5. Use $%s instead.',
+                    $property,
+                    $property
+                ),
+                E_USER_DEPRECATED
+            );
+
+            return  $this->$property;
+        }
+
+        throw new \InvalidArgumentException('Unknown property ' . $property);
     }
 
     /**
@@ -137,18 +167,18 @@ abstract class AbstractTransport
      *
      * @return string
      */
-    protected function _getAbsoluteRemotePath($path = null)
+    protected function getAbsoluteRemotePath($path = null)
     {
         if (null === $path) {
-            return $this->_startingpath;
+            return $this->startingpath;
         }
 
         $path = str_replace(DIRECTORY_SEPARATOR, '/', $path);
-        if (null === $parse_url = @parse_url($path)) {
+        if (false === $parse_url = @parse_url($path)) {
             $parse_url = array('path' => $path);
         }
 
-        return ('/' === substr($parse_url['path'], 0, 1) ? $path : $this->_remotepath.'/'.$path);
+        return ('/' === substr($parse_url['path'], 0, 1) ? $path : $this->remotepath.'/'.$path);
     }
 
     /**
@@ -156,9 +186,9 @@ abstract class AbstractTransport
      *
      * @param string $message
      *
-     * @return FALSE
+     * @return false
      */
-    protected function _trigger_error($message)
+    protected function triggerError($message)
     {
         trigger_error($message, E_USER_WARNING);
 
@@ -171,8 +201,9 @@ abstract class AbstractTransport
      * @param string $host
      * @param string $port
      *
-     * @return \BackBee\Util\Transport\AbstractTransport
-     * @throws \BackBee\Util\Transport\Exception\ConnectionException Occurs if connection failed
+     * @return AbstractTransport
+     *
+     * @throws ConnectionException if connection failed
      */
     abstract public function connect($host = null, $port = null);
 
@@ -182,15 +213,16 @@ abstract class AbstractTransport
      * @param string $username
      * @param string $password
      *
-     * @return \BackBee\Util\Transport\AbstractTransport
-     * @throws \BackBee\Util\Transport\Exception\AuthenticationException Occurs if authentication failed
+      * @return AbstractTransport
+     *
+     * @throws ConnectionException if authentication failed
      */
     abstract public function login($username = null, $password = null);
 
     /**
      * Disconnect from the remote server and unset resources.
      *
-     * @return \BackBee\Util\Transport\AbstractTransport
+     * @return AbstractTransport
      */
     abstract public function disconnect();
 
@@ -300,4 +332,46 @@ abstract class AbstractTransport
      * @return boolean Returns TRUE on success or FALSE on error
      */
     abstract public function rename($old_name, $new_name);
+
+    /**
+     * @deprecated since 1.4, will be removed in 1.5
+     * @codeCoverageIgnore
+     */
+    protected function _getAbsoluteRemotePath($path = null)
+    {
+        @trigger_error(
+            sprintf(
+                'The method %s::_%s() is deprecated since version 1.4 and ' .
+                'will be removed in 1.5. Use %s::%s() instead.',
+                __CLASS__,
+                'getAbsoluteRemotePath',
+                __CLASS__,
+                'getAbsoluteRemotePath'
+            ),
+            E_USER_DEPRECATED
+        );
+
+        return $this->getAbsoluteRemotePath($path);
+    }
+
+    /**
+     * @deprecated since 1.4, will be removed in 1.5
+     * @codeCoverageIgnore
+     */
+    protected function _trigger_error($message)
+    {
+        @trigger_error(
+            sprintf(
+                'The method %s::_%s() is deprecated since version 1.4 and ' .
+                'will be removed in 1.5. Use %s::%s() instead.',
+                __CLASS__,
+                'trigger_error',
+                __CLASS__,
+                'triggerError'
+            ),
+            E_USER_DEPRECATED
+        );
+
+        return $this->triggerError($message);
+    }
 }

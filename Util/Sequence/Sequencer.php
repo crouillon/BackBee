@@ -1,24 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Util\Sequence;
@@ -26,6 +24,7 @@ namespace BackBee\Util\Sequence;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadata;
+
 use BackBee\Exception\InvalidArgumentException;
 use BackBee\Utils\Numeric;
 
@@ -33,10 +32,7 @@ use BackBee\Utils\Numeric;
  * Sequence repository
  * Utility class providing db stored sequences.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class Sequencer extends EntityRepository
 {
@@ -48,14 +44,14 @@ class Sequencer extends EntityRepository
     private $table;
 
     /**
-     * The fieldname of _name.
+     * The fieldname of name.
      *
      * @var string
      */
     private $name;
 
     /**
-     * The fieldname of _value.
+     * The fieldname of value.
      *
      * @var string
      */
@@ -72,8 +68,8 @@ class Sequencer extends EntityRepository
         parent::__construct($em, $class);
 
         $this->table = $this->getClassMetadata()->table['name'];
-        $this->name = $this->getClassMetadata()->fieldMappings['_name']['columnName'];
-        $this->value = $this->getClassMetadata()->fieldMappings['_value']['columnName'];
+        $this->name = $this->getClassMetadata()->fieldMappings['name']['columnName'];
+        $this->value = $this->getClassMetadata()->fieldMappings['value']['columnName'];
     }
 
     /**
@@ -99,7 +95,7 @@ class Sequencer extends EntityRepository
      *
      * @return int
      *
-     * @throws InvalidArgumentException Occures if sequence $name already exists or $first is not a positive integer
+     * @throws InvalidArgumentException if sequence $name already exists or $first is not a positive integer
      */
     private function init($name, $first = 0)
     {
@@ -112,10 +108,10 @@ class Sequencer extends EntityRepository
         }
 
         $query = 'INSERT INTO sequence (name, value) VALUE(:name, :value)';
-        $params = array(
+        $params = [
             'name'   => $name,
             'value'  => $first,
-        );
+        ];
 
         $this->getEntityManager()
             ->getConnection()
@@ -129,11 +125,11 @@ class Sequencer extends EntityRepository
      * Update a sequence with name $name.
      *
      * @param string $name
-     * @param int    $first
+     * @param int    $value
      *
      * @return int
      *
-     * @throws InvalidArgumentException Occures if sequence $name doesn't exist
+     * @throws InvalidArgumentException if sequence $name doesn't exist
      *                                  or $value is not a positive integer
      */
     private function update($name, $value = 0)
@@ -147,10 +143,10 @@ class Sequencer extends EntityRepository
         }
 
         $query = 'UPDATE sequence SET value = :value WHERE name = :name';
-        $params = array(
-            'name'  => $name,
-            'value' => $value,
-        );
+        $params = [
+            'name'   => $name,
+            'value'  => $value,
+        ];
 
         $this->getEntityManager()
             ->getConnection()
@@ -174,7 +170,7 @@ class Sequencer extends EntityRepository
             return $this->init($name, $default);
         }
 
-        $this->_em->refresh($seq);
+        $this->getEntityManager()->refresh($seq);
         return $seq->getValue();
     }
 
@@ -186,7 +182,7 @@ class Sequencer extends EntityRepository
      *
      * @return int
      *
-     * @throws InvalidArgumentException Occures if $value is not a positive integer
+     * @throws InvalidArgumentException if $value is not a positive integer
      */
     public function increaseTo($name, $value)
     {

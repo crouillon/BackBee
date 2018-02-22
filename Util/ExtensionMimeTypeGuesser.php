@@ -1,42 +1,44 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Util;
 
-use BackBee\Exception\BBException;
-
 use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesserInterface;
 
+use BackBee\Exception\BBException;
+
+@trigger_error(
+    'The '.__NAMESPACE__.'\ExtensionMimeTypeGuesser class is deprecated since version 1.4 and will be ' .
+    'removed in 1.5. Use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeExtensionGuesser()',
+    E_USER_DEPRECATED
+);
+
 /**
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @deprecated since version 1.4, to be removed in 1.5.
+ * @codeCoverageIgnore
  */
 class ExtensionMimeTypeGuesser implements MimeTypeGuesserInterface
 {
-    private $_default = 'application/octet-stream';
-    private $_extensions = array(
+    private $default = 'application/octet-stream';
+    private $extensions = array(
         '.3dm' => 'x-world/x-3dmf',
         '.3dmf' => 'x-world/x-3dmf',
         '.a' => 'application/octet-stream',
@@ -516,11 +518,11 @@ class ExtensionMimeTypeGuesser implements MimeTypeGuesserInterface
             throw new BBException(sprintf('Unable to read `%s` file.', $path));
         }
 
-        $mimetype = $this->_default;
+        $mimetype = $this->default;
 
         $extension = strtolower(substr($path, strrpos($path, '.')));
-        if (array_key_exists($extension, $this->_extensions)) {
-            $mimetype = $this->_extensions[$extension];
+        if (array_key_exists($extension, $this->extensions)) {
+            $mimetype = $this->extensions[$extension];
         }
 
         return $mimetype;

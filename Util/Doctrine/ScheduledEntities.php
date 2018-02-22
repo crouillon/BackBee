@@ -1,59 +1,55 @@
 <?php
 
 /*
- * Copyright (c) 2011-2015 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Util\Doctrine;
 
 use Doctrine\ORM\EntityManager;
-use Symfony\Component\Security\Core\Util\ClassUtils;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
 
 use BackBee\ClassContent\AbstractClassContent;
 use BackBee\ClassContent\Revision;
+use BackBee\NestedNode\Page;
 
 /**
  * Utility class to deal with managed Doctrine entities.
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      c.rouillon <charles.rouillon@lp-digital.fr>
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class ScheduledEntities
 {
     /**
      * Returns an array of scheduled entities by classname for insertions.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param string|array Classnames
+     * @param  EntityManager $entityMng
+     * @param  string|array  $classnames
      *
      * @return array
      */
-    public static function getScheduledEntityInsertionsByClassname(EntityManager $em, $classnames)
+    public static function getScheduledEntityInsertionsByClassname(EntityManager $entityMng, $classnames)
     {
-        $entities = array();
+        $entities = [];
         $classnames = (array) $classnames;
 
-        foreach ($em->getUnitOfWork()->getScheduledEntityInsertions() as $entity) {
-            if (true === in_array(ClassUtils::getRealClass($entity), $classnames)) {
+        foreach ($entityMng->getUnitOfWork()->getScheduledEntityInsertions() as $entity) {
+            if (in_array(ClassUtils::getRealClass($entity), $classnames)) {
                 $entities[] = $entity;
             }
         }
@@ -64,18 +60,18 @@ class ScheduledEntities
     /**
      * Returns an array of scheduled entities by classname for updates.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param string|array Classnames
+     * @param  EntityManager $entityMng
+     * @param  string|array  $classnames
      *
      * @return array
      */
-    public static function getScheduledEntityUpdatesByClassname(EntityManager $em, $classnames)
+    public static function getScheduledEntityUpdatesByClassname(EntityManager $entityMng, $classnames)
     {
-        $entities = array();
+        $entities = [];
         $classnames = (array) $classnames;
 
-        foreach ($em->getUnitOfWork()->getScheduledEntityUpdates() as $entity) {
-            if (true === in_array(ClassUtils::getRealClass($entity), $classnames)) {
+        foreach ($entityMng->getUnitOfWork()->getScheduledEntityUpdates() as $entity) {
+            if (in_array(ClassUtils::getRealClass($entity), $classnames)) {
                 $entities[] = $entity;
             }
         }
@@ -86,18 +82,18 @@ class ScheduledEntities
     /**
      * Returns an array of scheduled entities by classname for deletions.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param string|array Classnames
+     * @param  EntityManager $entityMng
+     * @param  string|array  $classnames
      *
      * @return array
      */
-    public static function getScheduledEntityDeletionsByClassname(EntityManager $em, $classnames)
+    public static function getScheduledEntityDeletionsByClassname(EntityManager $entityMng, $classnames)
     {
-        $entities = array();
+        $entities = [];
         $classnames = (array) $classnames;
 
-        foreach ($em->getUnitOfWork()->getScheduledEntityDeletions() as $entity) {
-            if (true === in_array(ClassUtils::getRealClass($entity), $classnames)) {
+        foreach ($entityMng->getUnitOfWork()->getScheduledEntityDeletions() as $entity) {
+            if (in_array(ClassUtils::getRealClass($entity), $classnames)) {
                 $entities[] = $entity;
             }
         }
@@ -108,33 +104,37 @@ class ScheduledEntities
     /**
      * Returns an array of scheduled entities by classname for insertions, updates or deletions.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param string|array Classnames
+     * @param  EntityManager $entityMng
+     * @param  string|array  $classnames
      *
      * @return array
      */
-    public static function getScheduledEntityByClassname(EntityManager $em, $classnames)
+    public static function getScheduledEntityByClassname(EntityManager $entityMng, $classnames)
     {
         return array_merge(
-                self::getScheduledEntityInsertionsByClassname($em, $classnames),
-                self::getScheduledEntityUpdatesByClassname($em, $classnames),
-                self::getScheduledEntityDeletionsByClassname($em, $classnames)
+            self::getScheduledEntityInsertionsByClassname($entityMng, $classnames),
+            self::getScheduledEntityUpdatesByClassname($entityMng, $classnames),
+            self::getScheduledEntityDeletionsByClassname($entityMng, $classnames)
         );
     }
 
     /**
      * Returns an array of AbstractClassContent scheduled for insertions.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param boolean                     $with_revision Includes AClassContent which has scheduled revision
+     * @param  EntityManager $entityMng
+     * @param  boolean       $withRevision   Include AClassContent which has scheduled revision
+     * @param  boolean       $excludeElement Exclude element content
      *
      * @return array
      */
-    public static function getScheduledAClassContentInsertions(EntityManager $em, $with_revision = false, $exclude_base_element = false)
-    {
-        $entities = array();
-        foreach ($em->getUnitOfWork()->getScheduledEntityInsertions() as $entity) {
-            if (false !== $tmp = self::getScheduledEntity($entity, $with_revision, $exclude_base_element)) {
+    public static function getScheduledAClassContentInsertions(
+        EntityManager $entityMng,
+        $withRevision = false,
+        $excludeElement = false
+    ) {
+        $entities = [];
+        foreach ($entityMng->getUnitOfWork()->getScheduledEntityInsertions() as $entity) {
+            if (false !== $tmp = self::getScheduledEntity($entity, $withRevision, $excludeElement)) {
                 $entities[] = $tmp;
             }
         }
@@ -145,16 +145,20 @@ class ScheduledEntities
     /**
      * Returns an array of AbstractClassContent scheduled for updates.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param boolean                     $with_revision Includes AClassContent which has scheduled revision
+     * @param  EntityManager $entityMng
+     * @param  boolean       $withRevision   Include AClassContent which has scheduled revision
+     * @param  boolean       $excludeElement Exclude element content
      *
      * @return array
      */
-    public static function getScheduledAClassContentUpdates(EntityManager $em, $with_revision = false, $exclude_base_element = false)
-    {
-        $entities = array();
-        foreach ($em->getUnitOfWork()->getScheduledEntityUpdates() as $entity) {
-            if (false !== $tmp = self::getScheduledEntity($entity, $with_revision, $exclude_base_element)) {
+    public static function getScheduledAClassContentUpdates(
+        EntityManager $entityMng,
+        $withRevision = false,
+        $excludeElement = false
+    ) {
+        $entities = [];
+        foreach ($entityMng->getUnitOfWork()->getScheduledEntityUpdates() as $entity) {
+            if (false !== $tmp = self::getScheduledEntity($entity, $withRevision, $excludeElement)) {
                 $entities[] = $tmp;
             }
         }
@@ -162,13 +166,23 @@ class ScheduledEntities
         return $entities;
     }
 
-    private static function getScheduledEntity($entity, $with_revision, $exclude_base_element)
+    /**
+     * Returns content according to options.
+     *
+     * @param  object  $entity
+     * @param  boolean $withRevision   Include AClassContent which has scheduled revision
+     * @param  boolean $excludeElement Exclude element content
+     *
+     * @return AbstractClassContent|false
+     */
+    private static function getScheduledEntity($entity, $withRevision, $excludeElement)
     {
         if ($entity instanceof AbstractClassContent &&
-            (!$exclude_base_element || !$entity->isElementContent())) {
+            (!$excludeElement || !$entity->isElementContent())
+        ) {
             return $entity;
-        } elseif (true === $with_revision && $entity instanceof Revision) {
-            if (!$exclude_base_element || !$entity->isElementContent()) {
+        } elseif (true === $withRevision && $entity instanceof Revision) {
+            if (!$excludeElement || !$entity->isElementContent()) {
                 return $entity->getContent();
             }
         }
@@ -179,16 +193,17 @@ class ScheduledEntities
     /**
      * Returns an array of AbstractClassContent scheduled for deletions.
      *
-     * @param \Doctrine\ORM\EntityManager $em
+     * @param  EntityManager $entityMng
+     * @param  boolean       $excludeElement Exclude element content
      *
      * @return array
      */
-    public static function getSchedulesAClassContentDeletions(EntityManager $em, $exclude_base_element = false)
+    public static function getSchedulesAClassContentDeletions(EntityManager $entityMng, $excludeElement = false)
     {
         $entities = array();
-        foreach ($em->getUnitOfWork()->getScheduledEntityDeletions() as $entity) {
+        foreach ($entityMng->getUnitOfWork()->getScheduledEntityDeletions() as $entity) {
             if ($entity instanceof AbstractClassContent &&
-                (!$exclude_base_element || !$entity->isElementContent())) {
+                (!$excludeElement || !$entity->isElementContent())) {
                 $entities[] = $entity;
             }
         }
@@ -199,27 +214,33 @@ class ScheduledEntities
     /**
      * Returns an array of AbstractClassContent scheduled for insertions or updates.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param boolean                     $with_revision Includes AClassContent which has scheduled revision
+     * @param  EntityManager $entityMng
+     * @param  boolean       $withRevision Include AClassContent which has scheduled revision
      *
      * @return array
      */
-    public static function getScheduledAClassContentNotForDeletions(EntityManager $em, $with_revision = false)
+    public static function getScheduledAClassContentNotForDeletions(EntityManager $entityMng, $withRevision = false)
     {
-        return array_merge(self::getScheduledAClassContentInsertions($em, $with_revision), self::getScheduledAClassContentUpdates($em, $with_revision));
+        return array_merge(
+            self::getScheduledAClassContentInsertions($entityMng, $withRevision),
+            self::getScheduledAClassContentUpdates($entityMng, $withRevision)
+        );
     }
 
     /**
-     * Returns TRUE if a entity of $classname is scheduled for insertion or update.
+     * Returns TRUE if an entity of $classname is scheduled for insertion or update.
      *
-     * @param \Doctrine\ORM\EntityManager $em
-     * @param string                      $classname
+     * @param  EntityManager $entityMng
+     * @param  string        $classname
      *
      * @return boolean
      */
-    public static function hasScheduledEntitiesNotForDeletions(EntityManager $em, $classname)
+    public static function hasScheduledEntitiesNotForDeletions(EntityManager $entityMng, $classname)
     {
-        $entities = array_merge($em->getUnitOfWork()->getScheduledEntityInsertions(), $em->getUnitOfWork()->getScheduledEntityUpdates());
+        $entities = array_merge(
+            $entityMng->getUnitOfWork()->getScheduledEntityInsertions(),
+            $entityMng->getUnitOfWork()->getScheduledEntityUpdates()
+        );
 
         foreach ($entities as $entity) {
             if (is_a($entity, $classname)) {
@@ -231,14 +252,14 @@ class ScheduledEntities
     }
 
     /**
-     * Returns TRUE is a \BackBee\NestedNode\Page is scheduled for insertion or update.
+     * Returns TRUE if a Page is scheduled for insertion or update.
      *
-     * @param \Doctrine\ORM\EntityManager $em
+     * @param  EntityManager $entityMng
      *
      * @return boolean
      */
-    public static function hasScheduledPageNotForDeletions(EntityManager $em)
+    public static function hasScheduledPageNotForDeletions(EntityManager $entityMng)
     {
-        return self::hasScheduledEntitiesNotForDeletions($em, '\BackBee\NestedNode\Page');
+        return self::hasScheduledEntitiesNotForDeletions($entityMng, Page::class);
     }
 }
