@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Site\Repository;
@@ -212,8 +212,7 @@ class LayoutRepository extends EntityRepository
             $thumbnailfile = $thumbnaildir.'/'.$layout->getUid().'.'.strtolower($thumbnailconfig['format']);
 
             // Is a background color existing ?
-            if (
-                !isset($thumbnailconfig['background'])
+            if (!isset($thumbnailconfig['background'])
                 || !is_array($thumbnailconfig['background'])
                 || 3 != count($thumbnailconfig['background'])
             ) {
@@ -227,8 +226,7 @@ class LayoutRepository extends EntityRepository
             );
 
             // Is a clipping zone existing ?
-            if (
-                !isset($thumbnailconfig['clip'])
+            if (!isset($thumbnailconfig['clip'])
                 || !is_array($thumbnailconfig['clip'])
                 || 4 != count($thumbnailconfig['clip'])
             ) {

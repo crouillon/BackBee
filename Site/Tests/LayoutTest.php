@@ -1,30 +1,32 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Site\Tests;
 
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Tools\SchemaTool;
 
 use BackBee\Site\Layout;
 use BackBee\Site\Site;
+use BackBee\Tests\Traits\CreateEntityManagerTrait;
 use BackBee\Tests\Traits\InvokePropertyTrait;
 use BackBee\Workflow\State;
 
@@ -36,7 +38,7 @@ use BackBee\Workflow\State;
  */
 class LayoutTest extends \PHPUnit_Framework_TestCase
 {
-
+    use CreateEntityManagerTrait;
     use InvokePropertyTrait;
 
     /**
@@ -234,5 +236,37 @@ class LayoutTest extends \PHPUnit_Framework_TestCase
 
         $this->layout->removeState($state);
         $this->assertEquals(1, $this->layout->getStates()->count());
+    }
+
+    /**
+     */
+    public function testEntity()
+    {
+        $entityMng = $this->createEntityManager();
+        $schemaTool = new SchemaTool($entityMng);
+        $sql = $schemaTool->getCreateSchemaSql([
+            $entityMng->getClassMetadata(Layout::class)
+        ]);
+
+        $expected = [
+            'CREATE TABLE layout (' .
+                'uid VARCHAR(32) NOT NULL, ' .
+                'site_uid VARCHAR(32) DEFAULT NULL, ' .
+                'label VARCHAR(255) NOT NULL, ' .
+                'path VARCHAR(255) NOT NULL, ' .
+                'data CLOB NOT NULL, ' .
+                'created DATETIME NOT NULL, ' .
+                'modified DATETIME NOT NULL, ' .
+                'picpath VARCHAR(255) DEFAULT NULL, ' .
+                'parameters CLOB DEFAULT NULL, ' .
+                'PRIMARY KEY(uid), ' .
+                'CONSTRAINT FK_3A3A6BE2A7063726 ' .
+                    'FOREIGN KEY (site_uid) ' .
+                    'REFERENCES site (uid) ' .
+                    'NOT DEFERRABLE INITIALLY IMMEDIATE)',
+            'CREATE INDEX IDX_3A3A6BE2A7063726 ON layout (site_uid)'
+        ];
+
+        $this->assertEquals($expected, $sql);
     }
 }
