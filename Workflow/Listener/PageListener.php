@@ -92,17 +92,14 @@ class PageListener
      */
     private function onStateChange(PreUpdateEventArgs $eventArgs, Page $page)
     {
-        if (
-            $eventArgs->hasChangedField('_state')
+        if ($eventArgs->hasChangedField('_state')
             && (false !== $dispatcher = $this->getEventDispatcher())
         ) {
-            if (
-                !($eventArgs->getOldValue('_state') & Page::STATE_ONLINE)
+            if (!($eventArgs->getOldValue('_state') & Page::STATE_ONLINE)
                 && $eventArgs->getNewValue('_state') & Page::STATE_ONLINE
             ) {
                 $dispatcher->triggerEvent('putonline', $page);
-            } elseif (
-                $eventArgs->getOldValue('_state') & Page::STATE_ONLINE
+            } elseif ($eventArgs->getOldValue('_state') & Page::STATE_ONLINE
                 && !($eventArgs->getNewValue('_state') & Page::STATE_ONLINE)
             ) {
                 $dispatcher->triggerEvent('putoffline', $page);
