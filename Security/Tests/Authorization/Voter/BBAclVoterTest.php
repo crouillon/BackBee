@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Security\Tests\Authorization\Voter;
@@ -81,10 +81,10 @@ class BBAclVoterTest extends \PHPUnit_Framework_TestCase
     {
         parent::setUp();
 
-        $this->provider = $this->getMock(AclProviderInterface::class);
-        $this->permissionMap = $this->getMock(PermissionMapInterface::class);
-        $this->oidStrategy = $this->getMock(ObjectIdentityRetrievalStrategyInterface::class);
-        $this->sidStrategy = $this->getMock(SecurityIdentityRetrievalStrategyInterface::class);
+        $this->provider = $this->getMockBuilder(AclProviderInterface::class)->getMock();
+        $this->permissionMap = $this->getMockBuilder(PermissionMapInterface::class)->getMock();
+        $this->oidStrategy = $this->getMockBuilder(ObjectIdentityRetrievalStrategyInterface::class)->getMock();
+        $this->sidStrategy = $this->getMockBuilder(SecurityIdentityRetrievalStrategyInterface::class)->getMock();
     }
 
     /**
@@ -94,18 +94,17 @@ class BBAclVoterTest extends \PHPUnit_Framework_TestCase
      */
     private function getVoterMock(array $methods)
     {
-        return $this->getMock(
-            BBAclVoter::class,
-            $methods,
-            [
+        return $this->getMockBuilder(BBAclVoter::class)
+            ->setMethods($methods)
+            ->setConstructorArgs([
                 $this->provider,
                 $this->oidStrategy,
                 $this->sidStrategy,
                 $this->permissionMap,
                 null,
                 true
-            ]
-        );
+            ])
+            ->getMock();
     }
 
     /**
@@ -197,7 +196,9 @@ class BBAclVoterTest extends \PHPUnit_Framework_TestCase
             ->method('voteForObject')
             ->willReturn(BBAclVoter::ACCESS_DENIED);
 
-        $page = $this->getMock(Page::class, ['getParent']);
+        $page = $this->getMockBuilder(Page::class)
+            ->setMethods(['getParent'])
+            ->getMock();
         $page->expects($this->once())
             ->method('getParent')
             ->willReturn(new Page());
@@ -215,7 +216,9 @@ class BBAclVoterTest extends \PHPUnit_Framework_TestCase
             ->method('voteForObject')
             ->willReturn(BBAclVoter::ACCESS_DENIED);
 
-        $section = $this->getMock(Section::class, ['getParent']);
+        $section = $this->getMockBuilder(Section::class)
+            ->setMethods(['getParent'])
+            ->getMock();
         $section->expects($this->once())
             ->method('getParent')
             ->willReturn(new Section());
@@ -245,7 +248,9 @@ class BBAclVoterTest extends \PHPUnit_Framework_TestCase
             ->method('voteForObject')
             ->willReturn(BBAclVoter::ACCESS_DENIED);
 
-        $content = $this->getMock(ContentSet::class, ['getProperty']);
+        $content = $this->getMockBuilder(ContentSet::class)
+            ->setMethods(['getProperty'])
+            ->getMock();
         $content->expects($this->any())->method('getProperty')->willReturn('category');
         $this->assertEquals(
             BBAclVoter::ACCESS_GRANTED,

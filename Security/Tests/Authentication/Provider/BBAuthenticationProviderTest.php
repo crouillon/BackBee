@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Security\Tests\Authentication\Provider;
@@ -123,11 +123,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
         $token = new BBUserToken();
         $token->setUser($user);
 
-        $provider = $this->getMock(
-            BBAuthenticationProvider::class,
-            ['checkNonce', 'writeNonceValue'],
-            [$this->userProvider, vfsStream::url('root')]
-        );
+        $provider = $this->getMockBuilder(BBAuthenticationProvider::class)
+            ->setMethods(['checkNonce', 'writeNonceValue'])
+            ->setConstructorArgs([$this->userProvider, vfsStream::url('root')])
+            ->getMock();
         $provider->expects($this->once())->method('checkNonce');
         $provider->expects($this->once())->method('writeNonceValue');
 
@@ -149,11 +148,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
      */
     public function testInvalidUser()
     {
-        $provider = $this->getMock(
-            BBAuthenticationProvider::class,
-            ['clearNonce'],
-            [$this->userProvider, vfsStream::url('root')]
-        );
+        $provider = $this->getMockBuilder(BBAuthenticationProvider::class)
+            ->setMethods(['clearNonce'])
+            ->setConstructorArgs([$this->userProvider, vfsStream::url('root')])
+            ->getMock();
         $provider->expects($this->once())->method('clearNonce');
 
         $this->userProvider
@@ -179,11 +177,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
         $token = new BBUserToken();
         $token->setUser($user);
 
-        $provider = $this->getMock(
-            BBAuthenticationProvider::class,
-            ['checkNonce', 'clearNonce'],
-            [$this->userProvider, vfsStream::url('root')]
-        );
+        $provider = $this->getMockBuilder(BBAuthenticationProvider::class)
+            ->setMethods(['checkNonce', 'clearNonce'])
+            ->setConstructorArgs([$this->userProvider, vfsStream::url('root')])
+            ->getMock();
         $provider->expects($this->once())->method('checkNonce')->willThrowException(new SecurityException());
         $provider->expects($this->once())->method('clearNonce');
 
@@ -207,7 +204,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
         $token = new BBUserToken();
         $token->setNonce('nonce');
 
-        $provider = $this->getMock(BBAuthenticationProvider::class, ['removeNonce'], [], '', false);
+        $provider = $this->getMockBuilder(BBAuthenticationProvider::class)
+            ->setMethods(['removeNonce'])
+            ->disableOriginalConstructor()
+            ->getMock();
         $provider->expects($this->once())->method('removeNonce');
         $provider->clearNonce($token);
     }
@@ -277,7 +277,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
         $registry = new Registry();
         $registry->setValue('time;secret');
 
-        $repository = $this->getMock(EntityRepository::class, ['findOneBy'], [], '', false);
+        $repository = $this->getMockBuilder(EntityRepository::class)
+            ->setMethods(['findOneBy'])
+            ->disableOriginalConstructor()
+            ->getMock();
         $repository->expects($this->once())->method('findOneBy')->willReturn($registry);
 
         $this->invokeProperty($this->provider, 'registryRepository', $repository);
@@ -306,7 +309,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
         $this->invokeMethod($this->provider, 'writeNonceValue', [$token]);
         $this->assertEquals($expected, file_get_contents(vfsStream::url('root').'/nonce/dir/nonce'));
 
-        $repository = $this->getMock(EntityRepository::class, ['findOneBy', 'save'], [], '', false);
+        $repository = $this->getMockBuilder(EntityRepository::class)
+            ->setMethods(['findOneBy', 'save'])
+            ->disableOriginalConstructor()
+            ->getMock();
         $this->invokeProperty($this->provider, 'registryRepository', $repository);
 
         $repository->expects($this->once())
@@ -327,7 +333,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
 
         $this->assertFalse(is_file(vfsStream::url('root').'/nonce/dir/nonce'));
 
-        $repository = $this->getMock(EntityRepository::class, ['findOneBy', 'remove'], [], '', false);
+        $repository = $this->getMockBuilder(EntityRepository::class)
+            ->setMethods(['findOneBy', 'remove'])
+            ->disableOriginalConstructor()
+            ->getMock();
         $this->invokeProperty($this->provider, 'registryRepository', $repository);
 
         $repository->expects($this->once())
@@ -341,7 +350,10 @@ class BBAuthenticationProviderTest extends \PHPUnit_Framework_TestCase
      */
     public function testGetRegistry()
     {
-        $repository = $this->getMock(EntityRepository::class, ['findOneBy'], [], '', false);
+        $repository = $this->getMockBuilder(EntityRepository::class)
+            ->setMethods(['findOneBy'])
+            ->disableOriginalConstructor()
+            ->getMock();
         $repository->expects($this->once())->method('findOneBy');
         $this->invokeProperty($this->provider, 'registryRepository', $repository);
 

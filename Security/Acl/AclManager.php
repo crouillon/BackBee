@@ -1,22 +1,22 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Security\Acl;
@@ -30,17 +30,19 @@ use Symfony\Component\Security\Acl\Model\MutableAclProviderInterface;
 use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
 use Symfony\Component\Security\Acl\Model\SecurityIdentityInterface;
 use Symfony\Component\Security\Acl\Permission\PermissionMapInterface;
-use Symfony\Component\Security\Core\Util\ClassUtils;
+use Symfony\Component\Security\Acl\Util\ClassUtils;
 
+use BackBee\NestedNode\Page;
 use BackBee\Security\Acl\Domain\AbstractObjectIdentifiable;
 use BackBee\Security\Acl\Domain\ObjectIdentifiableInterface;
 use BackBee\Security\Acl\Permission\InvalidPermissionException;
 use BackBee\Security\Acl\Permission\MaskBuilder;
+use BackBee\Security\SecurityContext;
 
 /**
  * Class AclManager
  *
- * @package BackBee\Security\Acl
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
 class AclManager
 {
@@ -297,7 +299,7 @@ class AclManager
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
 
-        $acl = $this->aclProvider->findAcl($objectIdentity);
+        $acl = $this->getAcl($objectIdentity);
 
         foreach ($acl->getClassAces() as $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
@@ -321,7 +323,7 @@ class AclManager
         $this->enforceObjectIdentity($objectIdentity);
         $this->enforceSecurityIdentity($sid);
 
-        $acl = $this->aclProvider->findAcl($objectIdentity);
+        $acl = $this->getAcl($objectIdentity);
 
         foreach ($acl->getObjectAces() as $ace) {
             if ($ace->getSecurityIdentity()->equals($sid)) {
@@ -464,29 +466,23 @@ class AclManager
             'BackBee\NestedNode\MediaFolder'
         ];
 
-        try{
-
+        try {
             $ace = $this->getObjectAce($objectIdentity, $sid);
-        }
-        catch (\Exception $e){
-
-            if(in_array($objectIdentity->getType(), $exceptedClass)) return [];
+        } catch (\Exception $e) {
+            if (in_array($objectIdentity->getType(), $exceptedClass)) {
+                return [];
+            }
 
             try {
-
                 $ace = $this->getClassAce($this->getClassScopeObjectIdentity($objectIdentity->getType()), $sid);
-            }
-            catch (\Exception $e){
-
+            } catch (\Exception $e) {
                 $parentClass = get_parent_class($objectIdentity->getType());
 
                 if (false !== $parentClass) {
-
                     return $this->getPermissions($parentClass, $sid);
                 }
-                else{
-                    return [];
-                }
+
+                return [];
             }
         }
 
@@ -496,7 +492,7 @@ class AclManager
     /**
      * Get permissions by page
      *
-     * @param $page Page
+     * @param Page page
      * @param $sid
      * @return array
      */
@@ -504,26 +500,21 @@ class AclManager
     {
         $objectIdentity = $this->getClassScopeObjectIdentity($page);
 
-        try{
-
+        try {
             $ace = $this->getObjectAce($objectIdentity, $sid);
-        }
-        catch (\Exception $e){
-
+        } catch (\Exception $e) {
             if (null !== $page->getParent()) {
-
                 return $this->getPermissionsByPage($page->getParent(), $sid);
-            }
-            elseif ($page->isRoot()){
-
-                try{
-                    $ace = $this->getClassAce($this->getClassScopeObjectIdentity(ClassUtils::getRealClass($page)), $sid);
-                }
-                catch (\Exception $e){
+            } elseif ($page->isRoot()) {
+                try {
+                    $ace = $this->getClassAce(
+                        $this->getClassScopeObjectIdentity(ClassUtils::getRealClass($page)),
+                        $sid
+                    );
+                } catch (\Exception $e) {
                     return [];
                 }
-            }
-            else{
+            } else {
                 return [];
             }
         }
@@ -542,7 +533,7 @@ class AclManager
         $className = ClassUtils::getRealClass($object);
         $identifier = 'all';
 
-        if($object instanceof ObjectIdentifiableInterface) {
+        if ($object instanceof ObjectIdentifiableInterface) {
             $identifier = $object->getObjectIdentifier();
             $className = $object->getType();
         }
@@ -562,7 +553,7 @@ class AclManager
             'total' => $ace->getMask()
         ];
 
-        foreach ($this->getPermissionCodes() as $permission => $code){
+        foreach ($this->getPermissionCodes() as $permission => $code) {
             $access[$permission] = (0 !== ($ace->getMask() & $code)) ? 1 : 0;
         }
 
