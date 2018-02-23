@@ -1,376 +1,447 @@
 <?php
 
 /*
- * Copyright (c) 2011-2017 Lp digital system
+ * Copyright (c) 2011-2018 Lp digital system
  *
- * This file is part of BackBee.
+ * This file is part of BackBee CMS.
  *
- * BackBee is free software: you can redistribute it and/or modify
+ * BackBee CMS is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * BackBee is distributed in the hope that it will be useful,
+ * BackBee CMS is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with BackBee. If not, see <http://www.gnu.org/licenses/>.
+ * along with BackBee CMS. If not, see <http://www.gnu.org/licenses/>.
  */
 
 namespace BackBee\Security\Acl\Loader;
 
+use Doctrine\ORM\EntityManager;
 use Symfony\Component\DependencyInjection\ContainerAware;
+use Symfony\Component\DependencyInjection\ContainerAwareTrait;
+use Symfony\Component\Security\Acl\Dbal\MutableAclProvider;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
+use BackBee\Bundle\AbstractBundle;
+use BackBee\ClassContent\AbstractClassContent;
 use BackBee\Security\Acl\Permission\MaskBuilder;
 use BackBee\Security\Acl\Permission\PermissionMap;
+use BackBee\Security\Group;
+use BackBee\Utils\Collection\Collection;
 
 /**
  * Yml Loader.
- *
  * Loads yml acl data into the DB
  *
- * @category    BackBee
- *
- * @copyright   Lp digital system
- * @author      k.golovin
+ * @author Charles Rouillon <charles.rouillon@lp-digital.fr>
  */
-class YmlLoader extends ContainerAware
+class YmlLoader
 {
-    protected $em;
-    protected $bbapp;
+    use ContainerAwareTrait;
 
+    /**
+     * ACL provider object.
+     *
+     * @var MutableAclProvider
+     */
+    private $aclProvider;
+
+    /**
+     * Entity manager instance.
+     *
+     * @var EntityManager
+     */
+    private $entityManager;
+
+    /**
+     * Returns the service instance if exists.
+     *
+     * @param  string $serviceId
+     *
+     * @return object|null
+     */
+    private function getService($serviceId)
+    {
+        if ($this->container->has($serviceId)) {
+            return $this->container->get($serviceId);
+        }
+
+        return null;
+    }
+
+    /**
+     * Initializes the lloader.
+     *
+     * @throws \RuntimeException if something wrong.
+     */
+    private function initialize()
+    {
+        if (null === $this->container) {
+            throw new \RuntimeException('Services container missing');
+        }
+
+        if (null === $this->entityManager = $this->getService('em')) {
+            throw new \RuntimeException('Entity manager missing');
+        }
+
+        if (null === $securityContext = $this->getService('security.context')) {
+            throw new \RuntimeException('Security context missing');
+        }
+
+        if (null === $this->aclProvider = $securityContext->getACLProvider()) {
+            throw new \RuntimeException('ACL provider missing');
+        }
+    }
+
+    /**
+     * Loads groups rights from a YAML content.
+     *
+     * @param  string $aclData
+     *
+     * @throws \RuntimeException if something wrong.
+     * @throws ParseException if YAML content cannot be parsed.
+     */
     public function load($aclData)
     {
-        $aclProvider = $this->container->get('bbapp')->getSecurityContext()->getACLProvider();
+        $this->initialize();
 
-        if (null === $aclProvider) {
-            throw new \RuntimeException('ACL configuration missing');
-        }
+        $config = Yaml::parse($aclData, true);
+        $groupRepo = $this->entityManager->getRepository(Group::class);
 
-        $this->em = $this->container->get('bbapp')->getEntityManager();
-        $this->bbapp = $this->container->get('bbapp');
-
-        $grid = Yaml::parse($aclData, true);
-
-        if (false === array_key_exists('groups', $grid) || false === is_array($grid['groups'])) {
-            throw new \Exception('Invalid yml: '.$ymlFile);
-        }
-
-        foreach ($grid['groups'] as $group_name => $rights) {
-            if (null === $group = $this->em->getRepository('BackBee\Security\Group')->findOneBy(array('_name' => $group_name))) {
-                // ensure group exists
-                $group = new \BackBee\Security\Group();
-                $group->setName($group_name);
-                $this->em->persist($group);
-                $this->em->flush($group);
+        foreach ($config as $identifier => $rights) {
+            $group = $groupRepo->findOneBy(['_name' => $identifier]);
+            if (null === $group) {
+                $group = new Group();
+                $group->setName($identifier)
+                    ->setDescription(Collection::get($rights, 'description', $identifier));
+                $this->entityManager->persist($group);
+                $this->entityManager->flush($group);
             }
 
-            $securityIdentity = new UserSecurityIdentity($group->getObjectIdentifier(), get_class($group));
-
-            if (true === array_key_exists('sites', $rights)) {
-                $sites = $this->addSiteRights($rights['sites'], $aclProvider, $securityIdentity);
-                foreach ($sites as $site) {
-                    if (true === array_key_exists('layouts', $rights)) {
-                        $this->addLayoutRights($rights['layouts'], $sites, $aclProvider, $securityIdentity);
-                    }
-                }
-
-                if (true === array_key_exists('pages', $rights)) {
-                    $this->addPageRights($rights['pages'], $aclProvider, $securityIdentity);
-                }
-
-                if (true === array_key_exists('mediafolders', $rights)) {
-                    $this->addFolderRights($rights['mediafolders'], $aclProvider, $securityIdentity);
-                }
-
-                if (true === array_key_exists('contents', $rights)) {
-                    $this->addContentRights($rights['contents'], $aclProvider, $securityIdentity);
-                }
-
-                if (true === array_key_exists('bundles', $rights)) {
-                    $this->addBundleRights($rights['bundles'], $aclProvider, $securityIdentity);
-                }
-            }
+            $this->updateRights($group, $rights);
         }
     }
 
-    private function addSiteRights($sites_def, $aclProvider, $securityIdentity)
+    /**
+     * Loads groups rights from a YAML file.
+     *
+     * @param  string $filename
+     *
+     * @throws \RuntimeException if file cannot be readden
+     */
+    public function loadFromFile($filename)
     {
-        if (false === array_key_exists('resources', $sites_def) || false === array_key_exists('actions', $sites_def)) {
-            return array();
+        if (!is_readable($filename)) {
+            throw new \RuntimeException(sprintf('Cannot read file %s', $filename));
         }
 
-        $actions = $this->getActions($sites_def['actions']);
-        if (0 === count($actions)) {
-            return array();
-        }
-
-        $sites = array();
-        if (true === is_array($sites_def['resources'])) {
-            foreach ($sites_def['resources'] as $site_label) {
-                if (null === $site = $this->em->getRepository('BackBee\Site\Site')->findOneBy(array('_label' => $site_label))) {
-                    continue;
-                }
-
-                $sites[] = $site;
-                $this->addObjectAcl($site, $aclProvider, $securityIdentity, $actions);
-            }
-        } elseif ('all' === $sites_def['resources']) {
-            $sites = $this->em->getRepository('BackBee\Site\Site')->findAll();
-            $this->addClassAcl(new \BackBee\Site\Site('*'), $aclProvider, $securityIdentity, $actions);
-        }
-
-        return $sites;
+        $this->load(file_get_contents($filename));
     }
 
-    private function addLayoutRights($layout_def, $sites, $aclProvider, $securityIdentity)
+    /**
+     * Updates rights associated to a group
+     *
+     * @param Group $group
+     * @param array $config
+     */
+    private function updateRights(Group $group, array $config)
     {
-        if (false === array_key_exists('resources', $layout_def) || false === array_key_exists('actions', $layout_def)) {
-            return;
-        }
+        $securityIdentity = new UserSecurityIdentity($group->getObjectIdentifier(), Group::class);
 
-        $actions = $this->getActions($layout_def['actions']);
-        if (0 === count($actions)) {
-            return array();
-        }
-
-        foreach ($sites as $site) {
-            if (true === is_array($layout_def['resources'])) {
-                foreach ($layout_def['resources'] as $layout_label) {
-                    if (null === $layout = $this->em->getRepository('BackBee\Site\Layout')->findOneBy(array('_site' => $site, '_label' => $layout_label))) {
-                        continue;
-                    }
-
-                    $this->addObjectAcl($layout, $aclProvider, $securityIdentity, $actions);
-                }
-            } elseif ('all' === $layout_def['resources']) {
-                $this->addClassAcl(new \BackBee\Site\Layout('*'), $aclProvider, $securityIdentity, $actions);
+        foreach ($config as $object => $rights) {
+            $methodName = sprintf('add%sRights', ucfirst($object));
+            if (method_exists($this, $methodName)) {
+                call_user_func_array([$this, $methodName], [$rights, $securityIdentity]);
             }
         }
     }
 
-    private function addPageRights($page_def, $aclProvider, $securityIdentity)
+    /**
+     * Adding rights on generic objects.
+     *
+     * @param string               $classname
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     * @param string               $labelField
+     */
+    private function addObjectRights(
+        $classname,
+        array $config,
+        UserSecurityIdentity $securityIdentity,
+        $labelField = '_label'
+    ) {
+        $rights = $this->getActionsOnResources($config);
+        foreach ((array) $rights as $resource => $actions) {
+            if ('all' === $resource) {
+                $this->addClassAcl($classname, $securityIdentity, $actions);
+                continue;
+            }
+
+            $object = $this->entityManager->getRepository($classname)->findOneBy([$labelField => $resource]);
+            if (null === $object) {
+                $object = $this->entityManager->find($classname, $resource);
+            }
+
+            if (null === $object) {
+                continue;
+            }
+
+            $this->addObjectAcl($object, $securityIdentity, $actions);
+        }
+    }
+
+    /**
+     * Adding rights on Site objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addSitesRights(array $config, UserSecurityIdentity $securityIdentity)
     {
-        if (false === array_key_exists('resources', $page_def) || false === array_key_exists('actions', $page_def)) {
-            return;
-        }
-
-        $actions = $this->getActions($page_def['actions']);
-        if (0 === count($actions)) {
-            return array();
-        }
-
-        if (true === is_array($page_def['resources'])) {
-            foreach ($page_def['resources'] as $page_url) {
-                $pages = $this->em->getRepository('BackBee\Site\Layout')->findBy(array('_url' => $page_url));
-                foreach ($pages as $page) {
-                    $this->addObjectAcl($page, $aclProvider, $securityIdentity, $actions);
-                }
-            }
-        } elseif ('all' === $page_def['resources']) {
-            $this->addClassAcl(new \BackBee\NestedNode\Page('*'), $aclProvider, $securityIdentity, $actions);
-        }
+        $this->addObjectRights(Site::class, $config, $securityIdentity);
     }
 
-    private function addFolderRights($folder_def, $aclProvider, $securityIdentity)
+    /**
+     * Adding rights on Layout objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addLayoutsRights(array $config, UserSecurityIdentity $securityIdentity)
     {
-        if (false === array_key_exists('resources', $folder_def) || false === array_key_exists('actions', $folder_def)) {
-            return;
-        }
-
-        $actions = $this->getActions($folder_def['actions']);
-        if (0 === count($actions)) {
-            return array();
-        }
-
-        if ('all' === $folder_def['resources']) {
-            $this->addClassAcl(new \BackBee\NestedNode\MediaFolder('*'), $aclProvider, $securityIdentity, $actions);
-        }
+        $this->addObjectRights(Layout::class, $config, $securityIdentity);
     }
 
-    private function addContentRights($content_def, $aclProvider, $securityIdentity)
+    /**
+     * Adding rights on Page objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addPagesRights(array $config, UserSecurityIdentity $securityIdentity)
     {
-        if (false === array_key_exists('resources', $content_def) || false === array_key_exists('actions', $content_def)) {
-            return;
-        }
-
-        $service = new \BackBee\Services\Local\ContentBlocks();
-        $service->initService($this->bbapp);
-        $all_classes = $service->getContentsByCategory();
-
-        if ('all' === $content_def['resources']) {
-            $actions = $this->getActions($content_def['actions']);
-            if (0 === count($actions)) {
-                return array();
-            }
-
-            $service = new \BackBee\Services\Local\ContentBlocks();
-            $service->initService($this->bbapp);
-            foreach ($all_classes as $content) {
-                $classname = '\BackBee\ClassContent\\'.$content->name;
-                $this->addClassAcl(new $classname('*'), $aclProvider, $securityIdentity, $actions);
-            }
-        } elseif (true === is_array($content_def['resources']) && 0 < count($content_def['resources'])) {
-            if (true === is_array($content_def['resources'][0])) {
-                $used_classes = array();
-                foreach ($content_def['resources'] as $index => $resources_def) {
-                    if (false === isset($content_def['actions'][$index])) {
-                        continue;
-                    }
-
-                    $actions = $this->getActions($content_def['actions'][$index]);
-
-                    if ('remains' === $resources_def) {
-                        foreach ($all_classes as $content) {
-                            $classname = '\BackBee\ClassContent\\'.$content->name;
-                            if (false === in_array($classname, $used_classes)) {
-                                $used_classes[] = $classname;
-                                if (0 < count($actions)) {
-                                    $this->addClassAcl(new $classname('*'), $aclProvider, $securityIdentity, $actions);
-                                }
-                            }
-                        }
-                    } elseif (true === is_array($resources_def)) {
-                        foreach ($resources_def as $content) {
-                            $classname = '\BackBee\ClassContent\\'.$content;
-                            if (substr($classname, -1) === '*') {
-                                $classname = substr($classname, 0 - 1);
-                                foreach ($all_classes as $content) {
-                                    $fullclass = '\BackBee\ClassContent\\'.$content->name;
-                                    if (0 === strpos($fullclass, $classname)) {
-                                        $used_classes[] = $fullclass;
-                                        if (0 < count($actions)) {
-                                            $this->addClassAcl(new $fullclass('*'), $aclProvider, $securityIdentity, $actions);
-                                        }
-                                    }
-                                }
-                            } elseif (true === class_exists($classname)) {
-                                $used_classes[] = $classname;
-                                if (0 < count($actions)) {
-                                    $this->addClassAcl(new $classname('*'), $aclProvider, $securityIdentity, $actions);
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                $actions = $this->getActions($content_def['actions']);
-                if (0 === count($actions)) {
-                    return array();
-                }
-
-                foreach ($content_def['resources'] as $content) {
-                    $classname = '\BackBee\ClassContent\\'.$content;
-                    if (substr($classname, -1) === '*') {
-                        $classname = substr($classname, 0 -1);
-                        foreach ($all_classes as $content) {
-                            $fullclass = '\BackBee\ClassContent\\'.$content->name;
-                            if (0 === strpos($fullclass, $classname)) {
-                                $this->addClassAcl(new $fullclass('*'), $aclProvider, $securityIdentity, $actions);
-                            }
-                        }
-                    } elseif (true === class_exists($classname)) {
-                        $this->addClassAcl(new $classname('*'), $aclProvider, $securityIdentity, $actions);
-                    }
-                }
-            }
-        }
+        $this->addObjectRights(Page::class, $config, $securityIdentity, '_url');
     }
 
-    private function addBundleRights($bundle_def, $aclProvider, $securityIdentity)
+    /**
+     * Adding rights on MediaFolder objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addMediafoldersRights(array $config, UserSecurityIdentity $securityIdentity)
     {
-        if (false === array_key_exists('resources', $bundle_def) || false === array_key_exists('actions', $bundle_def)) {
-            return;
-        }
+        $this->addObjectRights(MediaFolder::class, $config, $securityIdentity, '_url');
+    }
 
-        $actions = $this->getActions($bundle_def['actions']);
-        if (0 === count($actions)) {
-            echo 'Notice: none actions defined on bundle'.PHP_EOL;
+    /**
+     * Adding rights on Group objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addGroupsRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $this->addObjectRights(Group::class, $config, $securityIdentity, '_name');
+    }
 
-            return array();
-        }
+    /**
+     * Adding rights on User objects.
+     *
+     * @param array                $config
+     * @param UserSecurityIdentity $securityIdentity
+     */
+    private function addUsersRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $this->addObjectRights(User::class, $config, $securityIdentity, '_username');
+    }
 
-        if (true === is_array($bundle_def['resources'])) {
-            foreach ($bundle_def['resources'] as $bundle_name) {
-                if (null !== $bundle = $this->bbapp->getBundle($bundle_name)) {
-                    $this->addObjectAcl($bundle, $aclProvider, $securityIdentity, $actions);
+    /**
+     * Adding rights on AbstractBundle objects.
+     *
+     * @param  array $config
+     * @param  UserSecurityIdentity $securityIdentity
+     */
+    private function addBundlesRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $bundles = $this->getLoadedBundles();
+        $rights = $this->getActionsOnResources($config);
+        foreach ((array) $rights as $resource => $actions) {
+            if ('all' === $resource) {
+                foreach ($bundles as $bundle) {
+                    $this->addObjectAcl($bundle, $securityIdentity, $actions);
                 }
+                continue;
             }
-        } elseif ('all' === $bundle_def['resources']) {
-            foreach ($this->bbapp->getBundles() as $bundle) {
-                $this->addObjectAcl($bundle, $aclProvider, $securityIdentity, $actions);
+
+            if (!isset($bundles['bundle.' . $resource])) {
+                continue;
+            }
+
+            $this->addObjectAcl($bundles['bundle.' . $resource], $securityIdentity, $actions);
+        }
+    }
+
+    /**
+     * Adding rights on AbstractClassContent objects.
+     *
+     * @param  array $config
+     * @param  UserSecurityIdentity $securityIdentity
+     */
+    private function addContentsRights(array $config, UserSecurityIdentity $securityIdentity)
+    {
+        $rights = $this->getActionsOnResources($config);
+        foreach ((array) $rights as $resource => $actions) {
+            if ('all' === $resource) {
+                $this->addClassAcl(AbstractClassContent::class, $securityIdentity, $actions);
+                continue;
+            }
+
+            try {
+                $classname = AbstractClassContent::getFullClassname($resource);
+                $this->addClassAcl($classname, $securityIdentity, $actions);
+            } catch (\Exception $ex) {
+                continue;
             }
         }
     }
 
+    /**
+     * Returns an indexed array of loaded bundles.
+     *
+     * @return AbstractBundle[]
+     */
+    private function getLoadedBundles()
+    {
+        $bundles = [];
+        $loadedBundles = array_keys($this->container->findTaggedServiceIds('bundle'));
+        foreach ($loadedBundles as $serviceId) {
+            $bundles[$serviceId] = $this->container->get($serviceId);
+        }
+
+        return $bundles;
+    }
+
+    /**
+     * Format actions on resources.
+     *
+     * @param  array $config
+     *
+     * @return array
+     */
+    private function getActionsOnResources($config)
+    {
+        $result = [];
+
+        $resources = (array) Collection::get($config, 'resources', []);
+        $actions = (array) Collection::get($config, 'actions', []);
+        if (!isset($actions[0]) || !is_array($actions[0])) {
+            $actions = [$actions];
+        }
+
+        $index = 0;
+        foreach ($resources as $resource) {
+            if ('!' === substr($resource, 0, 1)) {
+                $resource = substr($resource, 1);
+                $result[$resource] = [];
+                continue;
+            }
+
+            $action = isset($actions[$index]) ? $actions[$index] : $actions[0];
+            $result[$resource] = $this->getActions($action);
+            $index++;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Filters the actions.
+     *
+     * @param  mixed $def
+     *
+     * @return array
+     */
     private function getActions($def)
     {
-        $actions = array();
-        if (true === is_array($def)) {
-            $actions = array_intersect(array('view', 'create', 'edit', 'delete', 'publish'), $def);
-        } elseif ('all' === $def) {
-            $actions = array('view', 'create', 'edit', 'delete', 'publish');
+        $all = ['view', 'create', 'edit', 'delete', 'publish'];
+        if (['all'] === $def) {
+            return $all;
         }
 
-        return $actions;
+        return array_intersect($all, $def);
     }
 
-    private function addObjectAcl($object, $aclProvider, $securityIdentity, $rights)
+    /**
+     * Add rights to security group on whole instances of class.
+     *
+     * @param string               $className
+     * @param UserSecurityIdentity $securityIdentity
+     * @param array                $rights
+     */
+    private function addClassAcl($className, UserSecurityIdentity $securityIdentity, array $rights)
     {
-        $objectIdentity = ObjectIdentity::fromDomainObject($object);
-
-        try {
-            $acl = $aclProvider->findAcl($objectIdentity, array($securityIdentity));
-        } catch (\Exception $e) {
-            $acl = $aclProvider->createAcl($objectIdentity);
-        }
-
-        foreach ($rights as $right) {
-            try {
-                $map = new PermissionMap();
-                $acl->isGranted($map->getMasks(strtoupper($right), $object), array($securityIdentity));
-            } catch (\Exception $e) {
-                $builder = new MaskBuilder();
-                foreach ($rights as $right) {
-                    $builder->add($right);
-                }
-                $mask = $builder->get();
-
-                $acl->insertObjectAce($securityIdentity, $mask);
-                $aclProvider->updateAcl($acl);
-            }
-        }
+        $objectIdentity = new ObjectIdentity('all', $className);
+        $this->addAcl($objectIdentity, $securityIdentity, $rights);
     }
 
-    private function addClassAcl($object, $aclProvider, $securityIdentity, $rights)
+    /**
+     * Add rights to security group on one instance of object.
+     *
+     * @param object               $object
+     * @param UserSecurityIdentity $securityIdentity
+     * @param array                $rights
+     */
+    private function addObjectAcl($object, UserSecurityIdentity $securityIdentity, array $rights)
     {
         $objectIdentity = ObjectIdentity::fromDomainObject($object);
+        $this->addAcl($objectIdentity, $securityIdentity, $rights);
+    }
 
+    /**
+     * Add rights to security group on object.
+     *
+     * @param ObjectIdentity       $objectIdentity
+     * @param UserSecurityIdentity $securityIdentity
+     * @param array                $rights
+     */
+    private function addAcl(ObjectIdentity $objectIdentity, UserSecurityIdentity $securityIdentity, array $rights)
+    {
+        // Getting ACL for this object identity
         try {
-            $acl = $aclProvider->findAcl($objectIdentity, array($securityIdentity));
+            $acl = $this->aclProvider->createAcl($objectIdentity);
         } catch (\Exception $e) {
-            $acl = $aclProvider->createAcl($objectIdentity);
+            $acl = $this->aclProvider->findAcl($objectIdentity);
         }
 
+        // Calculating mask
+        $builder = new MaskBuilder();
         foreach ($rights as $right) {
-            try {
-                $map = new PermissionMap();
-                $acl->isGranted($map->getMasks(strtoupper($right), $object), array($securityIdentity));
-            } catch (\Exception $e) {
-                $builder = new MaskBuilder();
-                foreach ($rights as $right) {
-                    $builder->add($right);
-                }
-                $mask = $builder->get();
+            $builder->add($right);
+        }
+        $mask = $builder->get();
 
-                $acl->insertClassAce($securityIdentity, $mask);
-                $aclProvider->updateAcl($acl);
+        // first revoke existing access for this security identity
+        foreach ($acl->getObjectAces() as $i => $ace) {
+            if ($securityIdentity->equals($ace->getSecurityIdentity())) {
+                $acl->updateObjectAce($i, $ace->getMask() & ~$mask);
             }
         }
+
+        // then grant
+        if ('all' === $objectIdentity->getIdentifier()) {
+            $acl->insertClassAce($securityIdentity, $mask);
+        } else {
+            $acl->insertObjectAce($securityIdentity, $mask);
+        }
+        $this->aclProvider->updateAcl($acl);
     }
 }
