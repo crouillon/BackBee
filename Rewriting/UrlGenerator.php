@@ -145,8 +145,7 @@ class UrlGenerator implements UrlGeneratorInterface
     {
         $this->container = $container;
 
-        if (
-            null !== $this->container
+        if (null !== $this->container
             && (null !== $config = $this->getService('config'))
             && (null !== $rewriting = $config->getRewritingConfig())
         ) {
@@ -262,27 +261,26 @@ class UrlGenerator implements UrlGeneratorInterface
         $exceptionOnMissingScheme = true
     ) {
         $pageUrl =  $page->getUrl(false);
-        $shortClassname = str_replace(AbstractContent::CLASSCONTENT_BASE_NAMESPACE, '', get_class($content));
 
-        if (
-            null !== $pageUrl
+        if (null !== $content) {
+            $shortClassname = str_replace(AbstractContent::CLASSCONTENT_BASE_NAMESPACE, '', get_class($content));
+        }
+
+        if (null !== $pageUrl
             && $page->getState() & Page::STATE_ONLINE
             && (true !== $force && $this->preserveOnline)
         ) {
             return $pageUrl;
-        } elseif (
-            $page->isRoot()
+        } elseif ($page->isRoot()
             && isset($this->schemes['_root_'])
         ) {
             return $this->doGenerate($this->schemes['_root_'], $page, $content);
-        } elseif (
-            isset($this->schemes['_layout_'])
+        } elseif (isset($this->schemes['_layout_'])
             && is_array($this->schemes['_layout_'])
             && isset($this->schemes['_layout_'][$page->getLayout()->getUid()])
         ) {
             return $this->doGenerate($this->schemes['_layout_'][$page->getLayout()->getUid()], $page);
-        } elseif (
-            null !== $content
+        } elseif (null !== $content
             && isset($this->schemes['_content_'])
             && is_array($this->schemes['_content_'])
             && isset($this->schemes['_content_'][$shortClassname])
@@ -380,8 +378,7 @@ class UrlGenerator implements UrlGeneratorInterface
             $page->setUrl($url);
 
             $classMetadata = $entityMng->getClassMetadata(Page::class);
-            if (
-                $unitOfWork->isScheduledForInsert($page)
+            if ($unitOfWork->isScheduledForInsert($page)
                 || $unitOfWork->isScheduledForUpdate($page)
             ) {
                 $unitOfWork->recomputeSingleEntityChangeSet($classMetadata, $page);
